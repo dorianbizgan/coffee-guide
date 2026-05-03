@@ -23,13 +23,85 @@
     padding: 24px 16px 80px;
     color: var(--ink);
   }
+  body.loading { overflow: hidden; padding: 0; }
+  body.show-login { padding: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f5ebd8, #ede2d0); }
+
+  /* Loading splash */
+  .splash {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: var(--bg); z-index: 1000; transition: opacity 0.3s;
+  }
+  .splash.hidden { opacity: 0; pointer-events: none; }
+  .splash-spin {
+    width: 36px; height: 36px;
+    border: 3px solid #e0d0b0; border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.9s linear infinite;
+  }
+
+  /* Login screen */
+  #login-screen {
+    width: 100%; max-width: 420px;
+    background: white; border-radius: 16px;
+    padding: 36px 32px;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.12);
+  }
+  #login-screen.hidden { display: none; }
+  .login-title { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+  .login-sub { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 24px; }
+
+  .login-tabs { display: flex; gap: 4px; padding: 3px; background: #f5f3ef; border-radius: 8px; margin-bottom: 18px; }
+  .login-tab {
+    flex: 1; padding: 8px; text-align: center; font-size: 13px; font-weight: 600;
+    color: #888; cursor: pointer; border-radius: 6px; transition: all 0.15s;
+  }
+  .login-tab.active { background: white; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+  .login-input {
+    width: 100%; padding: 11px 13px; border: 1px solid #ddd; border-radius: 8px;
+    font-size: 14px; font-family: inherit; outline: none; margin-bottom: 10px;
+    transition: border-color 0.15s;
+  }
+  .login-input:focus { border-color: var(--accent); }
+
+  .login-btn {
+    width: 100%; padding: 11px; border-radius: 8px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    border: 1px solid #ddd; background: white; color: var(--ink);
+    font-family: inherit;
+    transition: all 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    margin-bottom: 10px;
+  }
+  .login-btn:hover { border-color: var(--accent); }
+  .login-btn.primary { background: var(--ink); color: white; border-color: var(--ink); }
+  .login-btn.primary:hover { background: var(--accent); border-color: var(--accent); }
+  .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .login-btn svg { width: 18px; height: 18px; }
+
+  .login-divider {
+    display: flex; align-items: center; gap: 12px;
+    color: #aaa; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    margin: 18px 0;
+  }
+  .login-divider::before, .login-divider::after {
+    content: ""; flex: 1; height: 1px; background: #e8e3da;
+  }
+  .login-msg {
+    font-size: 12px; padding: 10px 12px; border-radius: 7px;
+    margin-bottom: 12px; line-height: 1.45;
+    display: none;
+  }
+  .login-msg.show { display: block; }
+  .login-msg.error { background: #fdecea; color: #b54040; border: 1px solid #f5c4c0; }
+  .login-msg.info { background: #f0f7ff; color: #1d5a99; border: 1px solid #cfe1f5; }
+  .login-msg.success { background: #e8f5ec; color: #2d7a3d; border: 1px solid #b8dec5; }
+
+  .login-foot { text-align: center; font-size: 12px; color: var(--muted); margin-top: 18px; }
+  .login-foot a { color: var(--accent); cursor: pointer; }
+
+  /* App header */
   .header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
-    margin-bottom: 4px;
-    flex-wrap: wrap;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 12px; margin-bottom: 4px; flex-wrap: wrap;
   }
   h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
   .subtitle { font-size: 12px; color: #999; margin-bottom: 20px; }
@@ -62,6 +134,18 @@
   .icon-btn.danger { color: #b54040; }
   .icon-btn.danger:hover { border-color: #b54040; color: #b54040; }
 
+  .user-chip {
+    background: white; border: 1px solid #ddd; border-radius: 20px;
+    padding: 4px 4px 4px 12px; display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; color: #555;
+  }
+  .user-chip-avatar {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--accent); color: white; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px;
+  }
+
   .tabs {
     display: flex; gap: 0; margin-bottom: 16px;
     background: white; border-radius: 10px; overflow: hidden;
@@ -83,23 +167,20 @@
   .card {
     background: var(--card-bg); border-radius: 12px; overflow: hidden;
     box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-    scroll-margin-top: 16px;
-    position: relative;
+    scroll-margin-top: 16px; position: relative;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
   }
-
-  /* Highlight animation: bounce + radiating ring + colored glow */
   @keyframes cardBounce {
-    0%   { transform: scale(1); }
-    25%  { transform: scale(1.025); }
-    50%  { transform: scale(0.995); }
-    75%  { transform: scale(1.012); }
+    0% { transform: scale(1); }
+    25% { transform: scale(1.025); }
+    50% { transform: scale(0.995); }
+    75% { transform: scale(1.012); }
     100% { transform: scale(1); }
   }
   @keyframes ringPulse {
-    0%   { box-shadow: 0 0 0 0 var(--accent-glow), 0 2px 12px rgba(0,0,0,0.07); }
-    40%  { box-shadow: 0 0 0 14px rgba(192,138,78,0), 0 8px 28px rgba(192,138,78,0.35); }
-    70%  { box-shadow: 0 0 0 0 var(--accent-glow), 0 4px 18px rgba(192,138,78,0.25); }
+    0% { box-shadow: 0 0 0 0 var(--accent-glow), 0 2px 12px rgba(0,0,0,0.07); }
+    40% { box-shadow: 0 0 0 14px rgba(192,138,78,0), 0 8px 28px rgba(192,138,78,0.35); }
+    70% { box-shadow: 0 0 0 0 var(--accent-glow), 0 4px 18px rgba(192,138,78,0.25); }
     100% { box-shadow: 0 0 0 0 rgba(192,138,78,0), 0 2px 12px rgba(0,0,0,0.07); }
   }
   .card.highlight {
@@ -107,28 +188,23 @@
     z-index: 5;
   }
   .card.highlight::after {
-    content: "";
-    position: absolute; inset: 0;
-    border-radius: 12px;
+    content: ""; position: absolute; inset: 0; border-radius: 12px;
     box-shadow: inset 0 0 0 2px var(--accent);
     pointer-events: none;
     animation: ringFade 1.6s ease-out forwards;
   }
   @keyframes ringFade { 0% { opacity: 1; } 100% { opacity: 0; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .card-header { padding: 16px 20px; color: white; position: relative; }
   .card-roaster { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.75; margin-bottom: 3px; }
   .card-name { font-size: 17px; font-weight: 600; line-height: 1.2; padding-right: 80px; }
   .card-meta { font-size: 11px; opacity: 0.7; margin-top: 3px; padding-right: 80px; }
-  .card-actions {
-    position: absolute; top: 12px; right: 12px;
-    display: flex; gap: 4px;
-  }
+  .card-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; }
   .card-actions button {
-    background: rgba(255,255,255,0.18);
-    border: 0; color: white;
-    width: 28px; height: 28px; border-radius: 6px;
-    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.18); border: 0; color: white;
+    width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
     transition: background 0.15s;
   }
   .card-actions button:hover { background: rgba(255,255,255,0.32); }
@@ -176,25 +252,18 @@
   .compare-link:hover strong { text-decoration-color: var(--accent); }
 
   .no-results { text-align: center; padding: 40px 20px; color: #aaa; font-size: 14px; }
-
-  /* Sync status banner */
-  .sync-status {
-    font-size: 11px; color: #888;
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 4px 10px; background: white; border-radius: 6px;
-    border: 1px solid #ddd;
+  .empty-state {
+    text-align: center; padding: 60px 20px; color: #aaa;
+    background: white; border-radius: 12px; margin-top: 20px;
+    border: 2px dashed #e5e0d8;
   }
-  .sync-status .dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; }
-  .sync-status.local .dot { background: #d4a574; }
-  .sync-status.synced .dot { background: #4caf50; }
-  .sync-status.dirty .dot { background: #e67e22; }
+  .empty-state .ai-actions { justify-content: center; margin-top: 14px; }
 
   /* Modal */
   .modal-backdrop {
     position: fixed; inset: 0; background: rgba(20,20,20,0.55);
     display: flex; align-items: flex-start; justify-content: center;
-    padding: 60px 20px 40px; z-index: 100;
-    overflow-y: auto;
+    padding: 60px 20px 40px; z-index: 100; overflow-y: auto;
   }
   .modal-backdrop.hidden { display: none; }
   .modal {
@@ -228,13 +297,11 @@
   .field input, .field textarea, .field select {
     width: 100%; padding: 9px 11px; border: 1px solid #ddd; border-radius: 7px;
     font-family: inherit; font-size: 13px; outline: none;
-    transition: border-color 0.15s;
-    background: white;
+    transition: border-color 0.15s; background: white;
   }
   .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
   .field textarea { min-height: 70px; resize: vertical; }
   .field-help { font-size: 11px; color: #999; margin-top: 4px; line-height: 1.4; }
-
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
   .settings-section { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
@@ -253,12 +320,11 @@
     border: 1px solid #f0d8b0;
     border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;
   }
-  .ai-panel-title { font-size: 12px; font-weight: 700; color: #8a5a20; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .ai-panel-title { font-size: 12px; font-weight: 700; color: #8a5a20; margin-bottom: 8px; }
   .ai-output {
     background: white; border-radius: 8px; padding: 12px 14px;
     font-size: 12.5px; color: #333; line-height: 1.55;
-    border: 1px solid #f0e0c0;
-    margin-top: 10px; white-space: pre-wrap;
+    border: 1px solid #f0e0c0; margin-top: 10px; white-space: pre-wrap;
     max-height: 280px; overflow-y: auto;
   }
   .ai-output.empty { display: none; }
@@ -269,7 +335,6 @@
     border-radius: 50%; animation: spin 0.8s linear infinite;
     vertical-align: middle; margin-right: 6px;
   }
-  @keyframes spin { to { transform: rotate(360deg); } }
 
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
@@ -283,12 +348,6 @@
   .toast.error { background: #b54040; }
   .toast.success { background: #2d7a3d; }
 
-  .empty-state {
-    text-align: center; padding: 60px 20px; color: #aaa;
-    background: white; border-radius: 12px; margin-top: 20px;
-    border: 2px dashed #e5e0d8;
-  }
-
   @media (max-width: 600px) {
     .header-controls { width: 100%; }
     .search-box input { width: 100%; }
@@ -297,12 +356,49 @@
   }
 </style>
 </head>
-<body>
+<body class="loading">
+
+<!-- Loading splash -->
+<div class="splash" id="splash"><div class="splash-spin"></div></div>
+
+<!-- Login screen (shown when no session) -->
+<div id="login-screen" class="hidden">
+  <div class="login-title">☕ Coffee Brew Tracker</div>
+  <div class="login-sub">Dial in espresso, V60, AeroPress with AI assist.</div>
+
+  <div class="login-msg" id="login-msg"></div>
+
+  <div class="login-tabs">
+    <div class="login-tab active" data-mode="signin">Sign in</div>
+    <div class="login-tab" data-mode="signup">Sign up</div>
+  </div>
+
+  <input type="email" class="login-input" id="login-email" placeholder="Email" autocomplete="email" />
+  <input type="password" class="login-input" id="login-password" placeholder="Password (6+ chars)" autocomplete="current-password" />
+
+  <button class="login-btn primary" id="login-submit">Sign in</button>
+  <button class="login-btn" id="login-magic">Email me a magic link instead</button>
+
+  <div class="login-divider">or</div>
+
+  <button class="login-btn" id="login-google">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.84 2.09-1.79 2.73v2.27h2.9c1.7-1.56 2.69-3.87 2.69-6.64z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.9-2.27c-.8.54-1.83.86-3.06.86-2.36 0-4.36-1.6-5.07-3.74H.96v2.34A8.99 8.99 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.93 10.67A5.41 5.41 0 0 1 3.65 9c0-.58.1-1.14.28-1.67V4.99H.96A8.99 8.99 0 0 0 0 9c0 1.45.35 2.83.96 4.01l2.97-2.34z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58A8.99 8.99 0 0 0 9 0 8.99 8.99 0 0 0 .96 4.99L3.93 7.33C4.64 5.18 6.64 3.58 9 3.58z"/></svg>
+    Continue with Google
+  </button>
+  <button class="login-btn" id="login-apple" disabled title="Apple Sign-In coming soon — needs Apple Developer account">
+     Continue with Apple <span style="font-size:10px;color:#aaa;font-weight:500">(soon)</span>
+  </button>
+
+  <div class="login-foot">By continuing, your data is stored privately in your account. Only you can see your coffees.</div>
+</div>
+
+<!-- App (shown when authenticated) -->
+<div id="app-root" style="display:none;">
 
 <div class="header-row">
   <div>
     <h1>Coffee Brew Tracker</h1>
-    <p class="subtitle">Acaia Orbit · SSP Lab Sweet V3 · IMS 18g High-Flow</p>
+    <p class="subtitle" id="app-subtitle">Acaia Orbit · SSP Lab Sweet V3 · IMS 18g High-Flow</p>
   </div>
   <div class="header-controls">
     <div class="search-box">
@@ -316,7 +412,11 @@
     <button class="icon-btn" id="settings-btn" title="Settings">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
-    <span class="sync-status" id="sync-status"><span class="dot"></span><span id="sync-text">Local</span></span>
+    <span class="user-chip" id="user-chip">
+      <span class="user-chip-avatar" id="user-avatar">?</span>
+      <span id="user-email">…</span>
+      <button class="icon-btn" style="padding:3px 8px;font-size:11px;" onclick="signOut()">Sign out</button>
+    </span>
   </div>
 </div>
 
@@ -326,7 +426,7 @@
   <div class="tab" data-method="aeropress">AeroPress</div>
 </div>
 
-<div class="compare-bar">
+<div class="compare-bar" id="compare-bar">
   <div class="compare-title" id="compare-title">Quick Compare — Espresso</div>
   <table class="compare-table">
     <thead id="compare-head"></thead>
@@ -337,9 +437,14 @@
 <div class="grid" id="cards-grid"></div>
 <div class="no-results" id="no-results" style="display:none;">No coffees match your search.</div>
 <div class="empty-state" id="empty-state" style="display:none;">
-  <p style="margin-bottom:10px; font-size: 14px;">No coffees yet.</p>
-  <button class="icon-btn primary" onclick="openAddModal()">Add your first coffee</button>
+  <p style="margin-bottom:14px; font-size: 14px; color:#666;">Welcome! Your tracker is empty.</p>
+  <div class="ai-actions">
+    <button class="icon-btn primary" onclick="openAddModal()">Add your first coffee</button>
+    <button class="icon-btn" onclick="seedExamples()">Load 4 examples</button>
+  </div>
 </div>
+
+</div><!-- /app-root -->
 
 <!-- Settings Modal -->
 <div class="modal-backdrop hidden" id="settings-modal">
@@ -359,54 +464,22 @@
           </select>
         </div>
         <div class="field">
-          <label>API key</label>
+          <label>API key (browser-only — never sent to our server)</label>
           <input type="password" id="ai-key" placeholder="sk-ant-… or sk-…" autocomplete="off" />
-          <p class="field-help">Stored only in your browser (localStorage). Never sent anywhere except the AI provider you select. Get an Anthropic key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> or OpenAI at <a href="https://platform.openai.com" target="_blank">platform.openai.com</a>.</p>
+          <p class="field-help">Stored in your browser's localStorage. Used only to call the AI provider directly. Get an Anthropic key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> or OpenAI at <a href="https://platform.openai.com" target="_blank">platform.openai.com</a>.</p>
         </div>
         <div class="field">
-          <label>Your taste preferences (used by AI for recommendations)</label>
-          <textarea id="taste-prefs" placeholder="e.g. I prefer bright washed light roasts. My espresso target is 1:2.7 in 35s. I like fruit-forward over chocolatey."></textarea>
+          <label>Your taste preferences (synced to your account)</label>
+          <textarea id="taste-prefs" placeholder="e.g. I prefer bright washed light roasts. Espresso target 1:2.7 in 35s. Like fruit-forward over chocolatey."></textarea>
         </div>
       </div>
 
       <div class="settings-section">
-        <h3>GitHub sync (optional)</h3>
-        <p class="field-help" style="margin-bottom:10px;">When enabled, edits commit back to your GitHub repo so they sync across devices. Without this, edits stay in this browser only.</p>
-        <div class="field-row">
-          <div class="field">
-            <label>Owner</label>
-            <input type="text" id="gh-owner" placeholder="dorianbizgan" />
-          </div>
-          <div class="field">
-            <label>Repo</label>
-            <input type="text" id="gh-repo" placeholder="coffee-guide" />
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label>Branch</label>
-            <input type="text" id="gh-branch" placeholder="main" />
-          </div>
-          <div class="field">
-            <label>Data file path</label>
-            <input type="text" id="gh-path" placeholder="data.json" />
-          </div>
-        </div>
-        <div class="field">
-          <label>Personal Access Token (PAT)</label>
-          <input type="password" id="gh-token" placeholder="github_pat_…" autocomplete="off" />
-          <p class="field-help">Needs <code>contents:write</code> scope on this repo only. Create at <a href="https://github.com/settings/tokens?type=beta" target="_blank">github.com/settings/tokens</a>. Stored only in your browser.</p>
-        </div>
-      </div>
-
-      <div class="settings-section">
-        <h3>Data</h3>
+        <h3>Account</h3>
+        <p class="field-help" id="account-info" style="margin-bottom:10px;">…</p>
         <div class="ai-actions">
-          <button class="icon-btn" onclick="exportData()">Export JSON</button>
-          <button class="icon-btn" onclick="document.getElementById('import-file').click()">Import JSON</button>
-          <input type="file" id="import-file" accept="application/json" style="display:none" />
-          <button class="icon-btn" onclick="pullFromGitHub()">Pull from GitHub</button>
-          <button class="icon-btn" onclick="pushToGitHub()">Push to GitHub now</button>
+          <button class="icon-btn" onclick="exportData()">Export data (JSON)</button>
+          <button class="icon-btn danger" onclick="deleteAccount()">Delete account</button>
         </div>
       </div>
     </div>
@@ -427,9 +500,9 @@
     <div class="modal-body">
       <div class="ai-panel" id="ai-create-panel">
         <div class="ai-panel-title">✨ AI assist — generate from coffee details</div>
-        <p class="field-help" style="margin-bottom:10px;">Just tell me the coffee (e.g. "Onyx Geometry, Ethiopia Hambela, washed, light roast") and I'll fill in starting recipes. With Anthropic, I'll search the web for the roaster's profile and tailor to your taste preferences.</p>
+        <p class="field-help" style="margin-bottom:10px;">Tell me the coffee (e.g. "Onyx Geometry, Ethiopia Hambela, washed, light roast") and I'll fill in starting recipes. With Anthropic, I'll search the web for the roaster's profile.</p>
         <div class="field" style="margin-bottom:8px;">
-          <input type="text" id="ai-create-input" placeholder="Roaster, coffee name, origin, process, roast level…" />
+          <input type="text" id="ai-create-input" placeholder="Roaster, coffee name, origin, process, roast…" />
         </div>
         <div class="ai-actions">
           <button class="icon-btn primary" id="ai-create-btn" onclick="aiGenerateNew()">Generate recipe</button>
@@ -439,29 +512,14 @@
       </div>
 
       <div class="field-row">
-        <div class="field">
-          <label>Roaster</label>
-          <input type="text" id="ed-roaster" />
-        </div>
-        <div class="field">
-          <label>Coffee name</label>
-          <input type="text" id="ed-name" />
-        </div>
+        <div class="field"><label>Roaster</label><input type="text" id="ed-roaster" /></div>
+        <div class="field"><label>Coffee name</label><input type="text" id="ed-name" /></div>
       </div>
       <div class="field-row">
-        <div class="field">
-          <label>Meta line (origin · process · altitude…)</label>
-          <input type="text" id="ed-meta" />
-        </div>
-        <div class="field">
-          <label>Card color (hex)</label>
-          <input type="text" id="ed-color" placeholder="#5c4a3a" />
-        </div>
+        <div class="field"><label>Meta line</label><input type="text" id="ed-meta" placeholder="origin · process · altitude…" /></div>
+        <div class="field"><label>Card color (hex)</label><input type="text" id="ed-color" placeholder="#5c4a3a" /></div>
       </div>
-      <div class="field">
-        <label>Tags (comma separated)</label>
-        <input type="text" id="ed-tags" placeholder="Ethiopia, Washed, Light Roast" />
-      </div>
+      <div class="field"><label>Tags (comma separated)</label><input type="text" id="ed-tags" placeholder="Ethiopia, Washed, Light Roast" /></div>
 
       <div class="editor-tabs">
         <div class="editor-tab active" data-method="espresso">Espresso</div>
@@ -479,7 +537,7 @@
   </div>
 </div>
 
-<!-- AI Suggest Modal (per-card) -->
+<!-- AI Modal (per-card) -->
 <div class="modal-backdrop hidden" id="ai-modal">
   <div class="modal">
     <div class="modal-head">
@@ -507,119 +565,303 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- Supabase JS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
-// Polyfill structuredClone for older browsers / test envs
+// Polyfill structuredClone
 if (typeof structuredClone === "undefined") {
   window.structuredClone = (o) => JSON.parse(JSON.stringify(o));
 }
 
 // ============================================================
-// State + persistence
+// Supabase
 // ============================================================
-const STORAGE_KEY = "coffee-tracker-v2";
-const DEFAULT_DATA = {
-  version: 1,
-  preferences: "",
-  coffees: []
-};
+const SUPABASE_URL = "https://udzsveyedwbmygvpvxpx.supabase.co";
+const SUPABASE_KEY = "sb_publishable_-mBzL95B_KjuBYpEjmHJiQ_oy63JplW";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+});
+
+// ============================================================
+// State
+// ============================================================
+const LOCAL_KEY = "coffee-tracker-local-v3";  // ai key + provider only
 
 let state = {
-  data: structuredClone(DEFAULT_DATA),
-  settings: {
-    aiProvider: "anthropic",
-    aiKey: "",
-    ghOwner: "",
-    ghRepo: "",
-    ghBranch: "main",
-    ghPath: "data.json",
-    ghToken: "",
-    ghSha: ""
-  },
+  user: null,
+  data: { preferences: "", coffees: [] },
+  settings: { aiProvider: "anthropic", aiKey: "" },  // browser-only
   activeMethod: "espresso",
   searchTerm: "",
   editingId: null,
   editorMethod: "espresso",
+  scratchMethods: null,
   aiContext: null,
   aiSuggestion: null
 };
 
-function loadLocal() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed.data) state.data = parsed.data;
-      if (parsed.settings) state.settings = { ...state.settings, ...parsed.settings };
-    }
-  } catch (e) { console.error("loadLocal", e); }
-}
-function saveLocal() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ data: state.data, settings: state.settings }));
-}
-
-async function tryFetchData() {
-  try {
-    const res = await fetch("data.json", { cache: "no-cache" });
-    if (res.ok) {
-      const json = await res.json();
-      if (json && json.coffees) return json;
-    }
-  } catch (e) { /* ignore */ }
-  return null;
-}
-
-async function init() {
-  loadLocal();
-  // If localStorage was empty, seed from data.json (or fall back to embedded SEED).
-  if (!state.data.coffees || state.data.coffees.length === 0) {
-    const remote = await tryFetchData();
-    if (remote) {
-      state.data = remote;
-    } else {
-      state.data = structuredClone(SEED);
-    }
-    saveLocal();
-  }
-  // Auto-detect repo from URL if not set
-  if (!state.settings.ghOwner || !state.settings.ghRepo) {
-    const m = window.location.host.match(/^([^.]+)\.github\.io$/);
-    if (m) {
-      state.settings.ghOwner = state.settings.ghOwner || m[1];
-      const seg = window.location.pathname.split("/").filter(Boolean)[0];
-      if (seg) state.settings.ghRepo = state.settings.ghRepo || seg;
-    }
-  }
-  bindEvents();
-  render(state.activeMethod);
-  updateSyncStatus("local");
-}
-
-// Embedded seed used if no data.json available and localStorage empty
-const SEED = {
-  version: 1,
-  preferences: "I like bright, fruit-forward light roasts. Espresso: 18g in, 45-54g out, 30-40s, 8 bar, 10s preinfusion at 2-3 bar, IMS 18g High-Flow basket on Acaia Orbit with SSP Lab Sweet V3 burrs. V60: 24g/400g (1:16.7) Hoffmann method, 48g bloom for 45s. AeroPress: 18g/200g inverted.",
-  coffees: [
-    { id: "huatusco-decaf", roaster: "Camber Coffee", name: "Aroma Decaf Mexico Huatusco", meta: "Decaf · Mexico · Washed", color: "#5c4a3a", tags: ["Decaf", "Mexico", "Washed"],
-      espresso: { settings: {"Grind (Acaia Orbit SSP V3)": "1.3 (next try)", "Brew Temp": "206°F", "Dose": "18g", "Yield": "48–50g", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "35–40s", "Basket": "IMS 18g Precision High-Flow"}, notes: "At 1.5: vegetal and bitter. 206°F improved flavor. Next: try 1.3 to slow shot and improve extraction.", status: "dialing", statusLabel: "Dialing In" },
-      v60: { settings: {"Grind (Acaia Orbit SSP V3)": "7.2", "Water Temp": "95°C / 203°F", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "3:30–4:00"}, notes: "Decaf may drain faster. If too thin, go finer to 7.0.", status: "next", statusLabel: "Not Yet Tried" },
-      aeropress: { settings: {"Grind (Acaia Orbit SSP V3)": "5.5–6.0", "Water Temp": "92–95°C / 198–203°F", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "2:00", "Press Time": "0:30"}, notes: "Inverted method. Decaf extracts easily — don't go too fine.", status: "next", statusLabel: "Not Yet Tried" } },
-    { id: "la-despensa", roaster: "Camber Coffee", name: "Colombia La Despensa", meta: "Chiroso · Washed · 1950–2200 masl · Urrao, Antioquia", color: "#2e5e3e", tags: ["Colombia", "Washed", "Light Roast", "Chiroso"],
-      espresso: { settings: {"Grind (Acaia Orbit SSP V3)": "1.2 (next try)", "Brew Temp": "206°F", "Dose": "18g", "Yield": "54–56g", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "38–45s", "Basket": "IMS 18g Precision High-Flow"}, notes: "At 1.1/206°F: good flavor, no bitterness, but 75s — too slow. At 1.2/206°F: 52.9g in 50.9s — slightly bitter. Next: try 1.3 or reduce yield to 50g.", status: "dialing", statusLabel: "Dialing In" },
-      v60: { settings: {"Grind (Acaia Orbit SSP V3)": "7.0–7.2", "Water Temp": "95–96°C / 203–205°F", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "3:30–4:00"}, notes: "Very dense Chiroso — may need finer grind. Should produce bright papaya, watermelon, sugarcane, orange spice.", status: "next", statusLabel: "Not Yet Tried" },
-      aeropress: { settings: {"Grind (Acaia Orbit SSP V3)": "5.5–6.0", "Water Temp": "95°C / 203°F", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "2:00–2:30", "Press Time": "0:30"}, notes: "Dense bean — longer steep may help. Expect concentrated fruit and sweetness.", status: "next", statusLabel: "Not Yet Tried" } },
-    { id: "chocolate-bunnies", roaster: "Proud Mary Coffee", name: "Chocolate Bunnies", meta: "Limited · 50% Brazil Natural · 50% Honduras Natural · Medium Roast", color: "#4a2010", tags: ["Blend", "Natural", "Medium Roast", "Brazil", "Honduras"],
-      espresso: { settings: {"Grind (Acaia Orbit SSP V3)": "1.6–1.7", "Brew Temp": "202–204°F", "Dose": "18g", "Yield": "45–50g", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "30–35s", "Basket": "IMS 18g Precision High-Flow"}, notes: "Medium roast dual-natural blend. Very soluble — start coarser and lower temp. Should be syrupy, chocolatey, low-acid.", status: "next", statusLabel: "Not Yet Tried" },
-      v60: { settings: {"Grind (Acaia Orbit SSP V3)": "7.2–7.5", "Water Temp": "92–93°C / 198–199°F", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "3:00–3:30"}, notes: "Medium roast naturals extract easily — go slightly coarser and cooler. Should be chocolatey and sweet.", status: "next", statusLabel: "Not Yet Tried" },
-      aeropress: { settings: {"Grind (Acaia Orbit SSP V3)": "6.0–6.5", "Water Temp": "90–92°C / 194–198°F", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "1:30–2:00", "Press Time": "0:30"}, notes: "Medium roast extracts fast — shorter steep, coarser grind. Great AeroPress candidate for thick chocolatey concentrate.", status: "next", statusLabel: "Not Yet Tried" } },
-    { id: "finca-momoto-catitta", roaster: "Proud Mary Coffee", name: "Finca Momoto — Catitta", meta: "Typica & Caturra · Natural · 1500 masl · Santa Clara, Panama · Limited", color: "#1e4d6b", tags: ["Panama", "Natural", "Light Roast", "Typica", "Caturra"],
-      espresso: { settings: {"Grind (Acaia Orbit SSP V3)": "1.3–1.4", "Brew Temp": "204°F", "Dose": "18g", "Yield": "50–54g", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "32–38s", "Basket": "IMS 18g Precision High-Flow"}, notes: "Natural Typica & Caturra from Hartmann family's Finca Momoto. Expect juicy ripe fruit and syrupy body. More soluble than washed light roasts — start coarser.", status: "next", statusLabel: "Not Yet Tried" },
-      v60: { settings: {"Grind (Acaia Orbit SSP V3)": "7.2–7.4", "Water Temp": "93–95°C / 199–203°F", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "3:15–3:45"}, notes: "Natural process at moderate altitude. Expect juicy tropical fruit and syrupy sweetness.", status: "next", statusLabel: "Not Yet Tried" },
-      aeropress: { settings: {"Grind (Acaia Orbit SSP V3)": "5.5–6.0", "Water Temp": "93°C / 199°F", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "1:45–2:00", "Press Time": "0:30"}, notes: "Natural process should give a concentrated, fruity AeroPress cup. Naturals can over-extract quickly.", status: "next", statusLabel: "Not Yet Tried" } }
-  ]
-};
+const SEED_COFFEES = [
+  { slug: "huatusco-decaf", roaster: "Camber Coffee", name: "Aroma Decaf Mexico Huatusco", meta: "Decaf · Mexico · Washed", color: "#5c4a3a", tags: ["Decaf", "Mexico", "Washed"],
+    espresso: { settings: {"Grind (Acaia Orbit SSP V3)": "1.3 (next try)", "Brew Temp": "206°F", "Dose": "18g", "Yield": "48–50g", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "35–40s", "Basket": "IMS 18g Precision High-Flow"}, notes: "At 1.5: vegetal and bitter. 206°F improved flavor. Next: try 1.3 to slow shot.", status: "dialing", statusLabel: "Dialing In" },
+    v60: { settings: {"Grind (Acaia Orbit SSP V3)": "7.2", "Water Temp": "95°C / 203°F", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "3:30–4:00"}, notes: "Decaf may drain faster. If thin, go finer to 7.0.", status: "next", statusLabel: "Not Yet Tried" },
+    aeropress: { settings: {"Grind (Acaia Orbit SSP V3)": "5.5–6.0", "Water Temp": "92–95°C / 198–203°F", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "2:00", "Press Time": "0:30"}, notes: "Inverted method. Decaf extracts easily — don't go too fine.", status: "next", statusLabel: "Not Yet Tried" } },
+  { slug: "la-despensa", roaster: "Camber Coffee", name: "Colombia La Despensa", meta: "Chiroso · Washed · 1950–2200 masl · Urrao, Antioquia", color: "#2e5e3e", tags: ["Colombia", "Washed", "Light Roast", "Chiroso"],
+    espresso: { settings: {"Grind (Acaia Orbit SSP V3)": "1.2 (next try)", "Brew Temp": "206°F", "Dose": "18g", "Yield": "54–56g", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "38–45s", "Basket": "IMS 18g Precision High-Flow"}, notes: "1.2/206°F: 52.9g in 50.9s, slightly bitter. Next: try 1.3 or reduce yield.", status: "dialing", statusLabel: "Dialing In" },
+    v60: { settings: {"Grind (Acaia Orbit SSP V3)": "7.0–7.2", "Water Temp": "95–96°C / 203–205°F", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "3:30–4:00"}, notes: "Dense Chiroso — may need finer grind. Bright papaya, sugarcane.", status: "next", statusLabel: "Not Yet Tried" },
+    aeropress: { settings: {"Grind (Acaia Orbit SSP V3)": "5.5–6.0", "Water Temp": "95°C / 203°F", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "2:00–2:30", "Press Time": "0:30"}, notes: "Dense bean — longer steep helps.", status: "next", statusLabel: "Not Yet Tried" } },
+  { slug: "chocolate-bunnies", roaster: "Proud Mary Coffee", name: "Chocolate Bunnies", meta: "50% Brazil Natural · 50% Honduras Natural · Medium Roast", color: "#4a2010", tags: ["Blend", "Natural", "Medium Roast"],
+    espresso: { settings: {"Grind (Acaia Orbit SSP V3)": "1.6–1.7", "Brew Temp": "202–204°F", "Dose": "18g", "Yield": "45–50g", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "30–35s", "Basket": "IMS 18g Precision High-Flow"}, notes: "Medium roast natural blend. Soluble — start coarser, lower temp.", status: "next", statusLabel: "Not Yet Tried" },
+    v60: { settings: {"Grind (Acaia Orbit SSP V3)": "7.2–7.5", "Water Temp": "92–93°C / 198–199°F", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "3:00–3:30"}, notes: "Medium naturals extract easily — coarser, cooler.", status: "next", statusLabel: "Not Yet Tried" },
+    aeropress: { settings: {"Grind (Acaia Orbit SSP V3)": "6.0–6.5", "Water Temp": "90–92°C / 194–198°F", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "1:30–2:00", "Press Time": "0:30"}, notes: "Great AeroPress candidate — thick chocolatey concentrate.", status: "next", statusLabel: "Not Yet Tried" } },
+  { slug: "finca-momoto-catitta", roaster: "Proud Mary Coffee", name: "Finca Momoto — Catitta", meta: "Typica & Caturra · Natural · 1500 masl · Panama", color: "#1e4d6b", tags: ["Panama", "Natural", "Light Roast"],
+    espresso: { settings: {"Grind (Acaia Orbit SSP V3)": "1.3–1.4", "Brew Temp": "204°F", "Dose": "18g", "Yield": "50–54g", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "32–38s", "Basket": "IMS 18g Precision High-Flow"}, notes: "Natural Typica/Caturra. Juicy ripe fruit, syrupy body. More soluble than washed light roasts.", status: "next", statusLabel: "Not Yet Tried" },
+    v60: { settings: {"Grind (Acaia Orbit SSP V3)": "7.2–7.4", "Water Temp": "93–95°C / 199–203°F", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "3:15–3:45"}, notes: "Moderate altitude natural. Juicy tropical, syrupy sweet.", status: "next", statusLabel: "Not Yet Tried" },
+    aeropress: { settings: {"Grind (Acaia Orbit SSP V3)": "5.5–6.0", "Water Temp": "93°C / 199°F", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "1:45–2:00", "Press Time": "0:30"}, notes: "Concentrated, fruity. Naturals over-extract quickly.", status: "next", statusLabel: "Not Yet Tried" } }
+];
 
 // ============================================================
-// Rendering
+// Local browser storage (AI key + provider only)
+// ============================================================
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(LOCAL_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.aiKey) state.settings.aiKey = parsed.aiKey;
+      if (parsed.aiProvider) state.settings.aiProvider = parsed.aiProvider;
+    }
+  } catch (e) {}
+}
+function saveLocal() {
+  localStorage.setItem(LOCAL_KEY, JSON.stringify({
+    aiKey: state.settings.aiKey,
+    aiProvider: state.settings.aiProvider
+  }));
+}
+
+// ============================================================
+// Auth flow
+// ============================================================
+async function init() {
+  loadLocal();
+
+  // Watch session changes
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (session?.user) {
+      state.user = session.user;
+      await onSignedIn();
+    } else {
+      state.user = null;
+      onSignedOut();
+    }
+  });
+
+  // Check current session on load
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    state.user = session.user;
+    await onSignedIn();
+  } else {
+    onSignedOut();
+  }
+
+  bindEvents();
+}
+
+async function onSignedIn() {
+  document.getElementById("splash").classList.add("hidden");
+  document.body.classList.remove("loading", "show-login");
+  document.getElementById("login-screen").classList.add("hidden");
+  document.getElementById("app-root").style.display = "block";
+
+  // Update user chip
+  const email = state.user.email || "";
+  document.getElementById("user-email").textContent = email;
+  document.getElementById("user-avatar").textContent = (email[0] || "?").toUpperCase();
+
+  await loadFromDb();
+  render(state.activeMethod);
+  subscribeToChanges();
+}
+
+function onSignedOut() {
+  document.getElementById("splash").classList.add("hidden");
+  document.body.classList.remove("loading");
+  document.body.classList.add("show-login");
+  document.getElementById("login-screen").classList.remove("hidden");
+  document.getElementById("app-root").style.display = "none";
+  unsubscribeFromChanges();
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  state.data = { preferences: "", coffees: [] };
+}
+
+// Login form
+function setLoginMode(mode) {
+  document.querySelectorAll(".login-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === mode));
+  document.getElementById("login-submit").textContent = mode === "signup" ? "Sign up" : "Sign in";
+  document.getElementById("login-password").autocomplete = mode === "signup" ? "new-password" : "current-password";
+  hideLoginMsg();
+}
+function loginMsg(kind, text) {
+  const el = document.getElementById("login-msg");
+  el.className = "login-msg show " + kind;
+  el.textContent = text;
+}
+function hideLoginMsg() {
+  document.getElementById("login-msg").className = "login-msg";
+}
+
+async function handleLoginSubmit() {
+  const mode = document.querySelector(".login-tab.active").dataset.mode;
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  const btn = document.getElementById("login-submit");
+  if (!email || !password) { loginMsg("error", "Email and password required."); return; }
+  btn.disabled = true;
+  hideLoginMsg();
+  try {
+    if (mode === "signup") {
+      const { data, error } = await sb.auth.signUp({ email, password });
+      if (error) throw error;
+      if (data.user && !data.session) {
+        loginMsg("info", "Check your email — click the link to confirm your address.");
+      }
+    } else {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    }
+  } catch (e) {
+    loginMsg("error", e.message || "Auth failed");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = mode === "signup" ? "Sign up" : "Sign in";
+  }
+}
+
+async function handleMagicLink() {
+  const email = document.getElementById("login-email").value.trim();
+  if (!email) { loginMsg("error", "Enter your email above first."); return; }
+  hideLoginMsg();
+  const btn = document.getElementById("login-magic");
+  btn.disabled = true; btn.textContent = "Sending...";
+  try {
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + window.location.pathname } });
+    if (error) throw error;
+    loginMsg("success", "Check your email — click the link to sign in.");
+  } catch (e) {
+    loginMsg("error", e.message || "Send failed");
+  } finally {
+    btn.disabled = false; btn.textContent = "Email me a magic link instead";
+  }
+}
+
+async function handleGoogleLogin() {
+  hideLoginMsg();
+  try {
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin + window.location.pathname }
+    });
+    if (error) throw error;
+  } catch (e) {
+    loginMsg("error", "Google login isn't configured yet. Use email signup for now. — " + (e.message || ""));
+  }
+}
+
+// ============================================================
+// DB layer
+// ============================================================
+async function loadFromDb() {
+  if (!state.user) return;
+  try {
+    // Profile
+    const { data: profile, error: pErr } = await sb.from("user_profiles").select("preferences, ai_provider").eq("user_id", state.user.id).maybeSingle();
+    if (pErr) console.warn("profile load:", pErr.message);
+    state.data.preferences = profile?.preferences || "";
+    if (profile?.ai_provider) state.settings.aiProvider = profile.ai_provider;
+
+    // Coffees
+    const { data: rows, error: cErr } = await sb.from("coffees").select("*").eq("user_id", state.user.id).order("position", { ascending: true });
+    if (cErr) throw cErr;
+    state.data.coffees = (rows || []).map(rowToCoffee);
+  } catch (e) {
+    console.error("loadFromDb", e);
+    toast("Load failed: " + e.message, "error");
+  }
+}
+
+function rowToCoffee(r) {
+  return {
+    id: r.id,
+    slug: r.slug,
+    roaster: r.roaster || "",
+    name: r.name || "",
+    meta: r.meta || "",
+    color: r.color || "#5c4a3a",
+    tags: r.tags || [],
+    espresso: r.espresso || { settings: {}, notes: "", status: "next", statusLabel: "Not Yet Tried" },
+    v60: r.v60 || { settings: {}, notes: "", status: "next", statusLabel: "Not Yet Tried" },
+    aeropress: r.aeropress || { settings: {}, notes: "", status: "next", statusLabel: "Not Yet Tried" },
+    position: r.position || 0
+  };
+}
+
+function coffeeToRow(c) {
+  const row = {
+    user_id: state.user.id,
+    slug: c.slug,
+    roaster: c.roaster,
+    name: c.name,
+    meta: c.meta,
+    color: c.color,
+    tags: c.tags,
+    espresso: c.espresso,
+    v60: c.v60,
+    aeropress: c.aeropress,
+    position: c.position || 0
+  };
+  if (c.id) row.id = c.id;
+  return row;
+}
+
+async function upsertCoffee(c) {
+  const row = coffeeToRow(c);
+  const { data, error } = await sb.from("coffees").upsert(row, { onConflict: "id" }).select().single();
+  if (error) throw error;
+  return rowToCoffee(data);
+}
+async function deleteCoffeeRow(id) {
+  const { error } = await sb.from("coffees").delete().eq("id", id);
+  if (error) throw error;
+}
+async function saveProfile(patch) {
+  const { error } = await sb.from("user_profiles").update(patch).eq("user_id", state.user.id);
+  if (error) throw error;
+}
+
+// ============================================================
+// Realtime sync
+// ============================================================
+let _channel = null;
+function subscribeToChanges() {
+  unsubscribeFromChanges();
+  _channel = sb.channel("coffees-" + state.user.id)
+    .on("postgres_changes", { event: "*", schema: "public", table: "coffees", filter: `user_id=eq.${state.user.id}` }, () => {
+      // Reload silently
+      loadFromDb().then(() => render(state.activeMethod));
+    })
+    .subscribe();
+}
+function unsubscribeFromChanges() {
+  if (_channel) { sb.removeChannel(_channel); _channel = null; }
+}
+
+// ============================================================
+// Render
 // ============================================================
 const statusClass = { dialing: "status-dialing", dialed: "status-dialed", next: "status-next" };
 const STATUS_OPTIONS = [
@@ -627,7 +869,6 @@ const STATUS_OPTIONS = [
   { value: "dialing", label: "Dialing In" },
   { value: "dialed", label: "Dialed In" }
 ];
-
 const compareHeaders = {
   espresso: ["Coffee", "Grind", "Temp", "Yield", "Time", "Status"],
   v60: ["Coffee", "Grind", "Temp", "Dose/Water", "Drawdown", "Status"],
@@ -637,45 +878,40 @@ const compareHeaders = {
 function getCompareValues(c, method) {
   const d = c[method] || { settings: {} };
   const s = d.settings || {};
-  if (method === "espresso") {
-    return [s["Grind (Acaia Orbit SSP V3)"] || s["Grind"] || "—", s["Brew Temp"] || "—", s["Yield"] || "—", s["Total Shot Time"] || "—"];
-  } else if (method === "v60") {
-    return [s["Grind (Acaia Orbit SSP V3)"] || s["Grind"] || "—", s["Water Temp"] || "—", (s["Dose"] || "—") + " / " + (s["Water"] || "—"), s["Target Drawdown"] || "—"];
-  } else {
-    return [s["Grind (Acaia Orbit SSP V3)"] || s["Grind"] || "—", s["Water Temp"] || "—", (s["Dose"] || "—") + " / " + (s["Water"] || "—"), s["Steep Time"] || "—"];
-  }
+  if (method === "espresso") return [s["Grind (Acaia Orbit SSP V3)"] || s["Grind"] || "—", s["Brew Temp"] || "—", s["Yield"] || "—", s["Total Shot Time"] || "—"];
+  if (method === "v60") return [s["Grind (Acaia Orbit SSP V3)"] || s["Grind"] || "—", s["Water Temp"] || "—", (s["Dose"] || "—") + " / " + (s["Water"] || "—"), s["Target Drawdown"] || "—"];
+  return [s["Grind (Acaia Orbit SSP V3)"] || s["Grind"] || "—", s["Water Temp"] || "—", (s["Dose"] || "—") + " / " + (s["Water"] || "—"), s["Steep Time"] || "—"];
 }
 
 function matchesSearch(c) {
   if (!state.searchTerm) return true;
   const s = state.searchTerm.toLowerCase();
   const methodNotes = ["espresso","v60","aeropress"].map(m => (c[m] && c[m].notes) || "").join(" ");
-  const haystack = [c.name, c.roaster, c.meta, ...(c.tags||[]), methodNotes].join(" ").toLowerCase();
-  return haystack.includes(s);
+  return [c.name, c.roaster, c.meta, ...(c.tags||[]), methodNotes].join(" ").toLowerCase().includes(s);
 }
 
 function scrollToCard(id) {
   const el = document.getElementById("card-" + id);
   if (!el) return;
   el.scrollIntoView({ behavior: "smooth", block: "center" });
-  // Re-trigger animation
   el.classList.remove("highlight");
-  void el.offsetWidth; // force reflow
+  void el.offsetWidth;
   el.classList.add("highlight");
   setTimeout(() => el.classList.remove("highlight"), 1700);
+}
+
+function escapeHtml(s) {
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
 }
 
 function render(method) {
   state.activeMethod = method;
   const methodLabel = method === "v60" ? "V60" : method === "aeropress" ? "AeroPress" : "Espresso";
-
-  document.querySelectorAll(".tabs .tab").forEach(t => {
-    t.classList.toggle("active", t.dataset.method === method);
-  });
+  document.querySelectorAll(".tabs .tab").forEach(t => t.classList.toggle("active", t.dataset.method === method));
 
   const filtered = state.data.coffees.filter(matchesSearch);
 
-  // Compare table
   document.getElementById("compare-title").textContent = "Quick Compare — " + methodLabel;
   const thead = document.getElementById("compare-head");
   thead.innerHTML = "<tr>" + compareHeaders[method].map(h => `<th>${h}</th>`).join("") + "</tr>";
@@ -689,30 +925,25 @@ function render(method) {
     tr.innerHTML = `
       <td class="compare-link" data-id="${c.id}"><strong>${escapeHtml(c.name)}</strong><br/><span style="color:#aaa;font-size:10px">${escapeHtml(c.roaster)}</span></td>
       ${vals.map(v => `<td>${escapeHtml(v)}</td>`).join("")}
-      <td><span class="status-badge ${statusClass[d.status]||"status-next"}">${escapeHtml(d.statusLabel||"—")}</span></td>
-    `;
+      <td><span class="status-badge ${statusClass[d.status]||"status-next"}">${escapeHtml(d.statusLabel||"—")}</span></td>`;
     tbody.appendChild(tr);
   });
+  document.querySelectorAll(".compare-link").forEach(el => el.addEventListener("click", () => scrollToCard(el.dataset.id)));
 
-  document.querySelectorAll(".compare-link").forEach(el => {
-    el.addEventListener("click", () => scrollToCard(el.dataset.id));
-  });
-
-  // Cards
   const grid = document.getElementById("cards-grid");
   grid.innerHTML = "";
   const noResults = document.getElementById("no-results");
   const emptyState = document.getElementById("empty-state");
+  const compareBar = document.getElementById("compare-bar");
 
   if (state.data.coffees.length === 0) {
     emptyState.style.display = "block";
     noResults.style.display = "none";
-  } else if (filtered.length === 0) {
-    noResults.style.display = "block";
-    emptyState.style.display = "none";
+    compareBar.style.display = "none";
   } else {
-    noResults.style.display = "none";
+    compareBar.style.display = "block";
     emptyState.style.display = "none";
+    noResults.style.display = filtered.length === 0 ? "block" : "none";
   }
 
   filtered.forEach(c => {
@@ -720,9 +951,7 @@ function render(method) {
     const card = document.createElement("div");
     card.className = "card";
     card.id = "card-" + c.id;
-    const settingRows = Object.entries(d.settings || {})
-      .map(([k, v]) => `<div class="setting-row"><span class="setting-label">${escapeHtml(k)}</span><span class="setting-value">${escapeHtml(v)}</span></div>`)
-      .join("");
+    const settingRows = Object.entries(d.settings || {}).map(([k, v]) => `<div class="setting-row"><span class="setting-label">${escapeHtml(k)}</span><span class="setting-value">${escapeHtml(v)}</span></div>`).join("");
     const tags = (c.tags || []).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join("");
     card.innerHTML = `
       <div class="card-header" style="background:${c.color || '#3a3a3a'}">
@@ -730,12 +959,8 @@ function render(method) {
         <div class="card-name">${escapeHtml(c.name)}</div>
         <div class="card-meta">${escapeHtml(c.meta || "")}</div>
         <div class="card-actions">
-          <button title="AI assist" onclick="openAiModal('${c.id}')">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 2 L13.5 8.5 L20 10 L13.5 11.5 L12 18 L10.5 11.5 L4 10 L10.5 8.5 Z"/></svg>
-          </button>
-          <button title="Edit" onclick="openEditModal('${c.id}')">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
+          <button title="AI assist" onclick="openAiModal('${c.id}')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 2 L13.5 8.5 L20 10 L13.5 11.5 L12 18 L10.5 11.5 L4 10 L10.5 8.5 Z"/></svg></button>
+          <button title="Edit" onclick="openEditModal('${c.id}')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
         </div>
       </div>
       <div class="card-body">${settingRows}</div>
@@ -743,45 +968,54 @@ function render(method) {
         <div class="notes-label">Notes</div>
         ${escapeHtml(d.notes || "")}
         <br/><div style="margin-top:6px">${tags}<span class="status-badge ${statusClass[d.status]||"status-next"}">${escapeHtml(d.statusLabel||"—")}</span></div>
-      </div>
-    `;
+      </div>`;
     grid.appendChild(card);
   });
-}
-
-function escapeHtml(s) {
-  if (s == null) return "";
-  return String(s).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
 }
 
 // ============================================================
 // Settings
 // ============================================================
 function openSettingsModal() {
-  const s = state.settings;
-  document.getElementById("ai-provider").value = s.aiProvider;
-  document.getElementById("ai-key").value = s.aiKey;
+  document.getElementById("ai-provider").value = state.settings.aiProvider;
+  document.getElementById("ai-key").value = state.settings.aiKey;
   document.getElementById("taste-prefs").value = state.data.preferences || "";
-  document.getElementById("gh-owner").value = s.ghOwner;
-  document.getElementById("gh-repo").value = s.ghRepo;
-  document.getElementById("gh-branch").value = s.ghBranch;
-  document.getElementById("gh-path").value = s.ghPath;
-  document.getElementById("gh-token").value = s.ghToken;
+  document.getElementById("account-info").textContent = `Signed in as ${state.user.email}.`;
   showModal("settings-modal");
 }
-function saveSettings() {
+async function saveSettings() {
   state.settings.aiProvider = document.getElementById("ai-provider").value;
   state.settings.aiKey = document.getElementById("ai-key").value.trim();
   state.data.preferences = document.getElementById("taste-prefs").value.trim();
-  state.settings.ghOwner = document.getElementById("gh-owner").value.trim();
-  state.settings.ghRepo = document.getElementById("gh-repo").value.trim();
-  state.settings.ghBranch = document.getElementById("gh-branch").value.trim() || "main";
-  state.settings.ghPath = document.getElementById("gh-path").value.trim() || "data.json";
-  state.settings.ghToken = document.getElementById("gh-token").value.trim();
   saveLocal();
-  closeModal("settings-modal");
-  toast("Settings saved");
-  updateSyncStatus("local");
+  try {
+    await saveProfile({ preferences: state.data.preferences, ai_provider: state.settings.aiProvider });
+    closeModal("settings-modal");
+    toast("Saved", "success");
+  } catch (e) { toast("Save failed: " + e.message, "error"); }
+}
+
+async function deleteAccount() {
+  if (!confirm("Delete your account and all your coffee data? This cannot be undone.")) return;
+  if (!confirm("Are you absolutely sure? Type yes in the next prompt to confirm.")) return;
+  const conf = prompt("Type 'DELETE' to confirm.");
+  if (conf !== "DELETE") return;
+  try {
+    // Delete all coffees first (RLS lets us delete our own rows). Profile has cascade from auth.users on user delete.
+    const { error: e1 } = await sb.from("coffees").delete().eq("user_id", state.user.id);
+    if (e1) throw e1;
+    toast("Coffee data deleted. To fully delete your account, contact support — Supabase doesn't yet expose self-delete from client. Signing out.", "info");
+    setTimeout(() => signOut(), 4000);
+  } catch (e) { toast("Delete failed: " + e.message, "error"); }
+}
+
+async function exportData() {
+  const blob = new Blob([JSON.stringify({ preferences: state.data.preferences, coffees: state.data.coffees }, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "coffee-data.json";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ============================================================
@@ -791,21 +1025,13 @@ function openAddModal() {
   state.editingId = null;
   state.editorMethod = "espresso";
   document.getElementById("edit-modal-title").textContent = "Add coffee";
-  document.getElementById("ed-roaster").value = "";
-  document.getElementById("ed-name").value = "";
-  document.getElementById("ed-meta").value = "";
+  ["ed-roaster","ed-name","ed-meta","ed-tags","ai-create-input"].forEach(id => document.getElementById(id).value = "");
   document.getElementById("ed-color").value = "#5c4a3a";
-  document.getElementById("ed-tags").value = "";
-  document.getElementById("ai-create-input").value = "";
   document.getElementById("ai-create-output").classList.add("empty");
   document.getElementById("ai-create-output").textContent = "";
   document.getElementById("ai-create-panel").style.display = "block";
   document.getElementById("ed-delete").style.display = "none";
-  state.scratchMethods = {
-    espresso: blankMethod("espresso"),
-    v60: blankMethod("v60"),
-    aeropress: blankMethod("aeropress")
-  };
+  state.scratchMethods = { espresso: blankMethod("espresso"), v60: blankMethod("v60"), aeropress: blankMethod("aeropress") };
   setEditorMethod("espresso");
   showModal("edit-modal");
 }
@@ -834,53 +1060,22 @@ function openEditModal(id) {
 
 function blankMethod(method) {
   const defaults = {
-    espresso: {
-      "Grind (Acaia Orbit SSP V3)": "",
-      "Brew Temp": "",
-      "Dose": "18g",
-      "Yield": "",
-      "Pressure": "8 bar",
-      "Preinfusion": "10s @ 2–3 bar",
-      "Total Shot Time": "",
-      "Basket": "IMS 18g Precision High-Flow"
-    },
-    v60: {
-      "Grind (Acaia Orbit SSP V3)": "",
-      "Water Temp": "",
-      "Dose": "24g",
-      "Water": "400g",
-      "Ratio": "1:16.7 (Hoffmann 60g/L)",
-      "Bloom": "48g / 45s",
-      "Target Drawdown": ""
-    },
-    aeropress: {
-      "Grind (Acaia Orbit SSP V3)": "",
-      "Water Temp": "",
-      "Dose": "18g",
-      "Water": "200g",
-      "Method": "Inverted",
-      "Steep Time": "",
-      "Press Time": "0:30"
-    }
+    espresso: { "Grind (Acaia Orbit SSP V3)": "", "Brew Temp": "", "Dose": "18g", "Yield": "", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "", "Basket": "IMS 18g Precision High-Flow" },
+    v60: { "Grind (Acaia Orbit SSP V3)": "", "Water Temp": "", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "" },
+    aeropress: { "Grind (Acaia Orbit SSP V3)": "", "Water Temp": "", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "", "Press Time": "0:30" }
   };
   return { settings: defaults[method], notes: "", status: "next", statusLabel: "Not Yet Tried" };
 }
 
 function setEditorMethod(method) {
-  // Persist current values before switch
-  if (state.editorMethod && state.scratchMethods[state.editorMethod]) {
-    captureMethodForm();
-  }
+  if (state.editorMethod && state.scratchMethods[state.editorMethod]) captureMethodForm();
   state.editorMethod = method;
-  document.querySelectorAll(".editor-tab").forEach(t => {
-    t.classList.toggle("active", t.dataset.method === method);
-  });
+  document.querySelectorAll(".editor-tab").forEach(t => t.classList.toggle("active", t.dataset.method === method));
   renderMethodEditor();
 }
 
 function renderMethodEditor() {
   const m = state.scratchMethods[state.editorMethod];
-  const container = document.getElementById("method-editor");
   let html = "";
   Object.entries(m.settings).forEach(([k, v]) => {
     html += `
@@ -890,20 +1085,12 @@ function renderMethodEditor() {
       </div>`;
   });
   html += `
-    <div class="ai-actions" style="margin-bottom:12px;">
-      <button class="icon-btn" type="button" onclick="addSettingRow()">+ Add field</button>
-    </div>
-    <div class="field">
-      <label>Notes</label>
-      <textarea id="ed-notes">${escapeHtml(m.notes || "")}</textarea>
-    </div>
-    <div class="field">
-      <label>Status</label>
-      <select id="ed-status">
-        ${STATUS_OPTIONS.map(o => `<option value="${o.value}" ${m.status===o.value?"selected":""}>${o.label}</option>`).join("")}
-      </select>
+    <div class="ai-actions" style="margin-bottom:12px;"><button class="icon-btn" type="button" onclick="addSettingRow()">+ Add field</button></div>
+    <div class="field"><label>Notes</label><textarea id="ed-notes">${escapeHtml(m.notes || "")}</textarea></div>
+    <div class="field"><label>Status</label>
+      <select id="ed-status">${STATUS_OPTIONS.map(o => `<option value="${o.value}" ${m.status===o.value?"selected":""}>${o.label}</option>`).join("")}</select>
     </div>`;
-  container.innerHTML = html;
+  document.getElementById("method-editor").innerHTML = html;
 }
 
 function captureMethodForm() {
@@ -911,15 +1098,10 @@ function captureMethodForm() {
   const newSettings = {};
   const container = document.getElementById("method-editor");
   if (!container) return;
-  // Re-collect: walk all field-rows
   container.querySelectorAll(".field-row").forEach(row => {
-    const keyInput = row.querySelector("input[data-field-key]");
-    const valInput = row.querySelector("input[data-field-val]");
-    if (keyInput && valInput) {
-      const k = keyInput.value.trim();
-      const v = valInput.value;
-      if (k) newSettings[k] = v;
-    }
+    const k = row.querySelector("input[data-field-key]")?.value.trim();
+    const v = row.querySelector("input[data-field-val]")?.value;
+    if (k) newSettings[k] = v;
   });
   m.settings = newSettings;
   const notesEl = document.getElementById("ed-notes");
@@ -935,78 +1117,82 @@ function captureMethodForm() {
 function addSettingRow() {
   captureMethodForm();
   const m = state.scratchMethods[state.editorMethod];
-  const newKey = "New field " + (Object.keys(m.settings).length + 1);
-  m.settings[newKey] = "";
+  m.settings["New field " + (Object.keys(m.settings).length + 1)] = "";
   renderMethodEditor();
 }
 
-function saveCoffee() {
+async function saveCoffee() {
   captureMethodForm();
-  const roaster = document.getElementById("ed-roaster").value.trim();
   const name = document.getElementById("ed-name").value.trim();
   if (!name) { toast("Name is required", "error"); return; }
-  const meta = document.getElementById("ed-meta").value.trim();
-  const color = document.getElementById("ed-color").value.trim() || "#5c4a3a";
-  const tags = document.getElementById("ed-tags").value.split(",").map(s => s.trim()).filter(Boolean);
-
-  let coffee;
-  if (state.editingId) {
-    coffee = state.data.coffees.find(x => x.id === state.editingId);
-  } else {
-    coffee = { id: slugify(name) + "-" + Date.now().toString(36).slice(-4) };
-    state.data.coffees.push(coffee);
-  }
-  coffee.roaster = roaster;
-  coffee.name = name;
-  coffee.meta = meta;
-  coffee.color = color;
-  coffee.tags = tags;
-  coffee.espresso = state.scratchMethods.espresso;
-  coffee.v60 = state.scratchMethods.v60;
-  coffee.aeropress = state.scratchMethods.aeropress;
-
-  saveLocal();
-  closeModal("edit-modal");
-  render(state.activeMethod);
-  toast("Saved");
-  maybeAutoPush();
+  const c = {
+    id: state.editingId || undefined,
+    slug: slugify(name),
+    roaster: document.getElementById("ed-roaster").value.trim(),
+    name,
+    meta: document.getElementById("ed-meta").value.trim(),
+    color: document.getElementById("ed-color").value.trim() || "#5c4a3a",
+    tags: document.getElementById("ed-tags").value.split(",").map(s => s.trim()).filter(Boolean),
+    espresso: state.scratchMethods.espresso,
+    v60: state.scratchMethods.v60,
+    aeropress: state.scratchMethods.aeropress,
+    position: state.editingId ? (state.data.coffees.find(x => x.id === state.editingId)?.position || 0) : state.data.coffees.length
+  };
+  try {
+    const saved = await upsertCoffee(c);
+    if (state.editingId) {
+      const idx = state.data.coffees.findIndex(x => x.id === state.editingId);
+      if (idx >= 0) state.data.coffees[idx] = saved;
+    } else {
+      state.data.coffees.push(saved);
+    }
+    closeModal("edit-modal");
+    render(state.activeMethod);
+    toast("Saved", "success");
+  } catch (e) { toast("Save failed: " + e.message, "error"); }
 }
 
-function deleteCoffee() {
+async function deleteCoffee() {
   if (!state.editingId) return;
-  if (!confirm("Delete this coffee? This cannot be undone.")) return;
-  state.data.coffees = state.data.coffees.filter(c => c.id !== state.editingId);
-  saveLocal();
-  closeModal("edit-modal");
-  render(state.activeMethod);
-  toast("Deleted");
-  maybeAutoPush();
+  if (!confirm("Delete this coffee?")) return;
+  try {
+    await deleteCoffeeRow(state.editingId);
+    state.data.coffees = state.data.coffees.filter(c => c.id !== state.editingId);
+    closeModal("edit-modal");
+    render(state.activeMethod);
+    toast("Deleted");
+  } catch (e) { toast("Delete failed: " + e.message, "error"); }
 }
 
 function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30) || "coffee";
 }
 
+async function seedExamples() {
+  if (!confirm("Add 4 example coffees to your account?")) return;
+  try {
+    let pos = state.data.coffees.length;
+    for (const seed of SEED_COFFEES) {
+      const saved = await upsertCoffee({ ...seed, position: pos++ });
+      state.data.coffees.push(saved);
+    }
+    render(state.activeMethod);
+    toast("Examples loaded", "success");
+  } catch (e) { toast("Seed failed: " + e.message, "error"); }
+}
+
 // ============================================================
 // AI calls
 // ============================================================
 async function callAI(systemPrompt, userPrompt, opts = {}) {
-  const { aiProvider, aiKey } = state.settings;
-  if (!aiKey) { throw new Error("Set your API key in Settings first."); }
-  if (aiProvider === "anthropic") return callAnthropic(systemPrompt, userPrompt, opts);
+  if (!state.settings.aiKey) throw new Error("Set your API key in Settings first.");
+  if (state.settings.aiProvider === "anthropic") return callAnthropic(systemPrompt, userPrompt, opts);
   return callOpenAI(systemPrompt, userPrompt, opts);
 }
 
-async function callAnthropic(systemPrompt, userPrompt, { useWebSearch = false, jsonMode = false, model = "claude-sonnet-4-6" } = {}) {
-  const body = {
-    model,
-    max_tokens: 2048,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userPrompt }]
-  };
-  if (useWebSearch) {
-    body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 4 }];
-  }
+async function callAnthropic(systemPrompt, userPrompt, { useWebSearch = false, model = "claude-sonnet-4-6" } = {}) {
+  const body = { model, max_tokens: 2048, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] };
+  if (useWebSearch) body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 4 }];
   const headers = {
     "Content-Type": "application/json",
     "x-api-key": state.settings.aiKey,
@@ -1014,68 +1200,36 @@ async function callAnthropic(systemPrompt, userPrompt, { useWebSearch = false, j
     "anthropic-dangerous-direct-browser-access": "true"
   };
   if (useWebSearch) headers["anthropic-beta"] = "web-search-2025-03-05";
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error("Anthropic API error: " + res.status + " — " + txt.slice(0, 300));
-  }
+  const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers, body: JSON.stringify(body) });
+  if (!res.ok) throw new Error("Anthropic API: " + res.status + " " + (await res.text()).slice(0, 300));
   const json = await res.json();
-  const text = (json.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
-  return text;
+  return (json.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
 }
 
 async function callOpenAI(systemPrompt, userPrompt, { jsonMode = false, model = "gpt-4o" } = {}) {
-  const body = {
-    model,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt }
-    ]
-  };
+  const body = { model, messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }] };
   if (jsonMode) body.response_format = { type: "json_object" };
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + state.settings.aiKey
-    },
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + state.settings.aiKey },
     body: JSON.stringify(body)
   });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error("OpenAI API error: " + res.status + " — " + txt.slice(0, 300));
-  }
+  if (!res.ok) throw new Error("OpenAI API: " + res.status + " " + (await res.text()).slice(0, 300));
   const json = await res.json();
   return (json.choices?.[0]?.message?.content || "").trim();
 }
 
 function extractJsonBlock(text) {
-  // Try fenced first
   let m = text.match(/```json\s*([\s\S]*?)```/i) || text.match(/```\s*([\s\S]*?)```/i);
-  if (m) {
-    try { return JSON.parse(m[1]); } catch (e) { /* fall through */ }
-  }
-  // Try first {...}
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start >= 0 && end > start) {
-    try { return JSON.parse(text.slice(start, end + 1)); } catch (e) { /* */ }
-  }
+  if (m) { try { return JSON.parse(m[1]); } catch (e) {} }
+  const start = text.indexOf("{"), end = text.lastIndexOf("}");
+  if (start >= 0 && end > start) { try { return JSON.parse(text.slice(start, end + 1)); } catch (e) {} }
   return null;
 }
 
-// AI: generate new recipe from short description
-async function aiGenerateNew() {
-  await aiCreate(false);
-}
+async function aiGenerateNew() { await aiCreate(false); }
 async function aiLookupOnline() {
-  if (state.settings.aiProvider !== "anthropic") {
-    toast("Online lookup needs Anthropic — switch provider in Settings.", "error"); return;
-  }
+  if (state.settings.aiProvider !== "anthropic") { toast("Online lookup needs Anthropic.", "error"); return; }
   await aiCreate(true);
 }
 
@@ -1084,76 +1238,16 @@ async function aiCreate(useWebSearch) {
   if (!desc) { toast("Tell me about the coffee first.", "error"); return; }
   const out = document.getElementById("ai-create-output");
   out.classList.remove("empty");
-  out.innerHTML = `<span class="ai-spinner"></span>${useWebSearch ? "Searching the web for this coffee..." : "Generating recipe..."}`;
+  out.innerHTML = `<span class="ai-spinner"></span>${useWebSearch ? "Searching the web..." : "Generating recipe..."}`;
   const prefs = state.data.preferences || "(none provided)";
-  const sys = `You are a coffee expert helping ${prefs ? "a user with these stated preferences" : "a home barista"}.
-USER PREFERENCES:
-${prefs}
-
-EQUIPMENT (do not change unless user says otherwise):
-- Espresso: Acaia Orbit grinder with SSP Lab Sweet V3 burrs (grind setting numeric, e.g. 1.3). 18g VST/IMS basket.
-- V60: Hoffmann method, 1:16.7 ratio (60g/L).
-- AeroPress: inverted method.
-
-Return ONLY valid JSON in this exact shape, no prose:
-{
-  "roaster": "...",
-  "name": "...",
-  "meta": "process · origin · altitude · region",
-  "color": "#hex (pick one tonally matching the coffee — e.g. green for washed, brown for natural, dark for dark roast)",
-  "tags": ["..."],
-  "espresso": {
-    "settings": {
-      "Grind (Acaia Orbit SSP V3)": "...",
-      "Brew Temp": "...°F",
-      "Dose": "18g",
-      "Yield": "...",
-      "Pressure": "8 bar",
-      "Preinfusion": "10s @ 2–3 bar",
-      "Total Shot Time": "...s",
-      "Basket": "IMS 18g Precision High-Flow"
-    },
-    "notes": "...short reasoning, mention what to adjust if it tastes X..."
-  },
-  "v60": {
-    "settings": {
-      "Grind (Acaia Orbit SSP V3)": "...",
-      "Water Temp": "...°C / ...°F",
-      "Dose": "24g",
-      "Water": "400g",
-      "Ratio": "1:16.7 (Hoffmann 60g/L)",
-      "Bloom": "48g / 45s",
-      "Target Drawdown": "..."
-    },
-    "notes": "..."
-  },
-  "aeropress": {
-    "settings": {
-      "Grind (Acaia Orbit SSP V3)": "...",
-      "Water Temp": "...°C / ...°F",
-      "Dose": "18g",
-      "Water": "200g",
-      "Method": "Inverted",
-      "Steep Time": "...",
-      "Press Time": "0:30"
-    },
-    "notes": "..."
-  }
-}`;
-  let user;
-  if (useWebSearch) {
-    user = `Find this coffee online (roaster website, sprudge, reviews) and return a starting recipe tailored to my preferences:\n\n${desc}\n\nUse the web_search tool to look up the coffee's origin, process, altitude, varietal, and any roaster brewing recommendations. Then synthesize a starting recipe in the JSON shape above. If you can't find it, infer from the description.`;
-  } else {
-    user = `Coffee: ${desc}\n\nReturn the JSON.`;
-  }
+  const sys = `You are a coffee expert. USER PREFERENCES:\n${prefs}\n\nEQUIPMENT:\n- Espresso: Acaia Orbit + SSP Lab Sweet V3 burrs (numeric grind, e.g. 1.3). 18g IMS High-Flow basket.\n- V60: Hoffmann method, 1:16.7 ratio.\n- AeroPress: inverted.\n\nReturn ONLY valid JSON in this exact shape, no prose:\n{\n  "roaster": "...", "name": "...", "meta": "process · origin · altitude", "color": "#hex", "tags": ["..."],\n  "espresso": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Brew Temp": "...°F", "Dose": "18g", "Yield": "...", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "...s", "Basket": "IMS 18g Precision High-Flow"}, "notes": "..."},\n  "v60": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Water Temp": "...", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "..."}, "notes": "..."},\n  "aeropress": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Water Temp": "...", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "...", "Press Time": "0:30"}, "notes": "..."}\n}`;
+  const user = useWebSearch
+    ? `Find this coffee online and return a recipe tailored to my preferences:\n\n${desc}\n\nUse web_search for the coffee's origin, process, altitude, varietal, roaster recommendations. Then return the JSON.`
+    : `Coffee: ${desc}\n\nReturn the JSON.`;
   try {
-    const text = await callAI(sys, user, { useWebSearch, jsonMode: !useWebSearch });
+    const text = await callAI(sys, user, { useWebSearch });
     const parsed = extractJsonBlock(text);
-    if (!parsed) {
-      out.innerHTML = "<strong>Couldn't parse JSON. Raw response:</strong>\n\n" + escapeHtml(text);
-      return;
-    }
-    // Fill the form
+    if (!parsed) { out.innerHTML = "<strong>Couldn't parse JSON:</strong>\n\n" + escapeHtml(text); return; }
     if (parsed.roaster) document.getElementById("ed-roaster").value = parsed.roaster;
     if (parsed.name) document.getElementById("ed-name").value = parsed.name;
     if (parsed.meta) document.getElementById("ed-meta").value = parsed.meta;
@@ -1167,13 +1261,10 @@ Return ONLY valid JSON in this exact shape, no prose:
       }
     });
     setEditorMethod(state.editorMethod);
-    out.innerHTML = "<strong>Recipe generated.</strong> Review the form below and adjust before saving.\n\nReasoning preview:\n— " + escapeHtml((parsed.espresso?.notes || "").slice(0, 200));
-  } catch (e) {
-    out.innerHTML = "<strong>Error:</strong> " + escapeHtml(e.message);
-  }
+    out.innerHTML = "<strong>Generated.</strong> Review the form below, adjust, and save.";
+  } catch (e) { out.innerHTML = "<strong>Error:</strong> " + escapeHtml(e.message); }
 }
 
-// AI Modal (per-card actions)
 function openAiModal(id) {
   const c = state.data.coffees.find(x => x.id === id);
   if (!c) return;
@@ -1190,140 +1281,73 @@ function openAiModal(id) {
 function aiCardMode(mode) {
   state.aiContext.mode = mode;
   const formEl = document.getElementById("ai-modal-form");
-  const c = state.data.coffees.find(x => x.id === state.aiContext.coffeeId);
   const method = state.aiContext.method;
-
-  if (mode === "tweak") {
-    formEl.innerHTML = `
-      <div class="field"><label>Method to tweak</label>
-        <select id="ai-method">
-          <option value="espresso" ${method==="espresso"?"selected":""}>Espresso</option>
-          <option value="v60" ${method==="v60"?"selected":""}>V60</option>
-          <option value="aeropress" ${method==="aeropress"?"selected":""}>AeroPress</option>
-        </select>
-      </div>
-      <div class="field"><label>What did the last brew taste like?</label>
-        <textarea id="ai-feedback" placeholder="e.g. sour and watery, channeled at 12s, gushed too fast"></textarea>
-      </div>
-      <div class="ai-actions">
-        <button class="icon-btn primary" type="button" onclick="runAiTweak()">Suggest tweak</button>
-      </div>`;
-  } else if (mode === "rewrite") {
-    formEl.innerHTML = `
-      <div class="field"><label>Method</label>
-        <select id="ai-method">
-          <option value="espresso" ${method==="espresso"?"selected":""}>Espresso</option>
-          <option value="v60" ${method==="v60"?"selected":""}>V60</option>
-          <option value="aeropress" ${method==="aeropress"?"selected":""}>AeroPress</option>
-        </select>
-      </div>
-      <p class="field-help" style="margin-bottom:10px;">Rewrites the existing notes into clearer, well-structured prose.</p>
-      <div class="ai-actions">
-        <button class="icon-btn primary" type="button" onclick="runAiRewrite()">Rewrite notes</button>
-      </div>`;
-  } else if (mode === "feedback") {
-    formEl.innerHTML = `
-      <div class="field"><label>Method</label>
-        <select id="ai-method">
-          <option value="espresso" ${method==="espresso"?"selected":""}>Espresso</option>
-          <option value="v60" ${method==="v60"?"selected":""}>V60</option>
-          <option value="aeropress" ${method==="aeropress"?"selected":""}>AeroPress</option>
-        </select>
-      </div>
-      <div class="field"><label>How did the brew go? (taste, timing, anything weird)</label>
-        <textarea id="ai-feedback" placeholder="e.g. 18g in, 52g out in 28s. Tasted bright but a little sour. Want more body."></textarea>
-      </div>
-      <p class="field-help" style="margin-bottom:10px;">I'll update the recipe settings AND notes based on this brew.</p>
-      <div class="ai-actions">
-        <button class="icon-btn primary" type="button" onclick="runAiFeedback()">Update from feedback</button>
-      </div>`;
-  } else if (mode === "explain") {
-    formEl.innerHTML = `
-      <div class="field"><label>Method</label>
-        <select id="ai-method">
-          <option value="espresso" ${method==="espresso"?"selected":""}>Espresso</option>
-          <option value="v60" ${method==="v60"?"selected":""}>V60</option>
-          <option value="aeropress" ${method==="aeropress"?"selected":""}>AeroPress</option>
-        </select>
-      </div>
-      <p class="field-help" style="margin-bottom:10px;">Explains the reasoning behind the current recipe — why these settings, what to expect, common pitfalls.</p>
-      <div class="ai-actions">
-        <button class="icon-btn primary" type="button" onclick="runAiExplain()">Explain</button>
-      </div>`;
-  }
+  const methodSelect = `<div class="field"><label>Method</label><select id="ai-method"><option value="espresso" ${method==="espresso"?"selected":""}>Espresso</option><option value="v60" ${method==="v60"?"selected":""}>V60</option><option value="aeropress" ${method==="aeropress"?"selected":""}>AeroPress</option></select></div>`;
+  if (mode === "tweak") formEl.innerHTML = methodSelect + `<div class="field"><label>Last brew taste</label><textarea id="ai-feedback" placeholder="e.g. sour and watery, channeled, gushed"></textarea></div><div class="ai-actions"><button class="icon-btn primary" type="button" onclick="runAiTweak()">Suggest tweak</button></div>`;
+  else if (mode === "rewrite") formEl.innerHTML = methodSelect + `<p class="field-help">Cleans up notes prose.</p><div class="ai-actions"><button class="icon-btn primary" type="button" onclick="runAiRewrite()">Rewrite notes</button></div>`;
+  else if (mode === "feedback") formEl.innerHTML = methodSelect + `<div class="field"><label>How did the brew go?</label><textarea id="ai-feedback" placeholder="18g in, 52g out in 28s. Bright but sour. Want more body."></textarea></div><p class="field-help">Updates settings AND notes.</p><div class="ai-actions"><button class="icon-btn primary" type="button" onclick="runAiFeedback()">Update from feedback</button></div>`;
+  else if (mode === "explain") formEl.innerHTML = methodSelect + `<p class="field-help">Explains the reasoning.</p><div class="ai-actions"><button class="icon-btn primary" type="button" onclick="runAiExplain()">Explain</button></div>`;
   document.getElementById("ai-modal-output").classList.add("empty");
   document.getElementById("ai-modal-output").innerHTML = "";
   document.getElementById("ai-apply-btn").style.display = "none";
 }
 
-function aiContext() {
-  const ctx = state.aiContext;
-  const coffee = state.data.coffees.find(x => x.id === ctx.coffeeId);
-  const methodEl = document.getElementById("ai-method");
-  const method = methodEl ? methodEl.value : ctx.method;
-  return { coffee, method };
+function aiCtx() {
+  const c = state.data.coffees.find(x => x.id === state.aiContext.coffeeId);
+  const method = document.getElementById("ai-method")?.value || state.aiContext.method;
+  return { coffee: c, method };
 }
-
-function methodToString(coffee, method) {
-  const d = coffee[method] || {};
-  const settings = Object.entries(d.settings || {}).map(([k,v]) => `  ${k}: ${v}`).join("\n");
-  return `${method.toUpperCase()}\nSettings:\n${settings}\nNotes: ${d.notes||""}\nStatus: ${d.statusLabel||""}`;
+function methodToString(c, m) {
+  const d = c[m] || {};
+  const s = Object.entries(d.settings || {}).map(([k,v]) => `  ${k}: ${v}`).join("\n");
+  return `${m.toUpperCase()}\nSettings:\n${s}\nNotes: ${d.notes||""}\nStatus: ${d.statusLabel||""}`;
 }
 
 async function runAiTweak() {
   const out = document.getElementById("ai-modal-output");
-  out.classList.remove("empty");
-  out.innerHTML = '<span class="ai-spinner"></span>Thinking...';
-  const { coffee, method } = aiContext();
-  const feedback = document.getElementById("ai-feedback").value.trim();
-  const prefs = state.data.preferences || "(none)";
-  const sys = `You are a coffee dialing-in expert. The user's preferences:\n${prefs}\n\nGiven the current recipe and what the brew tasted like, suggest the next adjustment. Be specific about ONE primary lever to change first, with a brief explanation. If the user provides numeric settings, return delta suggestions (e.g., "go finer to 1.2", "raise temp to 207°F"). Keep it under 150 words.`;
-  const user = `Coffee: ${coffee.roaster} — ${coffee.name} (${coffee.meta||""})\n\nCurrent recipe:\n${methodToString(coffee, method)}\n\nLast brew taste: ${feedback || "(no specific feedback)"}\n\nWhat's the next tweak?`;
+  out.classList.remove("empty"); out.innerHTML = '<span class="ai-spinner"></span>Thinking...';
+  const { coffee, method } = aiCtx();
+  const fb = document.getElementById("ai-feedback").value.trim();
+  const sys = `You are a coffee dialing expert. Preferences:\n${state.data.preferences||"(none)"}\n\nGiven the recipe and brew taste, suggest the next single primary lever to change. Under 150 words.`;
+  const user = `Coffee: ${coffee.roaster} — ${coffee.name}\n\n${methodToString(coffee, method)}\n\nLast brew: ${fb||"(no specific feedback)"}\n\nNext tweak?`;
   try {
     const text = await callAI(sys, user);
     state.aiSuggestion = { kind: "notes-append", method, text };
     out.innerHTML = escapeHtml(text);
     document.getElementById("ai-apply-btn").textContent = "Append to notes";
     document.getElementById("ai-apply-btn").style.display = "inline-flex";
-  } catch (e) {
-    out.innerHTML = "<strong>Error:</strong> " + escapeHtml(e.message);
-  }
+  } catch (e) { out.innerHTML = "<strong>Error:</strong> " + escapeHtml(e.message); }
 }
 
 async function runAiRewrite() {
   const out = document.getElementById("ai-modal-output");
-  out.classList.remove("empty");
-  out.innerHTML = '<span class="ai-spinner"></span>Rewriting...';
-  const { coffee, method } = aiContext();
-  const sys = "You polish brewing notes into clear, concise prose. Keep all factual content. Output only the rewritten notes, no preamble.";
-  const user = `Original notes for ${coffee.name} (${method}):\n\n${(coffee[method]?.notes)||""}\n\nRewrite, keep under 80 words.`;
+  out.classList.remove("empty"); out.innerHTML = '<span class="ai-spinner"></span>Rewriting...';
+  const { coffee, method } = aiCtx();
+  const sys = "Polish brewing notes into clear concise prose. Keep facts. Output only rewritten notes, no preamble.";
+  const user = `Original notes for ${coffee.name} (${method}):\n\n${(coffee[method]?.notes)||""}\n\nUnder 80 words.`;
   try {
     const text = await callAI(sys, user);
     state.aiSuggestion = { kind: "notes-replace", method, text };
     out.innerHTML = escapeHtml(text);
     document.getElementById("ai-apply-btn").textContent = "Replace notes";
     document.getElementById("ai-apply-btn").style.display = "inline-flex";
-  } catch (e) {
-    out.innerHTML = "<strong>Error:</strong> " + escapeHtml(e.message);
-  }
+  } catch (e) { out.innerHTML = "<strong>Error:</strong> " + escapeHtml(e.message); }
 }
 
 async function runAiFeedback() {
   const out = document.getElementById("ai-modal-output");
-  out.classList.remove("empty");
-  out.innerHTML = '<span class="ai-spinner"></span>Updating recipe...';
-  const { coffee, method } = aiContext();
-  const feedback = document.getElementById("ai-feedback").value.trim();
-  if (!feedback) { out.innerHTML = "Tell me how the brew went first."; return; }
-  const prefs = state.data.preferences || "(none)";
-  const sys = `You're a coffee dialing assistant. Given a recipe and a brew's outcome, return ONLY a JSON object updating the recipe. Use the user's preferences:\n${prefs}\n\nReturn shape:\n{"settings": { ...full updated settings dict... }, "notes": "updated notes capturing what was learned and what to try next", "status": "dialing|dialed|next", "statusLabel": "Dialed In|Dialing In|Not Yet Tried"}\n\nKeep settings keys identical to the input. Adjust values based on the feedback.`;
-  const user = `Coffee: ${coffee.roaster} — ${coffee.name}\n\nCurrent recipe:\n${methodToString(coffee, method)}\n\nBrew result: ${feedback}\n\nReturn the updated recipe JSON.`;
+  out.classList.remove("empty"); out.innerHTML = '<span class="ai-spinner"></span>Updating recipe...';
+  const { coffee, method } = aiCtx();
+  const fb = document.getElementById("ai-feedback").value.trim();
+  if (!fb) { out.innerHTML = "Tell me how the brew went."; return; }
+  const sys = `Coffee dialing assistant. Preferences:\n${state.data.preferences||"(none)"}\n\nReturn ONLY JSON: {"settings": {...full updated settings dict, same keys...}, "notes": "...", "status": "dialing|dialed|next", "statusLabel": "Dialing In|Dialed In|Not Yet Tried"}`;
+  const user = `${coffee.roaster} — ${coffee.name}\n\n${methodToString(coffee, method)}\n\nBrew result: ${fb}\n\nUpdated recipe JSON.`;
   try {
     const text = await callAI(sys, user, { jsonMode: true });
     const parsed = extractJsonBlock(text);
-    if (!parsed) { out.innerHTML = "<strong>Couldn't parse JSON.</strong>\n\n" + escapeHtml(text); return; }
+    if (!parsed) { out.innerHTML = "<strong>Couldn't parse:</strong>\n\n" + escapeHtml(text); return; }
     state.aiSuggestion = { kind: "method-replace", method, payload: parsed };
-    let preview = "Settings updates:\n";
+    let preview = "Settings changes:\n";
     for (const [k,v] of Object.entries(parsed.settings || {})) {
       const old = coffee[method]?.settings?.[k];
       if (old !== v) preview += `  ${k}: ${old||"—"} → ${v}\n`;
@@ -1333,179 +1357,56 @@ async function runAiFeedback() {
     out.innerHTML = escapeHtml(preview);
     document.getElementById("ai-apply-btn").textContent = "Apply to recipe";
     document.getElementById("ai-apply-btn").style.display = "inline-flex";
-  } catch (e) {
-    out.innerHTML = "<strong>Error:</strong> " + escapeHtml(e.message);
-  }
+  } catch (e) { out.innerHTML = "<strong>Error:</strong> " + escapeHtml(e.message); }
 }
 
 async function runAiExplain() {
   const out = document.getElementById("ai-modal-output");
-  out.classList.remove("empty");
-  out.innerHTML = '<span class="ai-spinner"></span>Explaining...';
-  const { coffee, method } = aiContext();
-  const sys = "You explain coffee brewing decisions clearly. Aimed at a home barista who wants to learn. Cover: why these specific settings, what flavor target they aim for, and 1-2 common pitfalls. Keep under 200 words.";
-  const user = `Explain why this recipe is set up this way:\n\nCoffee: ${coffee.roaster} — ${coffee.name} (${coffee.meta||""})\n\n${methodToString(coffee, method)}`;
+  out.classList.remove("empty"); out.innerHTML = '<span class="ai-spinner"></span>Explaining...';
+  const { coffee, method } = aiCtx();
+  const sys = "Explain coffee brewing decisions clearly to a home barista learner. Cover: why these settings, flavor target, 1-2 pitfalls. Under 200 words.";
+  const user = `${coffee.roaster} — ${coffee.name} (${coffee.meta||""})\n\n${methodToString(coffee, method)}`;
   try {
     const text = await callAI(sys, user);
     out.innerHTML = escapeHtml(text);
     state.aiSuggestion = null;
     document.getElementById("ai-apply-btn").style.display = "none";
-  } catch (e) {
-    out.innerHTML = "<strong>Error:</strong> " + escapeHtml(e.message);
-  }
+  } catch (e) { out.innerHTML = "<strong>Error:</strong> " + escapeHtml(e.message); }
 }
 
-function applyAiSuggestion() {
+async function applyAiSuggestion() {
   const sug = state.aiSuggestion;
   if (!sug) return;
-  const coffee = state.data.coffees.find(x => x.id === state.aiContext.coffeeId);
+  const c = state.data.coffees.find(x => x.id === state.aiContext.coffeeId);
   const m = sug.method;
-  if (!coffee[m]) coffee[m] = { settings: {}, notes: "", status: "next", statusLabel: "Not Yet Tried" };
+  if (!c[m]) c[m] = { settings: {}, notes: "", status: "next", statusLabel: "Not Yet Tried" };
 
   if (sug.kind === "notes-append") {
     const stamp = new Date().toLocaleDateString();
-    const prev = coffee[m].notes || "";
-    coffee[m].notes = prev + (prev ? "\n\n" : "") + `[${stamp} AI tweak] ${sug.text}`;
-    if (coffee[m].status === "next") {
-      coffee[m].status = "dialing";
-      coffee[m].statusLabel = "Dialing In";
-    }
+    c[m].notes = (c[m].notes ? c[m].notes + "\n\n" : "") + `[${stamp} AI tweak] ${sug.text}`;
+    if (c[m].status === "next") { c[m].status = "dialing"; c[m].statusLabel = "Dialing In"; }
   } else if (sug.kind === "notes-replace") {
-    coffee[m].notes = sug.text;
+    c[m].notes = sug.text;
   } else if (sug.kind === "method-replace") {
     const p = sug.payload;
-    if (p.settings) coffee[m].settings = p.settings;
-    if (p.notes) coffee[m].notes = p.notes;
-    if (p.status) coffee[m].status = p.status;
-    if (p.statusLabel) coffee[m].statusLabel = p.statusLabel;
+    if (p.settings) c[m].settings = p.settings;
+    if (p.notes) c[m].notes = p.notes;
+    if (p.status) c[m].status = p.status;
+    if (p.statusLabel) c[m].statusLabel = p.statusLabel;
   }
 
-  saveLocal();
-  closeModal("ai-modal");
-  render(state.activeMethod);
-  toast("Applied");
-  maybeAutoPush();
-}
-
-// ============================================================
-// GitHub sync
-// ============================================================
-async function pullFromGitHub() {
-  const s = state.settings;
-  if (!s.ghOwner || !s.ghRepo || !s.ghToken) { toast("Set GitHub owner/repo/token in Settings.", "error"); return; }
   try {
-    const res = await fetch(`https://api.github.com/repos/${s.ghOwner}/${s.ghRepo}/contents/${s.ghPath}?ref=${s.ghBranch}`, {
-      headers: { "Authorization": "Bearer " + s.ghToken, "Accept": "application/vnd.github+json" }
-    });
-    if (!res.ok) throw new Error(res.status + " " + (await res.text()).slice(0,200));
-    const json = await res.json();
-    const content = atob(json.content.replace(/\n/g, ""));
-    const data = JSON.parse(content);
-    state.data = data;
-    state.settings.ghSha = json.sha;
-    saveLocal();
+    const saved = await upsertCoffee(c);
+    const idx = state.data.coffees.findIndex(x => x.id === c.id);
+    if (idx >= 0) state.data.coffees[idx] = saved;
+    closeModal("ai-modal");
     render(state.activeMethod);
-    updateSyncStatus("synced");
-    toast("Pulled from GitHub", "success");
-  } catch (e) {
-    toast("Pull failed: " + e.message, "error");
-  }
-}
-
-async function pushToGitHub() {
-  const s = state.settings;
-  if (!s.ghOwner || !s.ghRepo || !s.ghToken) { toast("Set GitHub owner/repo/token in Settings.", "error"); return; }
-  try {
-    // Get current SHA
-    let sha = s.ghSha;
-    try {
-      const headRes = await fetch(`https://api.github.com/repos/${s.ghOwner}/${s.ghRepo}/contents/${s.ghPath}?ref=${s.ghBranch}`, {
-        headers: { "Authorization": "Bearer " + s.ghToken, "Accept": "application/vnd.github+json" }
-      });
-      if (headRes.ok) {
-        const hj = await headRes.json();
-        sha = hj.sha;
-      }
-    } catch (e) { /* ignore */ }
-
-    const content = JSON.stringify(state.data, null, 2);
-    const b64 = btoa(unescape(encodeURIComponent(content)));
-    const body = {
-      message: "Update coffee data via web app",
-      content: b64,
-      branch: s.ghBranch
-    };
-    if (sha) body.sha = sha;
-
-    const res = await fetch(`https://api.github.com/repos/${s.ghOwner}/${s.ghRepo}/contents/${s.ghPath}`, {
-      method: "PUT",
-      headers: { "Authorization": "Bearer " + s.ghToken, "Accept": "application/vnd.github+json", "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-    if (!res.ok) throw new Error(res.status + " " + (await res.text()).slice(0,200));
-    const json = await res.json();
-    state.settings.ghSha = json.content.sha;
-    saveLocal();
-    updateSyncStatus("synced");
-    toast("Pushed to GitHub", "success");
-  } catch (e) {
-    toast("Push failed: " + e.message, "error");
-    updateSyncStatus("dirty");
-  }
-}
-
-let _pushTimer = null;
-function maybeAutoPush() {
-  updateSyncStatus("dirty");
-  if (!state.settings.ghToken || !state.settings.ghOwner || !state.settings.ghRepo) return;
-  clearTimeout(_pushTimer);
-  _pushTimer = setTimeout(() => { pushToGitHub(); }, 2000);
-}
-
-function updateSyncStatus(kind) {
-  const el = document.getElementById("sync-status");
-  const txt = document.getElementById("sync-text");
-  el.classList.remove("local", "synced", "dirty");
-  if (state.settings.ghToken && state.settings.ghOwner && state.settings.ghRepo) {
-    if (kind === "dirty") { el.classList.add("dirty"); txt.textContent = "Saving..."; }
-    else { el.classList.add("synced"); txt.textContent = "Synced"; }
-  } else {
-    el.classList.add("local"); txt.textContent = "Local only";
-  }
+    toast("Applied", "success");
+  } catch (e) { toast("Save failed: " + e.message, "error"); }
 }
 
 // ============================================================
-// Import/Export
-// ============================================================
-function exportData() {
-  const blob = new Blob([JSON.stringify(state.data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = "coffee-data.json";
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("import-file").addEventListener("change", async (e) => {
-    const file = e.target.files[0]; if (!file) return;
-    try {
-      const txt = await file.text();
-      const data = JSON.parse(txt);
-      if (!data.coffees || !Array.isArray(data.coffees)) throw new Error("Missing coffees array");
-      state.data = data;
-      saveLocal();
-      render(state.activeMethod);
-      toast("Imported", "success");
-    } catch (err) {
-      toast("Import failed: " + err.message, "error");
-    }
-    e.target.value = "";
-  });
-});
-
-// ============================================================
-// Modal/UI helpers
+// UI helpers
 // ============================================================
 function showModal(id) { document.getElementById(id).classList.remove("hidden"); }
 function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
@@ -1520,34 +1421,46 @@ function toast(msg, kind = "") {
 }
 
 function bindEvents() {
-  document.querySelectorAll(".tabs .tab").forEach(tab => {
-    tab.addEventListener("click", () => render(tab.dataset.method));
-  });
-  document.getElementById("search-input").addEventListener("input", (e) => {
-    state.searchTerm = e.target.value;
-    render(state.activeMethod);
-  });
+  // Login
+  document.querySelectorAll(".login-tab").forEach(t => t.addEventListener("click", () => setLoginMode(t.dataset.mode)));
+  document.getElementById("login-submit").addEventListener("click", handleLoginSubmit);
+  document.getElementById("login-magic").addEventListener("click", handleMagicLink);
+  document.getElementById("login-google").addEventListener("click", handleGoogleLogin);
+  document.getElementById("login-password").addEventListener("keydown", e => { if (e.key === "Enter") handleLoginSubmit(); });
+  document.getElementById("login-email").addEventListener("keydown", e => { if (e.key === "Enter") handleLoginSubmit(); });
+
+  // App
+  document.querySelectorAll(".tabs .tab").forEach(tab => tab.addEventListener("click", () => render(tab.dataset.method)));
+  document.getElementById("search-input").addEventListener("input", (e) => { state.searchTerm = e.target.value; render(state.activeMethod); });
   document.getElementById("settings-btn").addEventListener("click", openSettingsModal);
   document.getElementById("add-btn").addEventListener("click", openAddModal);
-  // Editor tab clicks
-  document.querySelectorAll(".editor-tab").forEach(t => {
-    t.addEventListener("click", () => setEditorMethod(t.dataset.method));
-  });
-  // Close modal on backdrop click
-  document.querySelectorAll(".modal-backdrop").forEach(bd => {
-    bd.addEventListener("click", (e) => { if (e.target === bd) bd.classList.add("hidden"); });
-  });
-  // ESC closes modals
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      document.querySelectorAll(".modal-backdrop:not(.hidden)").forEach(bd => bd.classList.add("hidden"));
-    }
-  });
+  document.querySelectorAll(".editor-tab").forEach(t => t.addEventListener("click", () => setEditorMethod(t.dataset.method)));
+  document.querySelectorAll(".modal-backdrop").forEach(bd => bd.addEventListener("click", e => { if (e.target === bd) bd.classList.add("hidden"); }));
+  document.addEventListener("keydown", e => { if (e.key === "Escape") document.querySelectorAll(".modal-backdrop:not(.hidden)").forEach(bd => bd.classList.add("hidden")); });
 }
 
-// ============================================================
+window.signOut = signOut;
+window.openAddModal = openAddModal;
+window.openEditModal = openEditModal;
+window.openAiModal = openAiModal;
+window.aiCardMode = aiCardMode;
+window.runAiTweak = runAiTweak;
+window.runAiRewrite = runAiRewrite;
+window.runAiFeedback = runAiFeedback;
+window.runAiExplain = runAiExplain;
+window.applyAiSuggestion = applyAiSuggestion;
+window.aiGenerateNew = aiGenerateNew;
+window.aiLookupOnline = aiLookupOnline;
+window.addSettingRow = addSettingRow;
+window.saveCoffee = saveCoffee;
+window.deleteCoffee = deleteCoffee;
+window.saveSettings = saveSettings;
+window.exportData = exportData;
+window.deleteAccount = deleteAccount;
+window.seedExamples = seedExamples;
+window.closeModal = closeModal;
+
 // Boot
-// ============================================================
 init();
 </script>
 </body>
