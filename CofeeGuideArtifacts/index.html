@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coffee Brew Tracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f0ede8;
+    min-height: 100vh;
+    padding: 24px 16px;
+  }
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 4px;
+  }
+  h1 { font-size: 18px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.3px; }
+  .subtitle { font-size: 12px; color: #999; margin-bottom: 20px; }
+  .search-box {
+    position: relative;
+  }
+  .search-box input {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 8px 12px 8px 32px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: white;
+    width: 200px;
+    outline: none;
+    transition: border-color 0.2s, width 0.2s;
+  }
+  .search-box input:focus {
+    border-color: #999;
+    width: 240px;
+  }
+  .search-box svg {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    color: #aaa;
+  }
+
+  .tabs { display: flex; gap: 0; margin-bottom: 20px; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .tab { flex: 1; padding: 12px 16px; text-align: center; font-size: 13px; font-weight: 600; color: #999; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
+  .tab:hover { color: #555; }
+  .tab.active { color: #1a1a1a; border-bottom-color: #1a1a1a; background: #fafaf8; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07); scroll-margin-top: 16px; transition: box-shadow 0.3s; }
+  .card.highlight { box-shadow: 0 0 0 3px #1a1a1a, 0 4px 20px rgba(0,0,0,0.15); }
+  .card-header { padding: 16px 20px; color: white; }
+  .card-roaster { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.7; margin-bottom: 3px; }
+  .card-name { font-size: 17px; font-weight: 600; line-height: 1.2; }
+  .card-meta { font-size: 11px; opacity: 0.65; margin-top: 3px; }
+  .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 1px solid #f2f2f2; font-size: 13px; }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-label { color: #888; }
+  .setting-value { font-weight: 600; color: #1a1a1a; }
+  .notes-section { background: #fafaf8; border-top: 1px solid #f0f0f0; padding: 12px 20px; font-size: 12px; color: #666; line-height: 1.5; }
+  .notes-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #bbb; margin-bottom: 4px; }
+  .status-badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px; margin-top: 6px; font-weight: 500; }
+  .status-dialing { background: #fff3cd; color: #856404; }
+  .status-dialed { background: #d1e7dd; color: #0a3622; }
+  .status-next { background: #e8d5f5; color: #4a1a72; }
+  .tag { display: inline-block; background: #f0ede8; color: #666; font-size: 10px; padding: 2px 7px; border-radius: 10px; margin-right: 3px; margin-bottom: 3px; }
+  .compare-bar { background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); overflow-x: auto; }
+  .compare-title { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .compare-table th { text-align: left; color: #aaa; font-weight: 500; padding: 4px 8px 8px 0; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+  .compare-table td { padding: 7px 8px 7px 0; border-bottom: 1px solid #f8f8f8; color: #333; vertical-align: top; }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-link { cursor: pointer; transition: color 0.2s; }
+  .compare-link:hover { color: #1a1a1a; }
+  .compare-link strong { text-decoration: underline; text-decoration-color: #ccc; text-underline-offset: 2px; }
+  .compare-link:hover strong { text-decoration-color: #1a1a1a; }
+  .no-results { text-align: center; padding: 40px 20px; color: #aaa; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="header-row">
+  <h1>Coffee Brew Tracker</h1>
+  <div class="search-box">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="search-input" placeholder="Search coffees..." />
+  </div>
+</div>
+<p class="subtitle">Acaia Orbit · SSP Lab Sweet V3 · IMS 18g High-Flow</p>
+
+<div class="tabs">
+  <div class="tab active" data-method="espresso">Espresso</div>
+  <div class="tab" data-method="v60">V60</div>
+  <div class="tab" data-method="aeropress">AeroPress</div>
+</div>
+
+<div class="compare-bar">
+  <div class="compare-title" id="compare-title">Quick Compare — Espresso</div>
+  <table class="compare-table">
+    <thead id="compare-head"></thead>
+    <tbody id="compare-body"></tbody>
+  </table>
+</div>
+
+<div class="grid" id="cards-grid"></div>
+<div class="no-results" id="no-results" style="display:none;">No coffees match your search.</div>
+
+<script>
+const coffees = [
+  {
+    id: "huatusco-decaf",
+    roaster: "Camber Coffee",
+    name: "Aroma Decaf Mexico Huatusco",
+    meta: "Decaf · Mexico · Washed",
+    color: "#5c4a3a",
+    tags: ["Decaf", "Mexico", "Washed"],
+    espresso: {
+      settings: {
+        "Grind (Acaia Orbit SSP V3)": "1.3 (next try)",
+        "Brew Temp": "206°F",
+        "Dose": "18g",
+        "Yield": "48–50g",
+        "Pressure": "8 bar",
+        "Preinfusion": "10s @ 2–3 bar",
+        "Total Shot Time": "35–40s",
+        "Basket": "IMS 18g Precision High-Flow"
+      },
+      notes: "At 1.5: vegetal and bitter. 206°F improved flavor. Next: try 1.3 to slow shot and improve extraction.",
+      status: "dialing", statusLabel: "Dialing In"
+    },
+    v60: {
+      settings: {
+        "Grind (Acaia Orbit SSP V3)": "7.2",
+        "Water Temp": "95°C / 203°F",
+        "Dose": "24g",
+        "Water": "400g",
+        "Ratio": "1:16.7 (Hoffmann 60g/L)",
+        "Bloom": "48g / 45s",
+        "Target Drawdown": "3:30–4:00"
+      },
+      notes: "Decaf may drain faster due to lower bean density. If too quick/thin, go finer to 7.0. Expect mellow chocolate and mild fruit — decaf won't be as vibrant but should be smooth and clean.",
+      status: "next", statusLabel: "Not Yet Tried"
+    },
+    aeropress: {
+      settings: {
+        "Grind (Acaia Orbit SSP V3)": "5.5–6.0",
+        "Water Temp": "92–95°C / 198–203°F",
+        "Dose": "18g",
+        "Water": "200g",
+        "Method": "Inverted",
+        "Steep Time": "2:00",
+        "Press Time": "0:30"
+      },
+      notes: "Inverted method to control steeping. Decaf extracts easily — don't go too fine or steep too long. Aim for a clean, balanced cup.",
+      status: "next", statusLabel: "Not Yet Tried"
+    }
+  },
+  {
+    id: "la-despensa",
+    roaster: "Camber Coffee",
+    name: "Colombia La Despensa",
+    meta: "Chiroso · Washed · 1950–2200 masl · Urrao, Antioquia",
+    color: "#2e5e3e",
+    tags: ["Colombia", "Washed", "Light Roast", "Chiroso"],
+    espresso: {
+      settings: {
+        "Grind (Acaia Orbit SSP V3)": "1.2 (next try)",
+        "Brew Temp": "206°F",
+        "Dose": "18g",
+        "Yield": "54–56g",
+        "Pressure": "8 bar",
+        "Preinfusion": "10s @ 2–3 bar",
+        "Total Shot Time": "38–45s",
+        "Basket": "IMS 18g Precision High-Flow"
+      },
+      notes: "At 1.1/206°F: good flavor, no bitterness, but 75s total — too slow. At 1.2/206°F: 52.9g in 50.9s — slightly bitter. Next: try 1.3 or reduce yield to 50g. 208°F available as future lever.",
+      status: "dialing", statusLabel: "Dialing In"
+    },
+    v60: {
+      settings: {
+        "Grind (Acaia Orbit SSP V3)": "7.0–7.2",
+        "Water Temp": "95–96°C / 203–205°F",
+        "Dose": "24g",
+        "Water": "400g",
+        "Ratio": "1:16.7 (Hoffmann 60g/L)",
+        "Bloom": "48g / 45s",
+        "Target Drawdown": "3:30–4:00"
+      },
+      notes: "Very dense Chiroso — may need slightly finer grind (7.0) to extract properly. Should produce bright papaya, watermelon, sugarcane, orange spice. Keep water hot — this bean rewards high extraction.",
+      status: "next", statusLabel: "Not Yet Tried"
+    },
+    aeropress: {
+      settings: {
+        "Grind (Acaia Orbit SSP V3)": "5.5–6.0",
+        "Water Temp": "95°C / 203°F",
+        "Dose": "18g",
+        "Water": "200g",
+        "Method": "Inverted",
+        "Steep Time": "2:00–2:30",
+        "Press Time": "0:30"
+      },
+      notes: "Dense bean — longer steep may help. Expect concentrated fruit and sweetness. If sour, extend steep or go finer.",
+      status: "next", statusLabel: "Not Yet Tried"
+    }
+  },
+  {
+    id: "chocolate-bunnies",
+    roaster: "Proud Mary Coffee",
+    name: "Chocolate Bunnies",
+    meta: "Limited · 50% Brazil Natural · 50% Honduras Natural · Medium Roast",
+    color: "#4a2010",
+    tags: ["Blend", "Natural", "Medium Roast", "Brazil", "Honduras"],
+    espresso: {
+      settings: {
+        "Grind (Acaia Orbit SSP V3)": "1.6–1.7",
+        "Brew Temp": "202–204°F",
+        "Dose": "18g",
+        "Yield": "45–50g",
+        "Pressure": "8 bar",
+        "Preinfusion": "10s @ 2–3 bar",
+        "Total Shot Time": "30–35s",
+        "Basket": "IMS 18g Precision High-Flow"
+      },
+      notes: "Medium roast dual-natural blend. Very soluble — start coarser and lower temp. Should be syrupy, chocolatey, low-acid. If flat/muddy go finer; if thin/sharp go coarser or lower temp.",
+      status: "next", statusLabel: "Not Yet Tried"
+    },
+    v60: {
+      settings: {
+        "Grind (Acaia Orbit SSP V3)": "7.2–7.5",
+        "Water Temp": "92–93°C / 198–199°F",
+        "Dose": "24g",
+        "Water": "400g",
+        "Ratio": "1:16.7 (Hoffmann 60g/L)",
+        "Bloom": "48g / 45s",
+        "Target Drawdown": "3:00–3:30"
+      },
+      notes: "Medium roast naturals extract easily — go slightly coarser and cooler vs. light roasts. Should be chocolatey and sweet with fruit undertones. If bitter/ashy, coarsen or cool water further.",
+      status: "next", statusLabel: "Not Yet Tried"
+    },
+    aeropress: {
+      settings: {
+        "Grind (Acaia Orbit SSP V3)": "6.0–6.5",
+        "Water Temp": "90–92°C / 194–198°F",
+        "Dose": "18g",
+        "Water": "200g",
+        "Method": "Inverted",
+        "Steep Time": "1:30–2:00",
+        "Press Time": "0:30"
+      },
+      notes: "Medium roast extracts fast — shorter steep and coarser grind vs. light roasts. Great candidate for AeroPress — should produce thick, chocolatey concentrate.",
+      status: "next", statusLabel: "Not Yet Tried"
+    }
+  },
+  {
+    id: "finca-momoto-catitta",
+    roaster: "Proud Mary Coffee",
+    name: "Finca Momoto — Catitta",
+    meta: "Typica & Caturra · Natural · 1500 masl · Santa Clara, Panama · Limited",
+    color: "#1e4d6b",
+    tags: ["Panama", "Natural", "Light Roast", "Typica", "Caturra"],
+    espresso: {
+      settings: {
+        "Grind (Acaia Orbit SSP V3)": "1.3–1.4",
+        "Brew Temp": "204°F",
+        "Dose": "18g",
+        "Yield": "50–54g",
+        "Pressure": "8 bar",
+        "Preinfusion": "10s @ 2–3 bar",
+        "Total Shot Time": "32–38s",
+        "Basket": "IMS 18g Precision High-Flow"
+      },
+      notes: "Natural Typica & Caturra from the Hartmann family's Finca Momoto. Expect juicy ripe fruit and syrupy body. More soluble than washed light roasts — start coarser. If flat/muddy go finer to 1.2; if sharp/thin coarsen or drop to 202°F.",
+      status: "next", statusLabel: "Not Yet Tried"
+    },
+    v60: {
+      settings: {
+        "Grind (Acaia Orbit SSP V3)": "7.2–7.4",
+        "Water Temp": "93–95°C / 199–203°F",
+        "Dose": "24g",
+        "Water": "400g",
+        "Ratio": "1:16.7 (Hoffmann 60g/L)",
+        "Bloom": "48g / 45s",
+        "Target Drawdown": "3:15–3:45"
+      },
+      notes: "Natural process at moderate altitude — slightly coarser and cooler than high-altitude washed coffees. Expect juicy tropical fruit and syrupy sweetness. If flat, go finer; if harsh, cool water down.",
+      status: "next", statusLabel: "Not Yet Tried"
+    },
+    aeropress: {
+      settings: {
+        "Grind (Acaia Orbit SSP V3)": "5.5–6.0",
+        "Water Temp": "93°C / 199°F",
+        "Dose": "18g",
+        "Water": "200g",
+        "Method": "Inverted",
+        "Steep Time": "1:45–2:00",
+        "Press Time": "0:30"
+      },
+      notes: "Natural process should produce a concentrated, fruity AeroPress cup. Moderate steep time — naturals can over-extract quickly. Expect big fruit and body.",
+      status: "next", statusLabel: "Not Yet Tried"
+    }
+  }
+];
+
+const statusClass = { dialing: "status-dialing", dialed: "status-dialed", next: "status-next" };
+let activeMethod = "espresso";
+let searchTerm = "";
+
+const compareHeaders = {
+  espresso: ["Coffee", "Grind", "Temp", "Yield", "Time", "Status"],
+  v60: ["Coffee", "Grind", "Temp", "Dose/Water", "Drawdown", "Status"],
+  aeropress: ["Coffee", "Grind", "Temp", "Dose/Water", "Steep", "Status"]
+};
+
+function getCompareValues(c, method) {
+  const d = c[method];
+  if (method === "espresso") {
+    return [d.settings["Grind (Acaia Orbit SSP V3)"], d.settings["Brew Temp"], d.settings["Yield"], d.settings["Total Shot Time"]];
+  } else if (method === "v60") {
+    return [d.settings["Grind (Acaia Orbit SSP V3)"], d.settings["Water Temp"], d.settings["Dose"] + " / " + d.settings["Water"], d.settings["Target Drawdown"]];
+  } else {
+    return [d.settings["Grind (Acaia Orbit SSP V3)"], d.settings["Water Temp"], d.settings["Dose"] + " / " + d.settings["Water"], d.settings["Steep Time"]];
+  }
+}
+
+function matchesSearch(c) {
+  if (!searchTerm) return true;
+  const s = searchTerm.toLowerCase();
+  const haystack = [c.name, c.roaster, c.meta, ...c.tags].join(" ").toLowerCase();
+  return haystack.includes(s);
+}
+
+function scrollToCard(id) {
+  const el = document.getElementById("card-" + id);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("highlight");
+    setTimeout(() => el.classList.remove("highlight"), 1500);
+  }
+}
+
+function render(method) {
+  activeMethod = method;
+  const methodLabel = method === "v60" ? "V60" : method === "aeropress" ? "AeroPress" : "Espresso";
+
+  document.querySelectorAll(".tab").forEach(t => {
+    t.classList.toggle("active", t.dataset.method === method);
+  });
+
+  const filtered = coffees.filter(matchesSearch);
+
+  // Compare
+  document.getElementById("compare-title").textContent = "Quick Compare — " + methodLabel;
+  const thead = document.getElementById("compare-head");
+  thead.innerHTML = "<tr>" + compareHeaders[method].map(h => `<th>${h}</th>`).join("") + "</tr>";
+
+  const tbody = document.getElementById("compare-body");
+  tbody.innerHTML = "";
+  filtered.forEach(c => {
+    const d = c[method];
+    const vals = getCompareValues(c, method);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="compare-link" data-id="${c.id}"><strong>${c.name}</strong><br/><span style="color:#aaa;font-size:10px">${c.roaster}</span></td>
+      ${vals.map(v => `<td>${v}</td>`).join("")}
+      <td><span class="status-badge ${statusClass[d.status]}">${d.statusLabel}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Add click handlers to compare links
+  document.querySelectorAll(".compare-link").forEach(el => {
+    el.addEventListener("click", () => scrollToCard(el.dataset.id));
+  });
+
+  // Cards
+  const grid = document.getElementById("cards-grid");
+  grid.innerHTML = "";
+  const noResults = document.getElementById("no-results");
+
+  if (filtered.length === 0) {
+    noResults.style.display = "block";
+  } else {
+    noResults.style.display = "none";
+  }
+
+  filtered.forEach(c => {
+    const d = c[method];
+    const card = document.createElement("div");
+    card.className = "card";
+    card.id = "card-" + c.id;
+    const settingRows = Object.entries(d.settings)
+      .map(([k, v]) => `<div class="setting-row"><span class="setting-label">${k}</span><span class="setting-value">${v}</span></div>`)
+      .join("");
+    const tags = c.tags.map(t => `<span class="tag">${t}</span>`).join("");
+    card.innerHTML = `
+      <div class="card-header" style="background:${c.color}">
+        <div class="card-roaster">${c.roaster}</div>
+        <div class="card-name">${c.name}</div>
+        <div class="card-meta">${c.meta}</div>
+      </div>
+      <div class="card-body">${settingRows}</div>
+      <div class="notes-section">
+        <div class="notes-label">Notes</div>
+        ${d.notes}
+        <br/><div style="margin-top:6px">${tags}<span class="status-badge ${statusClass[d.status]}">${d.statusLabel}</span></div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// Tab clicks
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => render(tab.dataset.method));
+});
+
+// Search
+document.getElementById("search-input").addEventListener("input", (e) => {
+  searchTerm = e.target.value;
+  render(activeMethod);
+});
+
+// Initial render
+render("espresso");
+</script>
+</body>
+</html>
