@@ -463,24 +463,24 @@
     100% { transform: translate(-6px, -54px) scale(0.45); opacity: 0; }
   }
 
-  /* Iridescent crema shimmer — applied to AI panel + primary buttons on hover */
+  /* Iridescent crema shimmer — applied to AI panel */
   .ai-panel {
     position: relative; overflow: hidden;
-    background:
-      linear-gradient(135deg, #fff9f0, #fff5e6);
+    background: linear-gradient(135deg, #fff9f0, #fff5e6);
   }
+  /* Layer 1: slow prismatic gradient sweep */
   .ai-panel::after {
     content: "";
     position: absolute; inset: -2px;
     background: linear-gradient(
       110deg,
       transparent 0%,
-      rgba(212,165,116,0.0) 30%,
-      rgba(212,165,116,0.18) 45%,
-      rgba(180,140,200,0.14) 50%,
-      rgba(180,200,140,0.14) 55%,
-      rgba(212,165,116,0.18) 60%,
-      transparent 80%
+      rgba(212,165,116,0.0) 25%,
+      rgba(212,165,116,0.22) 42%,
+      rgba(180,140,200,0.16) 48%,
+      rgba(140,200,180,0.16) 52%,
+      rgba(220,180,120,0.22) 58%,
+      transparent 82%
     );
     background-size: 250% 100%;
     animation: iridescentShift 7s ease-in-out infinite;
@@ -492,6 +492,37 @@
     50%  { background-position: 150% 0%; }
     100% { background-position: -50% 0%; }
   }
+
+  /* Layer 2: glitter sparkles — twinkling imperfections like crema oils */
+  .glitter-overlay {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0.85;
+  }
+  .glitter-overlay svg { width: 100%; height: 100%; display: block; }
+  .sparkle { fill: #ffffff; opacity: 0; transform-origin: center; transform-box: fill-box; }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0; transform: scale(0.4); }
+    20% { opacity: 0.95; transform: scale(1.4); }
+    35% { opacity: 0.3; transform: scale(0.7); }
+    55% { opacity: 0.7; transform: scale(1.2); }
+    100% { opacity: 0; transform: scale(0.4); }
+  }
+  .sparkle.s1  { animation: twinkle 3.2s ease-in-out 0s    infinite; fill: #ffffff; }
+  .sparkle.s2  { animation: twinkle 2.6s ease-in-out 0.4s  infinite; fill: #fff5e0; }
+  .sparkle.s3  { animation: twinkle 3.8s ease-in-out 1.1s  infinite; fill: #ffeec8; }
+  .sparkle.s4  { animation: twinkle 2.9s ease-in-out 0.8s  infinite; fill: #ffffff; }
+  .sparkle.s5  { animation: twinkle 4.1s ease-in-out 1.6s  infinite; fill: #fce0c0; }
+  .sparkle.s6  { animation: twinkle 3.4s ease-in-out 2.2s  infinite; fill: #ffffff; }
+  .sparkle.s7  { animation: twinkle 2.4s ease-in-out 0.2s  infinite; fill: #ffe5b8; }
+  .sparkle.s8  { animation: twinkle 3.6s ease-in-out 1.4s  infinite; fill: #ffffff; }
+  .sparkle.s9  { animation: twinkle 2.8s ease-in-out 2.0s  infinite; fill: #fff0d0; }
+  .sparkle.s10 { animation: twinkle 4.0s ease-in-out 0.6s  infinite; fill: #ffffff; }
+  .sparkle.s11 { animation: twinkle 3.0s ease-in-out 1.8s  infinite; fill: #ffd9a8; }
+  .sparkle.s12 { animation: twinkle 2.7s ease-in-out 0.9s  infinite; fill: #ffffff; }
+  .sparkle.s13 { animation: twinkle 3.5s ease-in-out 2.4s  infinite; fill: #fff0d0; }
+  .sparkle.s14 { animation: twinkle 2.5s ease-in-out 1.3s  infinite; fill: #ffffff; }
 
   .icon-btn.primary {
     position: relative; overflow: hidden;
@@ -531,29 +562,64 @@
     transform-origin: top;
   }
 
-  /* Coffee drip spinner — replaces generic ring for AI loading */
+  /* Coffee drip — tall, elegant silhouette tinted in espresso/ochre tones */
   .coffee-drip {
-    display: inline-block; width: 18px; height: 18px;
-    vertical-align: middle; margin-right: 8px;
+    display: inline-block;
+    width: 26px; height: 56px;
+    vertical-align: middle;
+    margin-right: 10px;
+    overflow: visible;
   }
-  .coffee-drip .drop {
-    transform-origin: 12px 4px;
-    animation: dripFall 1.4s cubic-bezier(.45,.05,.55,.95) infinite;
+  /* The bead: forms at the spout, swells, detaches, stretches as it falls */
+  .cd-bead {
+    transform-origin: 50% 0%;
+    transform-box: fill-box;
+    animation: cdBeadFall 1.7s cubic-bezier(.55,.08,.45,.99) infinite;
   }
-  @keyframes dripFall {
-    0%   { transform: translateY(0)    scaleY(0.85); opacity: 0; }
-    20%  { transform: translateY(0)    scaleY(1.1);  opacity: 1; }
-    70%  { transform: translateY(14px) scaleY(0.6);  opacity: 0.85; }
-    100% { transform: translateY(20px) scaleY(0.3);  opacity: 0; }
+  @keyframes cdBeadFall {
+    0%   { transform: translateY(0)    scaleY(0.45) scaleX(0.85); opacity: 0; }
+    8%   { opacity: 0.8; }
+    18%  { transform: translateY(0)    scaleY(1.0)  scaleX(1.0);  opacity: 1; }
+    35%  { transform: translateY(8px)  scaleY(1.25) scaleX(0.85); }   /* elongate as it pulls away */
+    62%  { transform: translateY(34px) scaleY(1.1)  scaleX(0.95); }
+    72%  { transform: translateY(40px) scaleY(0.55) scaleX(1.35); opacity: 1; }  /* squash on impact */
+    78%  { transform: translateY(40px) scaleY(0.3)  scaleX(1.5);  opacity: 0.4; }
+    85%, 100% { transform: translateY(40px) scaleY(0); opacity: 0; }
   }
-  .coffee-drip .puddle {
+  /* The trail thread connecting bead to spout, stretches and snaps */
+  .cd-trail {
+    transform-origin: 50% 0%;
+    transform-box: fill-box;
+    animation: cdTrail 1.7s ease-in infinite;
+  }
+  @keyframes cdTrail {
+    0%, 12%   { transform: scaleY(0); opacity: 0; }
+    25%       { transform: scaleY(0.6); opacity: 0.5; }
+    45%       { transform: scaleY(1.6); opacity: 0.35; }
+    60%       { transform: scaleY(2.2); opacity: 0.15; }
+    65%, 100% { transform: scaleY(0); opacity: 0; }
+  }
+  /* The pool absorbs the impact: brief squash + ripple */
+  .cd-pool {
     transform-origin: center;
-    animation: puddleRipple 1.4s ease-out infinite;
+    transform-box: fill-box;
+    animation: cdPool 1.7s ease-out infinite;
   }
-  @keyframes puddleRipple {
-    0%, 60%  { transform: scale(0.6); opacity: 0; }
-    75%      { transform: scale(1.1); opacity: 0.7; }
-    100%     { transform: scale(1.4); opacity: 0; }
+  @keyframes cdPool {
+    0%, 70%  { transform: scaleY(1) scaleX(1); }
+    74%      { transform: scaleY(0.45) scaleX(1.18); }
+    82%      { transform: scaleY(1.15) scaleX(0.92); }
+    92%, 100% { transform: scaleY(1) scaleX(1); }
+  }
+  .cd-ripple {
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: cdRipple 1.7s ease-out infinite;
+  }
+  @keyframes cdRipple {
+    0%, 70% { transform: scale(0.5); opacity: 0; }
+    78%     { transform: scale(0.85); opacity: 0.85; }
+    100%    { transform: scale(2.4); opacity: 0; }
   }
 
   /* Tab content fade — each render gives a gentle entrance */
@@ -596,12 +662,33 @@
 </head>
 <body class="loading">
 
-<!-- Loading splash with coffee-drip spinner -->
+<!-- Loading splash with elegant coffee-drip silhouette -->
 <div class="splash" id="splash">
   <div class="splash-spin">
-    <svg class="coffee-drip" style="width:36px;height:48px" viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
-      <ellipse class="drop" cx="12" cy="6" rx="3" ry="4" fill="#5c2e0a"/>
-      <ellipse class="puddle" cx="12" cy="26" rx="6" ry="2" fill="#5c2e0a"/>
+    <svg class="coffee-drip" style="width:52px;height:112px" viewBox="0 0 26 56" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="splash-bead-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#3a1c0a"/>
+          <stop offset="55%" stop-color="#6b3a16"/>
+          <stop offset="100%" stop-color="#8c5424"/>
+        </linearGradient>
+        <radialGradient id="splash-bead-hi" cx="35%" cy="30%" r="40%">
+          <stop offset="0%" stop-color="rgba(255,210,160,0.65)"/>
+          <stop offset="100%" stop-color="rgba(255,210,160,0)"/>
+        </radialGradient>
+        <linearGradient id="splash-pool-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#5c2c0e"/>
+          <stop offset="100%" stop-color="#3a1c0a"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="13" cy="2" rx="2.4" ry="0.8" fill="#3a1c0a" opacity="0.55"/>
+      <rect class="cd-trail" x="12.2" y="2" width="1.6" height="6" rx="0.8" fill="#3a1c0a" opacity="0.55"/>
+      <g class="cd-bead">
+        <path d="M 13 0 C 16.6 4.5, 18.4 9.8, 18.4 14 C 18.4 17.6, 16 19.8, 13 19.8 C 10 19.8, 7.6 17.6, 7.6 14 C 7.6 9.8, 9.4 4.5, 13 0 Z" fill="url(#splash-bead-grad)"/>
+        <ellipse cx="11" cy="9" rx="1.6" ry="2.4" fill="url(#splash-bead-hi)"/>
+      </g>
+      <ellipse class="cd-pool" cx="13" cy="50" rx="9" ry="2.4" fill="url(#splash-pool-grad)"/>
+      <ellipse class="cd-ripple" cx="13" cy="50" rx="6" ry="1.6" fill="none" stroke="#6b3a16" stroke-width="0.7" opacity="0"/>
     </svg>
   </div>
 </div>
@@ -824,6 +911,24 @@
     <div class="modal-body">
       <div class="modal-error-banner hidden" id="edit-error-banner"></div>
       <div class="ai-panel" id="ai-create-panel">
+        <div class="glitter-overlay" aria-hidden="true">
+          <svg viewBox="0 0 200 100" preserveAspectRatio="xMidYMid slice">
+            <circle class="sparkle s1"  cx="12"  cy="22" r="0.7"/>
+            <circle class="sparkle s2"  cx="38"  cy="58" r="0.5"/>
+            <circle class="sparkle s3"  cx="62"  cy="14" r="0.6"/>
+            <circle class="sparkle s4"  cx="85"  cy="78" r="0.45"/>
+            <circle class="sparkle s5"  cx="108" cy="36" r="0.7"/>
+            <circle class="sparkle s6"  cx="130" cy="68" r="0.5"/>
+            <circle class="sparkle s7"  cx="155" cy="20" r="0.6"/>
+            <circle class="sparkle s8"  cx="178" cy="48" r="0.55"/>
+            <circle class="sparkle s9"  cx="22"  cy="80" r="0.5"/>
+            <circle class="sparkle s10" cx="48"  cy="32" r="0.4"/>
+            <circle class="sparkle s11" cx="72"  cy="88" r="0.6"/>
+            <circle class="sparkle s12" cx="118" cy="8"  r="0.45"/>
+            <circle class="sparkle s13" cx="142" cy="50" r="0.5"/>
+            <circle class="sparkle s14" cx="165" cy="86" r="0.55"/>
+          </svg>
+        </div>
         <div class="ai-panel-title">✨ AI assist — generate from coffee details</div>
         <p class="field-help" style="margin-bottom:10px;">Tell me the coffee (e.g. "Onyx Geometry, Ethiopia Hambela, washed, light roast") and I'll fill in starting recipes. With Anthropic, I'll search the web for the roaster's profile.</p>
         <div class="field" style="margin-bottom:8px;">
@@ -1319,8 +1424,36 @@ function escapeAttr(s) {
   return String(s).replace(/[&"'<>`]/g, ch => ({"&":"&amp;","\"":"&quot;","'":"&#39;","<":"&lt;",">":"&gt;","`":"&#96;"}[ch]));
 }
 
-// Coffee-drip spinner — reused for all AI loading states
-const COFFEE_SPINNER = `<svg class="coffee-drip" viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse class="drop" cx="12" cy="6" rx="3" ry="4" fill="#5c2e0a"/><ellipse class="puddle" cx="12" cy="26" rx="6" ry="2" fill="#5c2e0a"/></svg>`;
+// Coffee-drip spinner — tall teardrop silhouette, coffee-tinted
+const COFFEE_SPINNER = `<svg class="coffee-drip" viewBox="0 0 26 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <linearGradient id="cd-bead-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3a1c0a"/>
+      <stop offset="55%" stop-color="#6b3a16"/>
+      <stop offset="100%" stop-color="#8c5424"/>
+    </linearGradient>
+    <radialGradient id="cd-bead-hi" cx="35%" cy="30%" r="40%">
+      <stop offset="0%" stop-color="rgba(255,210,160,0.65)"/>
+      <stop offset="100%" stop-color="rgba(255,210,160,0)"/>
+    </radialGradient>
+    <linearGradient id="cd-pool-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5c2c0e"/>
+      <stop offset="100%" stop-color="#3a1c0a"/>
+    </linearGradient>
+  </defs>
+  <!-- spout mark -->
+  <ellipse cx="13" cy="2" rx="2.4" ry="0.8" fill="#3a1c0a" opacity="0.55"/>
+  <!-- thin trail thread -->
+  <rect class="cd-trail" x="12.2" y="2" width="1.6" height="6" rx="0.8" fill="#3a1c0a" opacity="0.55"/>
+  <!-- bead: teardrop shape -->
+  <g class="cd-bead">
+    <path d="M 13 0 C 16.6 4.5, 18.4 9.8, 18.4 14 C 18.4 17.6, 16 19.8, 13 19.8 C 10 19.8, 7.6 17.6, 7.6 14 C 7.6 9.8, 9.4 4.5, 13 0 Z" fill="url(#cd-bead-grad)"/>
+    <ellipse cx="11" cy="9" rx="1.6" ry="2.4" fill="url(#cd-bead-hi)"/>
+  </g>
+  <!-- pool at bottom -->
+  <ellipse class="cd-pool" cx="13" cy="50" rx="9" ry="2.4" fill="url(#cd-pool-grad)"/>
+  <ellipse class="cd-ripple" cx="13" cy="50" rx="6" ry="1.6" fill="none" stroke="#6b3a16" stroke-width="0.7" opacity="0"/>
+</svg>`;
 
 function render(method) {
   state.activeMethod = method;
