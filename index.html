@@ -31,7 +31,7 @@
     position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
     background: var(--bg); z-index: 1000; transition: opacity 0.3s;
   }
-  .splash.hidden { opacity: 0; pointer-events: none; }
+  .splash.hidden { opacity: 0; pointer-events: none; visibility: hidden; }
   .splash-spin {
     width: 36px; height: 36px;
     border: 3px solid #e0d0b0; border-top-color: var(--accent);
@@ -304,6 +304,17 @@
   .field-help { font-size: 11px; color: #999; margin-top: 4px; line-height: 1.4; }
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
+  /* Validation errors */
+  .field.has-error input, .field.has-error textarea, .field.has-error select,
+  .field.has-error .custom-select-current { border-color: #b54040; background: #fdf6f6; }
+  .field-error { color: #b54040; font-size: 11px; margin-top: 4px; font-weight: 500; }
+  .modal-error-banner {
+    background: #fdecea; border: 1px solid #f5c4c0; color: #8a2828;
+    padding: 10px 14px; border-radius: 8px; font-size: 12.5px;
+    margin-bottom: 14px; line-height: 1.45;
+  }
+  .modal-error-banner.hidden { display: none; }
+
   .settings-section { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
   .settings-section:last-child { border-bottom: none; }
   .settings-section h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #444; margin-bottom: 10px; }
@@ -314,6 +325,51 @@
     color: #888; cursor: pointer; border-radius: 6px; transition: all 0.15s;
   }
   .editor-tab.active { background: white; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+  /* Custom dropdown */
+  .custom-select { position: relative; }
+  .custom-select-current {
+    padding: 9px 32px 9px 11px;
+    background: white; border: 1px solid #ddd; border-radius: 7px;
+    font-size: 13px; cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat; background-position: right 10px center; background-size: 12px;
+    transition: border-color 0.15s;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .custom-select.open .custom-select-current { border-color: var(--accent); }
+  .custom-select-list {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: white; border: 1px solid #e0d0b0; border-radius: 7px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+    z-index: 110; max-height: 240px; overflow-y: auto;
+    padding: 4px;
+  }
+  .custom-select-option {
+    padding: 8px 11px; font-size: 13px; cursor: pointer;
+    border-radius: 5px; transition: background 0.1s, color 0.1s;
+  }
+  .custom-select-option:hover { background: var(--accent-soft); color: var(--ink); }
+  .custom-select-option.selected { background: var(--accent); color: white; font-weight: 600; }
+  .custom-select-option.selected:hover { background: var(--accent); color: white; }
+  .custom-select select { display: none; }
+
+  /* Setting row delete button */
+  .setting-edit-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 28px;
+    gap: 10px;
+    align-items: end;
+    margin-bottom: 10px;
+  }
+  .setting-edit-row .field { margin-bottom: 0; }
+  .setting-del-btn {
+    width: 28px; height: 36px; border: 1px solid #e8d8d8; background: #fdf6f6;
+    color: #b54040; border-radius: 7px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 16px; line-height: 1; transition: all 0.15s;
+  }
+  .setting-del-btn:hover { background: #f8d8d8; border-color: #b54040; }
 
   .ai-panel {
     background: linear-gradient(135deg, #fff9f0, #fff5e6);
@@ -446,6 +502,55 @@
 
 </div><!-- /app-root -->
 
+<!-- Onboarding Modal -->
+<div class="modal-backdrop hidden" id="onboarding-modal">
+  <div class="modal" style="max-width: 560px;">
+    <div class="modal-head">
+      <h2>Welcome to Coffee Brew Tracker ☕</h2>
+      <button class="modal-close" onclick="skipOnboarding()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 18px;">Tell me about your setup and taste so AI suggestions match what you actually have. You can change any of this later in Settings.</p>
+
+      <div class="settings-section">
+        <h3>Your gear</h3>
+        <div class="field-row">
+          <div class="field"><label>Grinder</label><input type="text" id="onb-grinder" placeholder="e.g. Acaia Orbit, Niche Zero, DF64" /></div>
+          <div class="field"><label>Burrs</label><input type="text" id="onb-burrs" placeholder="e.g. SSP Lab Sweet V3" /></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Espresso machine (optional)</label><input type="text" id="onb-machine" placeholder="Decent DE1, Lelit Bianca…" /></div>
+          <div class="field"><label>Portafilter / basket</label><input type="text" id="onb-portafilter" placeholder="IMS 18g High-Flow…" /></div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Style</h3>
+        <div class="field">
+          <label>Units</label>
+          <select id="onb-units">
+            <option value="metric">Metric (g, °C, ml)</option>
+            <option value="imperial">Imperial (oz, °F, fl oz)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Influencers you follow (optional)</label>
+          <input type="text" id="onb-influencers" placeholder="James Hoffmann, Lance Hedrick, Jonathan Gagné…" />
+          <p class="field-help">AI will lean toward their published methods when generating recipes.</p>
+        </div>
+        <div class="field">
+          <label>What kind of coffee do you like?</label>
+          <textarea id="onb-prefs" placeholder="e.g. I prefer bright washed light roasts. Espresso target 1:2.7 in 35s. Like fruit-forward over chocolatey."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="icon-btn" onclick="skipOnboarding()">Skip for now</button>
+      <button class="icon-btn primary" onclick="finishOnboarding()">Save & start</button>
+    </div>
+  </div>
+</div>
+
 <!-- Settings Modal -->
 <div class="modal-backdrop hidden" id="settings-modal">
   <div class="modal">
@@ -454,6 +559,36 @@
       <button class="modal-close" onclick="closeModal('settings-modal')">✕</button>
     </div>
     <div class="modal-body">
+      <div class="settings-section">
+        <h3>Your equipment</h3>
+        <div class="field-row">
+          <div class="field"><label>Grinder</label><input type="text" id="eq-grinder" placeholder="e.g. Acaia Orbit, Niche Zero, DF64" /></div>
+          <div class="field"><label>Burrs</label><input type="text" id="eq-burrs" placeholder="e.g. SSP Lab Sweet V3, stock conical" /></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Espresso machine</label><input type="text" id="eq-machine" placeholder="e.g. Decent DE1, Lelit Bianca, La Marzocco GS3" /></div>
+          <div class="field"><label>Portafilter / basket</label><input type="text" id="eq-portafilter" placeholder="e.g. IMS 18g Precision High-Flow" /></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Scale</label><input type="text" id="eq-scale" placeholder="e.g. Acaia Lunar, Felicita Arc" /></div>
+          <div class="field"><label>Kettle</label><input type="text" id="eq-kettle" placeholder="e.g. Fellow Stagg EKG" /></div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Units</label>
+            <select id="units-pref">
+              <option value="metric">Metric (g, °C, ml)</option>
+              <option value="imperial">Imperial (oz, °F, fl oz)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Influencers you trust</label>
+            <input type="text" id="eq-influencers" placeholder="James Hoffmann, Lance Hedrick, Jonathan Gagné" />
+          </div>
+        </div>
+        <p class="field-help" style="margin-top: 4px;">Used by AI to tailor recommendations to your setup and style.</p>
+      </div>
+
       <div class="settings-section">
         <h3>AI provider</h3>
         <div class="field">
@@ -498,6 +633,7 @@
       <button class="modal-close" onclick="closeModal('edit-modal')">✕</button>
     </div>
     <div class="modal-body">
+      <div class="modal-error-banner hidden" id="edit-error-banner"></div>
       <div class="ai-panel" id="ai-create-panel">
         <div class="ai-panel-title">✨ AI assist — generate from coffee details</div>
         <p class="field-help" style="margin-bottom:10px;">Tell me the coffee (e.g. "Onyx Geometry, Ethiopia Hambela, washed, light roast") and I'll fill in starting recipes. With Anthropic, I'll search the web for the roaster's profile.</p>
@@ -512,8 +648,8 @@
       </div>
 
       <div class="field-row">
-        <div class="field"><label>Roaster</label><input type="text" id="ed-roaster" /></div>
-        <div class="field"><label>Coffee name</label><input type="text" id="ed-name" /></div>
+        <div class="field" id="field-roaster"><label>Roaster</label><input type="text" id="ed-roaster" /></div>
+        <div class="field" id="field-name"><label>Coffee name <span style="color:#b54040">*</span></label><input type="text" id="ed-name" required /></div>
       </div>
       <div class="field-row">
         <div class="field"><label>Meta line</label><input type="text" id="ed-meta" placeholder="origin · process · altitude…" /></div>
@@ -590,7 +726,13 @@ const LOCAL_KEY = "coffee-tracker-local-v3";  // ai key + provider only
 
 let state = {
   user: null,
-  data: { preferences: "", coffees: [] },
+  data: {
+    preferences: "",
+    coffees: [],
+    equipment: { grinder: "", burrs: "", machine: "", portafilter: "", scale: "", kettle: "", influencers: [] },
+    units: "metric",
+    onboardingComplete: false
+  },
   settings: { aiProvider: "anthropic", aiKey: "" },  // browser-only
   activeMethod: "espresso",
   searchTerm: "",
@@ -646,27 +788,44 @@ function saveLocal() {
 async function init() {
   loadLocal();
 
+  // Bind events FIRST so buttons are always responsive even if auth/db fails
+  bindEvents();
+
+  // Global error visibility
+  window.addEventListener("error", e => {
+    console.error("Global error:", e.error || e.message);
+    toast("Error: " + (e.message || "Something went wrong"), "error");
+  });
+  window.addEventListener("unhandledrejection", e => {
+    console.error("Unhandled rejection:", e.reason);
+    toast("Error: " + (e.reason?.message || e.reason || "Async error"), "error");
+  });
+
   // Watch session changes
   sb.auth.onAuthStateChange(async (event, session) => {
+    try {
+      if (session?.user) {
+        state.user = session.user;
+        await onSignedIn();
+      } else {
+        state.user = null;
+        onSignedOut();
+      }
+    } catch (e) { console.error("auth state change handler:", e); onSignedOut(); }
+  });
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
     if (session?.user) {
       state.user = session.user;
       await onSignedIn();
     } else {
-      state.user = null;
       onSignedOut();
     }
-  });
-
-  // Check current session on load
-  const { data: { session } } = await sb.auth.getSession();
-  if (session?.user) {
-    state.user = session.user;
-    await onSignedIn();
-  } else {
+  } catch (e) {
+    console.error("init auth check:", e);
     onSignedOut();
   }
-
-  bindEvents();
 }
 
 async function onSignedIn() {
@@ -682,7 +841,13 @@ async function onSignedIn() {
 
   await loadFromDb();
   render(state.activeMethod);
-  subscribeToChanges();
+
+  try { subscribeToChanges(); } catch (e) { console.warn("realtime subscribe:", e); }
+
+  // First-time user → onboarding
+  if (!state.data.onboardingComplete) {
+    setTimeout(() => openOnboarding(), 250);
+  }
 }
 
 function onSignedOut() {
@@ -778,11 +943,22 @@ async function handleGoogleLogin() {
 async function loadFromDb() {
   if (!state.user) return;
   try {
-    // Profile
-    const { data: profile, error: pErr } = await sb.from("user_profiles").select("preferences, ai_provider").eq("user_id", state.user.id).maybeSingle();
+    // Profile (request all fields; tolerate missing equipment columns gracefully)
+    const { data: profile, error: pErr } = await sb.from("user_profiles").select("*").eq("user_id", state.user.id).maybeSingle();
     if (pErr) console.warn("profile load:", pErr.message);
     state.data.preferences = profile?.preferences || "";
     if (profile?.ai_provider) state.settings.aiProvider = profile.ai_provider;
+    state.data.equipment = {
+      grinder: profile?.grinder || "",
+      burrs: profile?.burr_type || "",
+      machine: profile?.espresso_machine || "",
+      portafilter: profile?.portafilter || "",
+      scale: profile?.scale || "",
+      kettle: profile?.kettle || "",
+      influencers: profile?.followed_influencers || []
+    };
+    state.data.units = profile?.units_pref || "metric";
+    state.data.onboardingComplete = !!profile?.onboarding_complete;
 
     // Coffees
     const { data: rows, error: cErr } = await sb.from("coffees").select("*").eq("user_id", state.user.id).order("position", { ascending: true });
@@ -830,17 +1006,35 @@ function coffeeToRow(c) {
 
 async function upsertCoffee(c) {
   const row = coffeeToRow(c);
-  const { data, error } = await sb.from("coffees").upsert(row, { onConflict: "id" }).select().single();
-  if (error) throw error;
-  return rowToCoffee(data);
+  if (c.id) {
+    const { data, error } = await sb.from("coffees").update(row).eq("id", c.id).select().single();
+    if (error) throw error;
+    return rowToCoffee(data);
+  } else {
+    const { data, error } = await sb.from("coffees").insert(row).select().single();
+    if (error) throw error;
+    return rowToCoffee(data);
+  }
 }
 async function deleteCoffeeRow(id) {
   const { error } = await sb.from("coffees").delete().eq("id", id);
   if (error) throw error;
 }
 async function saveProfile(patch) {
+  // Tolerate missing equipment columns: drop unknown fields if Postgres complains
   const { error } = await sb.from("user_profiles").update(patch).eq("user_id", state.user.id);
-  if (error) throw error;
+  if (error) {
+    // If schema migration hasn't been applied yet, retry with only safe fields
+    if (/column .* does not exist/i.test(error.message)) {
+      const safe = {};
+      for (const k of ["preferences", "ai_provider", "display_name"]) if (k in patch) safe[k] = patch[k];
+      const { error: e2 } = await sb.from("user_profiles").update(safe).eq("user_id", state.user.id);
+      if (e2) throw e2;
+      console.warn("Equipment columns not yet migrated — saved partial profile");
+      return;
+    }
+    throw error;
+  }
 }
 
 // ============================================================
@@ -980,19 +1174,108 @@ function openSettingsModal() {
   document.getElementById("ai-provider").value = state.settings.aiProvider;
   document.getElementById("ai-key").value = state.settings.aiKey;
   document.getElementById("taste-prefs").value = state.data.preferences || "";
+  // Equipment
+  const eq = state.data.equipment || {};
+  document.getElementById("eq-grinder").value = eq.grinder || "";
+  document.getElementById("eq-burrs").value = eq.burrs || "";
+  document.getElementById("eq-machine").value = eq.machine || "";
+  document.getElementById("eq-portafilter").value = eq.portafilter || "";
+  document.getElementById("eq-scale").value = eq.scale || "";
+  document.getElementById("eq-kettle").value = eq.kettle || "";
+  document.getElementById("eq-influencers").value = (eq.influencers || []).join(", ");
+  document.getElementById("units-pref").value = state.data.units || "metric";
   document.getElementById("account-info").textContent = `Signed in as ${state.user.email}.`;
   showModal("settings-modal");
+  // Upgrade native selects to custom
+  upgradeSelect(document.getElementById("ai-provider"));
+  upgradeSelect(document.getElementById("units-pref"));
 }
 async function saveSettings() {
   state.settings.aiProvider = document.getElementById("ai-provider").value;
   state.settings.aiKey = document.getElementById("ai-key").value.trim();
   state.data.preferences = document.getElementById("taste-prefs").value.trim();
+  state.data.equipment = {
+    grinder: document.getElementById("eq-grinder").value.trim(),
+    burrs: document.getElementById("eq-burrs").value.trim(),
+    machine: document.getElementById("eq-machine").value.trim(),
+    portafilter: document.getElementById("eq-portafilter").value.trim(),
+    scale: document.getElementById("eq-scale").value.trim(),
+    kettle: document.getElementById("eq-kettle").value.trim(),
+    influencers: document.getElementById("eq-influencers").value.split(",").map(s => s.trim()).filter(Boolean)
+  };
+  state.data.units = document.getElementById("units-pref").value;
   saveLocal();
   try {
-    await saveProfile({ preferences: state.data.preferences, ai_provider: state.settings.aiProvider });
+    await saveProfile({
+      preferences: state.data.preferences,
+      ai_provider: state.settings.aiProvider,
+      grinder: state.data.equipment.grinder,
+      burr_type: state.data.equipment.burrs,
+      espresso_machine: state.data.equipment.machine,
+      portafilter: state.data.equipment.portafilter,
+      scale: state.data.equipment.scale,
+      kettle: state.data.equipment.kettle,
+      followed_influencers: state.data.equipment.influencers,
+      units_pref: state.data.units
+    });
     closeModal("settings-modal");
     toast("Saved", "success");
   } catch (e) { toast("Save failed: " + e.message, "error"); }
+}
+
+// ============================================================
+// Onboarding
+// ============================================================
+function openOnboarding() {
+  const eq = state.data.equipment || {};
+  document.getElementById("onb-grinder").value = eq.grinder || "";
+  document.getElementById("onb-burrs").value = eq.burrs || "";
+  document.getElementById("onb-machine").value = eq.machine || "";
+  document.getElementById("onb-portafilter").value = eq.portafilter || "";
+  document.getElementById("onb-units").value = state.data.units || "metric";
+  document.getElementById("onb-influencers").value = (eq.influencers || []).join(", ");
+  document.getElementById("onb-prefs").value = state.data.preferences || "";
+  showModal("onboarding-modal");
+  upgradeSelect(document.getElementById("onb-units"));
+}
+
+async function finishOnboarding() {
+  state.data.equipment = {
+    grinder: document.getElementById("onb-grinder").value.trim(),
+    burrs: document.getElementById("onb-burrs").value.trim(),
+    machine: document.getElementById("onb-machine").value.trim(),
+    portafilter: document.getElementById("onb-portafilter").value.trim(),
+    scale: state.data.equipment?.scale || "",
+    kettle: state.data.equipment?.kettle || "",
+    influencers: document.getElementById("onb-influencers").value.split(",").map(s => s.trim()).filter(Boolean)
+  };
+  state.data.units = document.getElementById("onb-units").value;
+  state.data.preferences = document.getElementById("onb-prefs").value.trim();
+  state.data.onboardingComplete = true;
+  try {
+    await saveProfile({
+      preferences: state.data.preferences,
+      grinder: state.data.equipment.grinder,
+      burr_type: state.data.equipment.burrs,
+      espresso_machine: state.data.equipment.machine,
+      portafilter: state.data.equipment.portafilter,
+      followed_influencers: state.data.equipment.influencers,
+      units_pref: state.data.units,
+      onboarding_complete: true
+    });
+    closeModal("onboarding-modal");
+    toast("Welcome aboard ☕", "success");
+  } catch (e) {
+    toast("Saved locally — couldn't sync: " + e.message, "error");
+    closeModal("onboarding-modal");
+  }
+}
+
+async function skipOnboarding() {
+  // Mark complete so we don't keep nagging — they can use Settings later
+  state.data.onboardingComplete = true;
+  closeModal("onboarding-modal");
+  try { await saveProfile({ onboarding_complete: true }); } catch (e) { /* ignore */ }
 }
 
 async function deleteAccount() {
@@ -1023,7 +1306,7 @@ async function exportData() {
 // ============================================================
 function openAddModal() {
   state.editingId = null;
-  state.editorMethod = "espresso";
+  state.editorMethod = "v60";
   document.getElementById("edit-modal-title").textContent = "Add coffee";
   ["ed-roaster","ed-name","ed-meta","ed-tags","ai-create-input"].forEach(id => document.getElementById(id).value = "");
   document.getElementById("ed-color").value = "#5c4a3a";
@@ -1032,7 +1315,8 @@ function openAddModal() {
   document.getElementById("ai-create-panel").style.display = "block";
   document.getElementById("ed-delete").style.display = "none";
   state.scratchMethods = { espresso: blankMethod("espresso"), v60: blankMethod("v60"), aeropress: blankMethod("aeropress") };
-  setEditorMethod("espresso");
+  setEditorMethod("v60");
+  clearFormErrors();
   showModal("edit-modal");
 }
 
@@ -1055,16 +1339,42 @@ function openEditModal(id) {
     aeropress: c.aeropress ? structuredClone(c.aeropress) : blankMethod("aeropress")
   };
   setEditorMethod(state.editorMethod);
+  clearFormErrors();
   showModal("edit-modal");
 }
 
 function blankMethod(method) {
   const defaults = {
-    espresso: { "Grind (Acaia Orbit SSP V3)": "", "Brew Temp": "", "Dose": "18g", "Yield": "", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "", "Basket": "IMS 18g Precision High-Flow" },
-    v60: { "Grind (Acaia Orbit SSP V3)": "", "Water Temp": "", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "" },
-    aeropress: { "Grind (Acaia Orbit SSP V3)": "", "Water Temp": "", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "", "Press Time": "0:30" }
+    espresso: {
+      "Grind (Acaia Orbit SSP V3)": "1.3–1.5",
+      "Brew Temp": "204°F",
+      "Dose": "18g",
+      "Yield": "45–50g",
+      "Pressure": "8 bar",
+      "Preinfusion": "10s @ 2–3 bar",
+      "Total Shot Time": "30–35s",
+      "Basket": "IMS 18g Precision High-Flow"
+    },
+    v60: {
+      "Grind (Acaia Orbit SSP V3)": "7.0–7.5",
+      "Water Temp": "94°C / 201°F",
+      "Dose": "24g",
+      "Water": "400g",
+      "Ratio": "1:16.7 (Hoffmann 60g/L)",
+      "Bloom": "48g / 45s",
+      "Target Drawdown": "3:00–3:30"
+    },
+    aeropress: {
+      "Grind (Acaia Orbit SSP V3)": "5.5–6.5",
+      "Water Temp": "92°C / 198°F",
+      "Dose": "18g",
+      "Water": "200g",
+      "Method": "Inverted",
+      "Steep Time": "1:30–2:00",
+      "Press Time": "0:30"
+    }
   };
-  return { settings: defaults[method], notes: "", status: "next", statusLabel: "Not Yet Tried" };
+  return { settings: structuredClone(defaults[method]), notes: "", status: "next", statusLabel: "Not Yet Tried" };
 }
 
 function setEditorMethod(method) {
@@ -1077,20 +1387,96 @@ function setEditorMethod(method) {
 function renderMethodEditor() {
   const m = state.scratchMethods[state.editorMethod];
   let html = "";
-  Object.entries(m.settings).forEach(([k, v]) => {
+  Object.entries(m.settings).forEach(([k, v], idx) => {
     html += `
-      <div class="field-row">
-        <div class="field"><label>Field name</label><input type="text" data-field-key="${escapeHtml(k)}" value="${escapeHtml(k)}" /></div>
-        <div class="field"><label>Value</label><input type="text" data-field-val="${escapeHtml(k)}" value="${escapeHtml(v)}" /></div>
+      <div class="setting-edit-row" data-row-key="${escapeHtml(k)}">
+        <div class="field"><label>${idx===0?"Field name":""}</label><input type="text" data-field-key="${escapeHtml(k)}" value="${escapeHtml(k)}" /></div>
+        <div class="field"><label>${idx===0?"Value":""}</label><input type="text" data-field-val="${escapeHtml(k)}" value="${escapeHtml(v)}" /></div>
+        <button type="button" class="setting-del-btn" title="Remove this field" onclick="deleteSettingRow('${escapeHtml(k).replace(/'/g, "\\'")}')">✕</button>
       </div>`;
   });
   html += `
-    <div class="ai-actions" style="margin-bottom:12px;"><button class="icon-btn" type="button" onclick="addSettingRow()">+ Add field</button></div>
+    <div class="ai-actions" style="margin-bottom:14px; margin-top: 4px;"><button class="icon-btn" type="button" onclick="addSettingRow()">+ Add field</button></div>
     <div class="field"><label>Notes</label><textarea id="ed-notes">${escapeHtml(m.notes || "")}</textarea></div>
     <div class="field"><label>Status</label>
       <select id="ed-status">${STATUS_OPTIONS.map(o => `<option value="${o.value}" ${m.status===o.value?"selected":""}>${o.label}</option>`).join("")}</select>
     </div>`;
   document.getElementById("method-editor").innerHTML = html;
+  // Upgrade native select to custom dropdown
+  upgradeSelect(document.getElementById("ed-status"));
+}
+
+function deleteSettingRow(key) {
+  captureMethodForm();
+  const m = state.scratchMethods[state.editorMethod];
+  delete m.settings[key];
+  renderMethodEditor();
+}
+
+// ============================================================
+// Custom dropdown
+// ============================================================
+function upgradeSelect(selectEl) {
+  if (!selectEl || selectEl.dataset.upgraded === "1") return;
+  selectEl.dataset.upgraded = "1";
+
+  const wrap = document.createElement("div");
+  wrap.className = "custom-select";
+  const current = document.createElement("div");
+  current.className = "custom-select-current";
+  current.tabIndex = 0;
+  const list = document.createElement("div");
+  list.className = "custom-select-list";
+  list.hidden = true;
+
+  function rebuild() {
+    list.innerHTML = "";
+    Array.from(selectEl.options).forEach(opt => {
+      const div = document.createElement("div");
+      div.className = "custom-select-option";
+      if (opt.value === selectEl.value) div.classList.add("selected");
+      div.textContent = opt.textContent;
+      div.dataset.value = opt.value;
+      div.addEventListener("click", () => {
+        selectEl.value = opt.value;
+        selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+        wrap.classList.remove("open");
+        list.hidden = true;
+        rebuild();
+      });
+      list.appendChild(div);
+    });
+    const sel = selectEl.options[selectEl.selectedIndex];
+    current.textContent = sel ? sel.textContent : "—";
+  }
+
+  current.addEventListener("click", e => {
+    e.stopPropagation();
+    document.querySelectorAll(".custom-select.open").forEach(el => {
+      if (el !== wrap) { el.classList.remove("open"); el.querySelector(".custom-select-list").hidden = true; }
+    });
+    const willOpen = list.hidden;
+    list.hidden = !willOpen;
+    wrap.classList.toggle("open", willOpen);
+  });
+
+  current.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") { e.preventDefault(); current.click(); }
+  });
+
+  document.addEventListener("click", e => {
+    if (!wrap.contains(e.target)) {
+      list.hidden = true;
+      wrap.classList.remove("open");
+    }
+  });
+
+  // Insert wrap before select; then move select inside wrap
+  selectEl.parentNode.insertBefore(wrap, selectEl);
+  wrap.appendChild(current);
+  wrap.appendChild(list);
+  wrap.appendChild(selectEl);
+  rebuild();
 }
 
 function captureMethodForm() {
@@ -1121,13 +1507,48 @@ function addSettingRow() {
   renderMethodEditor();
 }
 
+function clearFormErrors() {
+  document.querySelectorAll("#edit-modal .field.has-error").forEach(f => f.classList.remove("has-error"));
+  document.querySelectorAll("#edit-modal .field-error").forEach(e => e.remove());
+  const banner = document.getElementById("edit-error-banner");
+  banner.classList.add("hidden");
+  banner.textContent = "";
+}
+function setFieldError(fieldId, msg) {
+  const f = document.getElementById(fieldId);
+  if (!f) return;
+  f.classList.add("has-error");
+  if (!f.querySelector(".field-error")) {
+    const div = document.createElement("div");
+    div.className = "field-error";
+    div.textContent = msg;
+    f.appendChild(div);
+  }
+  // Focus the input
+  const input = f.querySelector("input,textarea,select");
+  if (input) input.focus();
+}
+function showFormBanner(msg) {
+  const b = document.getElementById("edit-error-banner");
+  b.classList.remove("hidden");
+  b.textContent = msg;
+  document.querySelector("#edit-modal .modal-body").scrollTop = 0;
+}
+
 async function saveCoffee() {
+  clearFormErrors();
   captureMethodForm();
   const name = document.getElementById("ed-name").value.trim();
-  if (!name) { toast("Name is required", "error"); return; }
+  if (!name) { setFieldError("field-name", "Coffee name is required."); return; }
+  if (!state.user) { showFormBanner("You appear to be signed out. Refresh and sign in again."); return; }
+
+  const isEdit = !!state.editingId;
+  const existing = isEdit ? state.data.coffees.find(x => x.id === state.editingId) : null;
+  const slug = isEdit ? existing.slug : (slugify(name) + "-" + Math.random().toString(36).slice(2, 6));
+
   const c = {
     id: state.editingId || undefined,
-    slug: slugify(name),
+    slug,
     roaster: document.getElementById("ed-roaster").value.trim(),
     name,
     meta: document.getElementById("ed-meta").value.trim(),
@@ -1136,11 +1557,16 @@ async function saveCoffee() {
     espresso: state.scratchMethods.espresso,
     v60: state.scratchMethods.v60,
     aeropress: state.scratchMethods.aeropress,
-    position: state.editingId ? (state.data.coffees.find(x => x.id === state.editingId)?.position || 0) : state.data.coffees.length
+    position: isEdit ? (existing?.position || 0) : state.data.coffees.length
   };
+
+  // Disable save button during request
+  const saveBtn = document.querySelector("#edit-modal .modal-foot .icon-btn.primary");
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "Saving…"; }
+
   try {
     const saved = await upsertCoffee(c);
-    if (state.editingId) {
+    if (isEdit) {
       const idx = state.data.coffees.findIndex(x => x.id === state.editingId);
       if (idx >= 0) state.data.coffees[idx] = saved;
     } else {
@@ -1149,7 +1575,20 @@ async function saveCoffee() {
     closeModal("edit-modal");
     render(state.activeMethod);
     toast("Saved", "success");
-  } catch (e) { toast("Save failed: " + e.message, "error"); }
+  } catch (e) {
+    console.error("save failed:", e);
+    let msg = e.message || String(e);
+    if (msg.toLowerCase().includes("duplicate") || msg.includes("23505")) {
+      msg = "A coffee with this slug already exists. Try a slightly different name.";
+    } else if (msg.toLowerCase().includes("rls") || msg.toLowerCase().includes("policy")) {
+      msg = "Permission error — your session may have expired. Refresh and sign in again.";
+    } else if (msg.toLowerCase().includes("network") || msg.toLowerCase().includes("failed to fetch")) {
+      msg = "Couldn't reach the server. Check your connection and try again.";
+    }
+    showFormBanner("Save failed: " + msg);
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "Save"; }
+  }
 }
 
 async function deleteCoffee() {
@@ -1184,10 +1623,26 @@ async function seedExamples() {
 // ============================================================
 // AI calls
 // ============================================================
+function userContextBlock() {
+  const eq = state.data.equipment || {};
+  const lines = [];
+  if (eq.grinder) lines.push(`Grinder: ${eq.grinder}${eq.burrs ? " (" + eq.burrs + ")" : ""}`);
+  if (eq.machine) lines.push(`Espresso machine: ${eq.machine}`);
+  if (eq.portafilter) lines.push(`Portafilter / basket: ${eq.portafilter}`);
+  if (eq.scale) lines.push(`Scale: ${eq.scale}`);
+  if (eq.kettle) lines.push(`Kettle: ${eq.kettle}`);
+  if ((eq.influencers || []).length) lines.push(`Trusted influencers: ${eq.influencers.join(", ")}`);
+  if (state.data.units) lines.push(`Units: ${state.data.units}`);
+  if (state.data.preferences) lines.push(`Taste preferences: ${state.data.preferences}`);
+  if (lines.length === 0) return "";
+  return "\n\nUSER CONTEXT (tailor your answer to this setup):\n" + lines.map(l => "- " + l).join("\n");
+}
+
 async function callAI(systemPrompt, userPrompt, opts = {}) {
   if (!state.settings.aiKey) throw new Error("Set your API key in Settings first.");
-  if (state.settings.aiProvider === "anthropic") return callAnthropic(systemPrompt, userPrompt, opts);
-  return callOpenAI(systemPrompt, userPrompt, opts);
+  const sys = systemPrompt + userContextBlock();
+  if (state.settings.aiProvider === "anthropic") return callAnthropic(sys, userPrompt, opts);
+  return callOpenAI(sys, userPrompt, opts);
 }
 
 async function callAnthropic(systemPrompt, userPrompt, { useWebSearch = false, model = "claude-sonnet-4-6" } = {}) {
@@ -1290,6 +1745,8 @@ function aiCardMode(mode) {
   document.getElementById("ai-modal-output").classList.add("empty");
   document.getElementById("ai-modal-output").innerHTML = "";
   document.getElementById("ai-apply-btn").style.display = "none";
+  const m = document.getElementById("ai-method");
+  if (m) upgradeSelect(m);
 }
 
 function aiCtx() {
@@ -1452,6 +1909,7 @@ window.applyAiSuggestion = applyAiSuggestion;
 window.aiGenerateNew = aiGenerateNew;
 window.aiLookupOnline = aiLookupOnline;
 window.addSettingRow = addSettingRow;
+window.deleteSettingRow = deleteSettingRow;
 window.saveCoffee = saveCoffee;
 window.deleteCoffee = deleteCoffee;
 window.saveSettings = saveSettings;
@@ -1459,6 +1917,8 @@ window.exportData = exportData;
 window.deleteAccount = deleteAccount;
 window.seedExamples = seedExamples;
 window.closeModal = closeModal;
+window.finishOnboarding = finishOnboarding;
+window.skipOnboarding = skipOnboarding;
 
 // Boot
 init();
