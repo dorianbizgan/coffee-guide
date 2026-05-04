@@ -1062,20 +1062,18 @@ async function saveProfile(patch) {
 }
 
 // ============================================================
-// Realtime sync
+// Realtime sync — DISABLED for now (requires per-table publication in
+// Supabase realtime config; can hang the websocket if not configured).
+// Cross-device sync still works on reload. To re-enable later:
+//   - In Supabase dashboard: Database → Replication → enable for `coffees` table
+//   - Then uncomment the body of subscribeToChanges below.
 // ============================================================
 let _channel = null;
 function subscribeToChanges() {
-  unsubscribeFromChanges();
-  _channel = sb.channel("coffees-" + state.user.id)
-    .on("postgres_changes", { event: "*", schema: "public", table: "coffees", filter: `user_id=eq.${state.user.id}` }, () => {
-      // Reload silently
-      loadFromDb().then(() => render(state.activeMethod));
-    })
-    .subscribe();
+  // no-op for now
 }
 function unsubscribeFromChanges() {
-  if (_channel) { sb.removeChannel(_channel); _channel = null; }
+  if (_channel) { try { sb.removeChannel(_channel); } catch (e) {} _channel = null; }
 }
 
 // ============================================================
@@ -1575,6 +1573,16 @@ async function saveCoffee() {
   const name = document.getElementById("ed-name").value.trim();
   if (!name) { setFieldError("field-name", "Coffee name is required."); return; }
   if (!state.user) { showFormBanner("You appear to be signed out. Refresh and sign in again."); return; }
+
+  // Force session check before saving — surfaces stale-token issues fast
+  try {
+    const { data: { session }, error: sErr } = await withTimeout(sb.auth.getSession(), 5000, "Session check");
+    if (sErr || !session) { showFormBanner("Your session has expired. Please sign out and back in."); return; }
+    state.user = session.user;
+  } catch (e) {
+    showFormBanner("Couldn't verify your session: " + e.message + ". Please sign out and back in.");
+    return;
+  }
 
   const isEdit = !!state.editingId;
   const existing = isEdit ? state.data.coffees.find(x => x.id === state.editingId) : null;
