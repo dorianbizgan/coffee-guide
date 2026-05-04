@@ -1037,16 +1037,24 @@ async function deleteCoffeeRow(id) {
   if (error) throw error;
 }
 async function saveProfile(patch) {
-  console.log("[saveProfile] patch:", patch);
-  const { error } = await withTimeout(sb.from("user_profiles").update(patch).eq("user_id", state.user.id), 10000, "Save profile");
+  const fullPatch = { user_id: state.user.id, ...patch };
+  console.log("[saveProfile] upserting:", fullPatch);
+  const { data, error } = await withTimeout(
+    sb.from("user_profiles").upsert(fullPatch, { onConflict: "user_id" }).select(),
+    10000, "Save profile"
+  );
+  console.log("[saveProfile] result:", { data, error });
   if (error) {
     console.warn("[saveProfile] error:", error);
     if (/column .* does not exist/i.test(error.message)) {
-      const safe = {};
+      const safe = { user_id: state.user.id };
       for (const k of ["preferences", "ai_provider", "display_name"]) if (k in patch) safe[k] = patch[k];
-      const { error: e2 } = await withTimeout(sb.from("user_profiles").update(safe).eq("user_id", state.user.id), 10000, "Save profile (fallback)");
+      const { error: e2 } = await withTimeout(
+        sb.from("user_profiles").upsert(safe, { onConflict: "user_id" }).select(),
+        10000, "Save profile (fallback)"
+      );
       if (e2) throw e2;
-      console.warn("Equipment columns not yet migrated — saved partial profile");
+      console.warn("Equipment columns not yet migrated — saved partial profile only (preferences/provider). Run the equipment migration to enable the rest.");
       return;
     }
     throw error;
@@ -1394,7 +1402,11 @@ function blankMethod(method) {
 }
 
 function setEditorMethod(method) {
-  if (state.editorMethod && state.scratchMethods[state.editorMethod]) captureMethodForm();
+  // Only capture from the previous method if we're actually switching tabs.
+  // If we're (re-)setting the same method, the form may not be rendered yet.
+  if (state.editorMethod && state.editorMethod !== method && state.scratchMethods[state.editorMethod]) {
+    captureMethodForm();
+  }
   state.editorMethod = method;
   document.querySelectorAll(".editor-tab").forEach(t => t.classList.toggle("active", t.dataset.method === method));
   renderMethodEditor();
@@ -1497,15 +1509,21 @@ function upgradeSelect(selectEl) {
 
 function captureMethodForm() {
   const m = state.scratchMethods[state.editorMethod];
-  const newSettings = {};
+  if (!m) return;
   const container = document.getElementById("method-editor");
   if (!container) return;
-  container.querySelectorAll(".field-row").forEach(row => {
-    const k = row.querySelector("input[data-field-key]")?.value.trim();
-    const v = row.querySelector("input[data-field-val]")?.value;
-    if (k) newSettings[k] = v;
-  });
-  m.settings = newSettings;
+  const rows = container.querySelectorAll(".setting-edit-row");
+  // Only overwrite settings if the editor has actually rendered rows.
+  // If rows.length is 0, the form hasn't rendered for this method yet — preserve existing settings.
+  if (rows.length > 0) {
+    const newSettings = {};
+    rows.forEach(row => {
+      const k = row.querySelector("input[data-field-key]")?.value.trim();
+      const v = row.querySelector("input[data-field-val]")?.value;
+      if (k) newSettings[k] = v;
+    });
+    m.settings = newSettings;
+  }
   const notesEl = document.getElementById("ed-notes");
   if (notesEl) m.notes = notesEl.value;
   const statusEl = document.getElementById("ed-status");
@@ -1597,8 +1615,10 @@ async function saveCoffee() {
     if (msg.toLowerCase().includes("duplicate") || msg.includes("23505")) {
       msg = "A coffee with this slug already exists. Try a slightly different name.";
     } else if (msg.toLowerCase().includes("rls") || msg.toLowerCase().includes("policy")) {
-      msg = "Permission error — your session may have expired. Refresh and sign in again.";
-    } else if (msg.toLowerCase().includes("network") || msg.toLowerCase().includes("failed to fetch")) {
+      msg = "Permission error — your session may have expired. Sign out and back in.";
+    } else if (msg.toLowerCase().includes("timed out")) {
+      msg = "Server didn't respond in time. Sign out and back in to refresh your session, then try again.";
+    } else if (msg.toLowerCase().includes("failed to fetch")) {
       msg = "Couldn't reach the server. Check your connection and try again.";
     }
     showFormBanner("Save failed: " + msg);
