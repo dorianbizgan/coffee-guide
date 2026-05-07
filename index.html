@@ -33,37 +33,38 @@
   }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    /* Marbled leather: layered radial blooms over a warm cream-to-tan base.
-       Pure CSS gradients — fast on every browser, no SVG turbulence. */
-    background:
-      radial-gradient(ellipse 65% 45% at 18% 22%, rgba(150,90,50,0.10), transparent 55%),
-      radial-gradient(ellipse 55% 40% at 82% 78%, rgba(120,70,35,0.09), transparent 60%),
-      radial-gradient(ellipse 80% 55% at 50% 50%, rgba(180,130,80,0.06), transparent 65%),
-      radial-gradient(ellipse 35% 22% at 28% 80%, rgba(100,60,30,0.07), transparent 58%),
-      radial-gradient(ellipse 35% 22% at 75% 25%, rgba(180,120,70,0.06), transparent 60%),
-      linear-gradient(155deg, #ede3cf 0%, #e2d4b8 55%, #d6c39c 100%);
+    /* Pale washi-paper feel beneath the suminagashi ink */
+    background: linear-gradient(170deg, #f6ecd2 0%, #ede0bf 60%, #e3d3a8 100%);
     background-attachment: fixed;
     min-height: 100vh;
     padding: 24px 16px 80px;
     color: var(--ink);
     position: relative;
   }
-  /* Subtle leather grain — repeating short streaks, very low contrast */
-  body::before {
-    content: "";
+
+  /* Suminagashi ink layer — drifting concentric rings, single SVG, single transform animation
+     The animation is on transform only, so the compositor handles it without repaints. */
+  .sumi-bg {
     position: fixed; inset: 0;
-    background-image:
-      repeating-linear-gradient(38deg, rgba(80,40,15,0.012) 0, rgba(80,40,15,0.012) 1px, transparent 1px, transparent 5px),
-      repeating-linear-gradient(-52deg, rgba(120,70,35,0.008) 0, rgba(120,70,35,0.008) 1px, transparent 1px, transparent 7px);
+    width: 100%; height: 100%;
     pointer-events: none;
     z-index: 0;
-    animation: ambientDrift 22s steps(264) infinite alternate;
+    opacity: 0.42;
+    will-change: transform;
+  }
+  .sumi-bg .sumi-ink {
+    fill: none;
+    stroke: #2a1a08;
+    stroke-width: 0.8;
+    vector-effect: non-scaling-stroke;
+    transform-origin: center;
+    animation: sumiFloat 90s ease-in-out infinite alternate;
+  }
+  @keyframes sumiFloat {
+    0%   { transform: rotate(0deg)    translate(0,    0); }
+    100% { transform: rotate(0.8deg) translate(-14px, 6px); }
   }
   body > * { position: relative; z-index: 1; }
-  @keyframes ambientDrift {
-    0%   { transform: translate(0,0); opacity: 0.85; }
-    100% { transform: translate(6px,4px); opacity: 1; }
-  }
   body.loading { overflow: hidden; padding: 0; }
   body.show-login { padding: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f5ebd8, #ede2d0); }
 
@@ -744,7 +745,8 @@
   @media (max-width: 600px) {
     .steam-stack { display: none; }
     .glitter-overlay { display: none; }
-    body { background-attachment: scroll; } /* fixed + transform = jank on iOS */
+    .sumi-bg { opacity: 0.28; }   /* keep but lighter on mobile */
+    body { background-attachment: scroll; }
     .modal-backdrop { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
   }
 
@@ -755,11 +757,41 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.001ms !important;
     }
-    body::before, .ai-panel::after, .steam-stack, .glitter-overlay { display: none !important; }
+    .ai-panel::after, .steam-stack, .glitter-overlay { display: none !important; }
+    .sumi-bg .sumi-ink { animation: none !important; }
   }
 </style>
 </head>
 <body class="loading">
+
+<!-- Suminagashi background: floating ink rings on paper. Single SVG, single transform anim. -->
+<svg class="sumi-bg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <defs>
+    <g id="sumi-cluster">
+      <ellipse cx="0"  cy="0"  rx="280" ry="180"/>
+      <ellipse cx="3"  cy="-2" rx="252" ry="162"/>
+      <ellipse cx="-2" cy="3"  rx="226" ry="146"/>
+      <ellipse cx="4"  cy="-3" rx="200" ry="130"/>
+      <ellipse cx="-3" cy="4"  rx="176" ry="116"/>
+      <ellipse cx="5"  cy="-4" rx="152" ry="102"/>
+      <ellipse cx="-4" cy="5"  rx="130" ry="88"/>
+      <ellipse cx="6"  cy="-5" rx="108" ry="76"/>
+      <ellipse cx="-5" cy="6"  rx="88"  ry="64"/>
+      <ellipse cx="7"  cy="-6" rx="68"  ry="52"/>
+      <ellipse cx="-6" cy="7"  rx="50"  ry="40"/>
+      <ellipse cx="4"  cy="-4" rx="32"  ry="28"/>
+      <ellipse cx="-3" cy="3"  rx="18"  ry="18"/>
+    </g>
+  </defs>
+  <g class="sumi-ink">
+    <use href="#sumi-cluster" transform="translate(280, 200)  rotate(15)  scale(1.0)"/>
+    <use href="#sumi-cluster" transform="translate(1200, 300) rotate(-22) scale(0.85)"/>
+    <use href="#sumi-cluster" transform="translate(700, 620)  rotate(35)  scale(0.95)"/>
+    <use href="#sumi-cluster" transform="translate(150, 800)  rotate(-10) scale(0.7)"/>
+    <use href="#sumi-cluster" transform="translate(1450, 750) rotate(40)  scale(0.6)"/>
+    <use href="#sumi-cluster" transform="translate(900, 80)   rotate(60)  scale(0.55)"/>
+  </g>
+</svg>
 
 <!-- Loading splash: Lottie player with CSS drip as fallback -->
 <div class="splash" id="splash">
@@ -2205,23 +2237,67 @@ function slugify(s) {
 async function seedExamples() {
   const ok = await confirmDialog({
     title: "Load 4 example coffees?",
-    message: "I'll add Camber Coffee Aroma Decaf, Camber Colombia La Despensa, Proud Mary Chocolate Bunnies, and Proud Mary Finca Momoto so you have something to play with. You can edit or delete any of them anytime.",
+    message: "Camber Aroma Decaf, Camber Colombia La Despensa, Proud Mary Chocolate Bunnies, and Proud Mary Finca Momoto. You can edit or delete any anytime.",
     confirmLabel: "Load examples"
   });
   if (!ok) return;
+
+  // Verify session is fresh (this is what keeps biting us — Supabase tokens go stale)
   try {
-    let pos = state.data.coffees.length;
-    for (const seed of SEED_COFFEES) {
-      // Add random suffix so re-loading examples doesn't collide with previously seeded slugs
-      const seedCopy = { ...seed, slug: seed.slug + "-" + Math.random().toString(36).slice(2, 6), position: pos++ };
+    const { data: { session }, error: sErr } = await withTimeout(sb.auth.getSession(), 5000, "Session check");
+    if (sErr || !session) {
+      await alertDialog({ title: "Session expired", message: "Sign out and back in to refresh, then try again." });
+      return;
+    }
+    state.user = session.user;
+  } catch (e) {
+    await alertDialog({ title: "Couldn't verify session", message: e.message || String(e) });
+    return;
+  }
+
+  console.log("[seedExamples] starting, user:", state.user.id);
+  let pos = state.data.coffees.length;
+  let succeeded = 0;
+  const failures = [];
+
+  for (let i = 0; i < SEED_COFFEES.length; i++) {
+    const seed = SEED_COFFEES[i];
+    // Strip any stray id field defensively, add unique slug suffix, set position
+    const { id: _ignored, ...seedFields } = seed;
+    const seedCopy = {
+      ...seedFields,
+      slug: seed.slug + "-" + Math.random().toString(36).slice(2, 8),
+      position: pos++
+    };
+    console.log(`[seedExamples] inserting ${i + 1}/4: ${seed.name} (slug=${seedCopy.slug})`);
+    try {
       const saved = await upsertCoffee(seedCopy);
       state.data.coffees.push(saved);
+      succeeded++;
+      console.log(`[seedExamples] ✓ ${i + 1}/4 saved as id=${saved.id}`);
+      toast(`Loading examples… ${succeeded}/4`, "");
+    } catch (e) {
+      console.error(`[seedExamples] ✗ ${i + 1}/4 failed:`, e);
+      failures.push({ name: seed.name, error: e.message || String(e) });
+      // Keep trying the rest — partial success is better than nothing
     }
-    render(state.activeMethod);
+  }
+
+  render(state.activeMethod);
+
+  if (succeeded > 0 && failures.length === 0) {
     toast("Examples loaded", "success");
-  } catch (e) {
-    console.error("Seed failed:", e);
-    toast("Seed failed: " + (e.message || e), "error");
+  } else if (succeeded > 0 && failures.length > 0) {
+    await alertDialog({
+      title: `Loaded ${succeeded} of 4`,
+      message: `Couldn't load: ${failures.map(f => `${f.name} (${f.error})`).join("; ")}`
+    });
+  } else {
+    // All failed — surface the first error in detail
+    await alertDialog({
+      title: "Couldn't load examples",
+      message: failures[0]?.error || "Unknown error. Open Web Inspector → Console for details."
+    });
   }
 }
 
@@ -2481,7 +2557,7 @@ function showModal(id) { document.getElementById(id).classList.remove("hidden");
 function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
 
 // Promise-based styled confirm dialog (replaces native confirm/prompt)
-function confirmDialog({ title = "Confirm", message = "", confirmLabel = "Confirm", cancelLabel = "Cancel", danger = false } = {}) {
+function confirmDialog({ title = "Confirm", message = "", confirmLabel = "Confirm", cancelLabel = "Cancel", danger = false, hideCancel = false } = {}) {
   return new Promise(resolve => {
     const modal = document.getElementById("confirm-modal");
     document.getElementById("confirm-title").textContent = title;
@@ -2491,6 +2567,7 @@ function confirmDialog({ title = "Confirm", message = "", confirmLabel = "Confir
     okBtn.textContent = confirmLabel;
     cancelBtn.textContent = cancelLabel;
     okBtn.className = "icon-btn primary" + (danger ? " danger" : "");
+    cancelBtn.style.display = hideCancel ? "none" : "";
     const cleanup = (val) => {
       modal.classList.add("hidden");
       okBtn.removeEventListener("click", onOk);
@@ -2510,6 +2587,10 @@ function confirmDialog({ title = "Confirm", message = "", confirmLabel = "Confir
     modal.classList.remove("hidden");
     setTimeout(() => okBtn.focus(), 50);
   });
+}
+
+function alertDialog({ title = "Heads up", message = "", buttonLabel = "OK" } = {}) {
+  return confirmDialog({ title, message, confirmLabel: buttonLabel, hideCancel: true });
 }
 
 let _toastTimer;
