@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src https://udzsveyedwbmygvpvxpx.supabase.co https://api.anthropic.com https://api.openai.com; img-src 'self' data:; font-src 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://udzsveyedwbmygvpvxpx.supabase.co wss://udzsveyedwbmygvpvxpx.supabase.co https://api.anthropic.com https://api.openai.com https://lottie.host https://*.lottiefiles.com; img-src 'self' data: https://lottie.host https://*.lottiefiles.com; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none';">
 <title>Coffee Brew Tracker</title>
+<!-- Lottie player for splash animation. Pick any animation from https://lottiefiles.com/featured (filter by free), copy its .lottie URL, and paste it into the SPLASH_LOTTIE_URL constant in the script below. -->
+<script src="https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -152,17 +154,52 @@
   .icon-btn.danger { color: #b54040; }
   .icon-btn.danger:hover { border-color: #b54040; color: #b54040; }
 
-  .user-chip {
-    background: white; border: 1px solid #ddd; border-radius: 20px;
-    padding: 4px 4px 4px 12px; display: inline-flex; align-items: center; gap: 8px;
-    font-size: 12px; color: #555;
-  }
-  .user-chip-avatar {
-    width: 24px; height: 24px; border-radius: 50%;
-    background: var(--accent); color: white; font-weight: 700;
+  .user-menu { position: relative; }
+  .user-avatar-btn {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--accent); color: white;
+    border: 0; padding: 0; cursor: pointer;
     display: inline-flex; align-items: center; justify-content: center;
-    font-size: 11px;
+    font-family: inherit; font-weight: 700; font-size: 14px;
+    transition: transform 0.15s, box-shadow 0.15s;
   }
+  .user-avatar-btn:hover { transform: scale(1.06); box-shadow: 0 3px 12px rgba(192,138,78,0.4); }
+  .user-avatar-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .user-chip-avatar {
+    width: 100%; height: 100%; border-radius: 50%;
+    background: transparent; color: white; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .user-dropdown {
+    position: absolute; top: calc(100% + 8px); right: 0;
+    background: white; border: 1px solid #e8d8b8; border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(70,40,10,0.16);
+    min-width: 240px; max-width: 280px; z-index: 60;
+    padding: 6px;
+    animation: dropdownIn 0.18s ease-out;
+  }
+  .user-dropdown.hidden { display: none; }
+  @keyframes dropdownIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .user-dropdown-email {
+    padding: 10px 12px 10px; font-size: 12px; color: #666;
+    border-bottom: 1px solid #f0e8d8; margin-bottom: 4px;
+    word-break: break-all; line-height: 1.35;
+  }
+  .user-dropdown button {
+    display: block; width: 100%; text-align: left;
+    padding: 9px 12px; background: transparent; border: 0;
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    color: #333; cursor: pointer; border-radius: 6px;
+    transition: background 0.12s;
+  }
+  .user-dropdown button:hover { background: var(--accent-soft); color: var(--ink); }
+  .user-dropdown button:disabled { opacity: 0.6; cursor: wait; }
+  .user-dropdown #signout-btn { color: #b54040; }
+  .user-dropdown #signout-btn:hover { background: rgba(181,64,64,0.1); }
 
   .tabs {
     display: flex; gap: 0; margin-bottom: 16px;
@@ -662,10 +699,18 @@
 </head>
 <body class="loading">
 
-<!-- Loading splash with elegant coffee-drip silhouette -->
+<!-- Loading splash: Lottie player with CSS drip as fallback -->
 <div class="splash" id="splash">
   <div class="splash-spin">
-    <svg class="coffee-drip" style="width:52px;height:112px" viewBox="0 0 26 56" xmlns="http://www.w3.org/2000/svg">
+    <dotlottie-player
+      id="splash-lottie"
+      src=""
+      background="transparent"
+      speed="1"
+      loop autoplay
+      style="width:160px;height:160px;display:none">
+    </dotlottie-player>
+    <svg class="coffee-drip splash-fallback" style="width:52px;height:112px" viewBox="0 0 26 56" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="splash-bead-grad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#3a1c0a"/>
@@ -744,11 +789,16 @@
     <button class="icon-btn" id="settings-btn" title="Settings">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
-    <span class="user-chip" id="user-chip">
-      <span class="user-chip-avatar" id="user-avatar">?</span>
-      <span id="user-email">…</span>
-      <button class="icon-btn" style="padding:3px 8px;font-size:11px;" onclick="signOut()">Sign out</button>
-    </span>
+    <div class="user-menu" id="user-menu">
+      <button class="user-avatar-btn" id="user-avatar-btn" type="button" aria-label="Account menu">
+        <span class="user-chip-avatar" id="user-avatar">?</span>
+      </button>
+      <div class="user-dropdown hidden" id="user-dropdown" role="menu">
+        <div class="user-dropdown-email" id="user-email">…</div>
+        <button type="button" onclick="closeUserDropdown(); openSettingsModal();">Settings</button>
+        <button type="button" id="signout-btn" onclick="signOut()">Sign out</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1004,6 +1054,37 @@ if (typeof structuredClone === "undefined") {
   window.structuredClone = (o) => JSON.parse(JSON.stringify(o));
 }
 
+// =====================================================================
+// SPLASH ANIMATION — paste any Lottie URL from https://lottiefiles.com
+// (filter "Free", click "Get URL" → copy the .lottie URL).
+// Leave empty to use the built-in CSS coffee drip as fallback.
+// Examples that work: any URL starting with https://lottie.host/...
+// =====================================================================
+const SPLASH_LOTTIE_URL = ""; // ← paste a coffee Lottie URL here
+
+(function setupSplashAnimation() {
+  if (!SPLASH_LOTTIE_URL) return; // CSS fallback stays
+  const player = document.getElementById("splash-lottie");
+  const fallback = document.querySelector(".splash-fallback");
+  if (!player) return;
+  player.src = SPLASH_LOTTIE_URL;
+  player.style.display = "block";
+  if (fallback) fallback.style.display = "none";
+  // If Lottie fails to load within 2s, restore CSS fallback
+  let loaded = false;
+  player.addEventListener("ready", () => { loaded = true; });
+  player.addEventListener("data_fail", () => {
+    player.style.display = "none";
+    if (fallback) fallback.style.display = "block";
+  });
+  setTimeout(() => {
+    if (!loaded) {
+      player.style.display = "none";
+      if (fallback) fallback.style.display = "block";
+    }
+  }, 2500);
+})();
+
 // ============================================================
 // Supabase
 // ============================================================
@@ -1154,8 +1235,39 @@ function onSignedOut() {
 }
 
 async function signOut() {
-  await sb.auth.signOut();
-  state.data = { preferences: "", coffees: [] };
+  closeUserDropdown();
+  const btn = document.getElementById("signout-btn");
+  if (btn) { btn.disabled = true; btn.textContent = "Signing out…"; }
+  // Race signOut against a 3s timeout — Supabase sometimes hangs
+  try {
+    await Promise.race([
+      sb.auth.signOut(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("signOut timeout")), 3000))
+    ]);
+  } catch (e) {
+    console.warn("signOut failed or timed out, forcing local clear:", e);
+  }
+  // ALWAYS clear local state, regardless of whether the API call succeeded
+  try {
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith("sb-") || k.includes("supabase")) localStorage.removeItem(k);
+    });
+  } catch (e) {}
+  state.user = null;
+  state.data = { preferences: "", coffees: [], equipment: { grinder: "", burrs: "", machine: "", portafilter: "", scale: "", kettle: "", influencers: [] }, units: "metric", onboardingComplete: false };
+  // Force UI back to login screen no matter what
+  onSignedOut();
+  if (btn) { btn.disabled = false; btn.textContent = "Sign out"; }
+}
+
+function toggleUserDropdown() {
+  const dd = document.getElementById("user-dropdown");
+  if (!dd) return;
+  dd.classList.toggle("hidden");
+}
+function closeUserDropdown() {
+  const dd = document.getElementById("user-dropdown");
+  if (dd) dd.classList.add("hidden");
 }
 
 // Login form
@@ -1422,6 +1534,11 @@ function sanitizeColor(c) {
 function escapeAttr(s) {
   if (s == null) return "";
   return String(s).replace(/[&"'<>`]/g, ch => ({"&":"&amp;","\"":"&quot;","'":"&#39;","<":"&lt;",">":"&gt;","`":"&#96;"}[ch]));
+}
+
+function escapeJsString(s) {
+  if (s == null) return "";
+  return String(s).replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/</g, "\\x3c").replace(/>/g, "\\x3e");
 }
 
 // Coffee-drip spinner — tall teardrop silhouette, coffee-tinted
@@ -1757,7 +1874,7 @@ function renderMethodEditor() {
       <div class="setting-edit-row" data-row-key="${escapeHtml(k)}">
         <div class="field"><label>${idx===0?"Field name":""}</label><input type="text" data-field-key="${escapeHtml(k)}" value="${escapeHtml(k)}" /></div>
         <div class="field"><label>${idx===0?"Value":""}</label><input type="text" data-field-val="${escapeHtml(k)}" value="${escapeHtml(v)}" /></div>
-        <button type="button" class="setting-del-btn" title="Remove this field" onclick="deleteSettingRow('${escapeHtml(k).replace(/'/g, "\\'")}')">✕</button>
+        <button type="button" class="setting-del-btn" title="Remove this field" onclick="deleteSettingRow('${escapeJsString(k)}')">✕</button>
       </div>`;
   });
   html += `
@@ -2277,10 +2394,23 @@ function bindEvents() {
   document.getElementById("add-btn").addEventListener("click", openAddModal);
   document.querySelectorAll(".editor-tab").forEach(t => t.addEventListener("click", () => setEditorMethod(t.dataset.method)));
   document.querySelectorAll(".modal-backdrop").forEach(bd => bd.addEventListener("click", e => { if (e.target === bd) bd.classList.add("hidden"); }));
-  document.addEventListener("keydown", e => { if (e.key === "Escape") document.querySelectorAll(".modal-backdrop:not(.hidden)").forEach(bd => bd.classList.add("hidden")); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") {
+    document.querySelectorAll(".modal-backdrop:not(.hidden)").forEach(bd => bd.classList.add("hidden"));
+    closeUserDropdown();
+  } });
+  // User avatar dropdown
+  const avatarBtn = document.getElementById("user-avatar-btn");
+  if (avatarBtn) {
+    avatarBtn.addEventListener("click", e => { e.stopPropagation(); toggleUserDropdown(); });
+  }
+  document.addEventListener("click", e => {
+    const menu = document.getElementById("user-menu");
+    if (menu && !menu.contains(e.target)) closeUserDropdown();
+  });
 }
 
 window.signOut = signOut;
+window.closeUserDropdown = closeUserDropdown;
 window.openAddModal = openAddModal;
 window.openEditModal = openEditModal;
 window.openAiModal = openAiModal;
