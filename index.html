@@ -3,45 +3,66 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://udzsveyedwbmygvpvxpx.supabase.co wss://udzsveyedwbmygvpvxpx.supabase.co https://api.anthropic.com https://api.openai.com https://lottie.host https://*.lottiefiles.com; img-src 'self' data: https://lottie.host https://*.lottiefiles.com; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://udzsveyedwbmygvpvxpx.supabase.co wss://udzsveyedwbmygvpvxpx.supabase.co https://api.anthropic.com https://api.openai.com https://lottie.host https://*.lottiefiles.com; img-src 'self' data: https://lottie.host https://*.lottiefiles.com; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests;">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Coffee Brew Tracker</title>
 <!-- Lottie player for splash animation. Pick any animation from https://lottiefiles.com/featured (filter by free), copy its .lottie URL, and paste it into the SPLASH_LOTTIE_URL constant in the script below. -->
 <script src="https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #f0ede8;
-    --card-bg: #ffffff;
-    --ink: #1a1a1a;
-    --muted: #888;
-    --line: #f0f0f0;
-    --accent: #c08a4e;
-    --accent-soft: rgba(192, 138, 78, 0.18);
-    --accent-glow: rgba(192, 138, 78, 0.55);
+    --bg: #ece2cc;
+    --card-bg: #fefcf7;
+    --ink: #2a1a0a;
+    --muted: #8a7860;
+    --line: #ece0c8;
+    --accent: #b88450;
+    --accent-soft: rgba(184, 132, 80, 0.18);
+    --accent-glow: rgba(184, 132, 80, 0.55);
+    /* Crema palette — pale foam → deep amber */
+    --crema-1: #faf0d8;
+    --crema-2: #f0dcb0;
+    --crema-3: #e0c088;
+    --crema-4: #c89858;
+    --crema-5: #a06830;
+    /* Apple-style easings — emphatic decel + smooth */
+    --ease-out: cubic-bezier(.16, 1, .3, 1);
+    --ease-in-out: cubic-bezier(.32, .72, 0, 1);
+    --ease-spring: cubic-bezier(.34, 1.4, .64, 1);
   }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg);
+    /* Marbled leather: layered radial blooms over a warm cream-to-tan base.
+       Pure CSS gradients — fast on every browser, no SVG turbulence. */
+    background:
+      radial-gradient(ellipse 65% 45% at 18% 22%, rgba(150,90,50,0.10), transparent 55%),
+      radial-gradient(ellipse 55% 40% at 82% 78%, rgba(120,70,35,0.09), transparent 60%),
+      radial-gradient(ellipse 80% 55% at 50% 50%, rgba(180,130,80,0.06), transparent 65%),
+      radial-gradient(ellipse 35% 22% at 28% 80%, rgba(100,60,30,0.07), transparent 58%),
+      radial-gradient(ellipse 35% 22% at 75% 25%, rgba(180,120,70,0.06), transparent 60%),
+      linear-gradient(155deg, #ede3cf 0%, #e2d4b8 55%, #d6c39c 100%);
+    background-attachment: fixed;
     min-height: 100vh;
     padding: 24px 16px 80px;
     color: var(--ink);
     position: relative;
   }
-  /* Subtle warm radial that drifts — like steam moving in still air */
+  /* Subtle leather grain — repeating short streaks, very low contrast */
   body::before {
     content: "";
     position: fixed; inset: 0;
-    background:
-      radial-gradient(circle at 18% 22%, rgba(212,165,116,0.10), transparent 45%),
-      radial-gradient(circle at 82% 78%, rgba(192,138,78,0.08), transparent 50%);
+    background-image:
+      repeating-linear-gradient(38deg, rgba(80,40,15,0.012) 0, rgba(80,40,15,0.012) 1px, transparent 1px, transparent 5px),
+      repeating-linear-gradient(-52deg, rgba(120,70,35,0.008) 0, rgba(120,70,35,0.008) 1px, transparent 1px, transparent 7px);
     pointer-events: none;
     z-index: 0;
     animation: ambientDrift 22s steps(264) infinite alternate;
   }
   body > * { position: relative; z-index: 1; }
   @keyframes ambientDrift {
-    0%   { background-position: 0% 0%, 0% 0%; opacity: 0.85; }
-    100% { background-position: 8% 12%, -6% -8%; opacity: 1; }
+    0%   { transform: translate(0,0); opacity: 0.85; }
+    100% { transform: translate(6px,4px); opacity: 1; }
   }
   body.loading { overflow: hidden; padding: 0; }
   body.show-login { padding: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f5ebd8, #ede2d0); }
@@ -149,8 +170,28 @@
   }
   .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
   .icon-btn svg { width: 14px; height: 14px; }
-  .icon-btn.primary { background: var(--ink); color: white; border-color: var(--ink); }
-  .icon-btn.primary:hover { background: var(--accent); border-color: var(--accent); color: white; }
+  /* Crema gradient ombre — primary buttons */
+  .icon-btn.primary {
+    background: linear-gradient(135deg, var(--crema-5) 0%, var(--crema-4) 45%, var(--crema-3) 100%);
+    color: #2a1a0a;
+    border: 0;
+    padding: 8px 12px;
+    box-shadow:
+      0 1px 0 rgba(255,240,210,0.5) inset,
+      0 -1px 0 rgba(80,40,15,0.12) inset,
+      0 2px 6px rgba(160,104,48,0.28);
+    transition: transform 0.18s var(--ease-out), box-shadow 0.25s var(--ease-out), filter 0.25s var(--ease-out);
+  }
+  .icon-btn.primary:hover {
+    background: linear-gradient(135deg, var(--crema-5), var(--crema-4) 35%, var(--crema-2));
+    color: #2a1a0a;
+    transform: translateY(-1px);
+    box-shadow:
+      0 1px 0 rgba(255,240,210,0.7) inset,
+      0 -1px 0 rgba(80,40,15,0.15) inset,
+      0 6px 18px rgba(160,104,48,0.4);
+  }
+  .icon-btn.primary:active { transform: translateY(0); filter: brightness(0.96); }
   .icon-btn.danger { color: #b54040; }
   .icon-btn.danger:hover { border-color: #b54040; color: #b54040; }
 
@@ -314,18 +355,31 @@
   }
   .empty-state .ai-actions { justify-content: center; margin-top: 14px; }
 
-  /* Modal */
+  /* Modal — Apple-style frosted backdrop + spring entrance */
   .modal-backdrop {
-    position: fixed; inset: 0; background: rgba(20,20,20,0.55);
+    position: fixed; inset: 0;
+    background: rgba(40, 25, 12, 0.42);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    backdrop-filter: blur(8px) saturate(140%);
     display: flex; align-items: flex-start; justify-content: center;
     padding: 60px 20px 40px; z-index: 100; overflow-y: auto;
+    animation: backdropIn 0.22s var(--ease-out);
   }
   .modal-backdrop.hidden { display: none; }
+  @keyframes backdropIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
   .modal {
-    background: white; border-radius: 14px;
+    background: white; border-radius: 16px;
     width: 100%; max-width: 600px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    box-shadow: 0 24px 64px rgba(40,20,10,0.32), 0 0 0 1px rgba(120,80,40,0.06);
     overflow: hidden;
+    animation: modalIn 0.32s var(--ease-out) both;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.94) translateY(10px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
   }
   .modal-head {
     padding: 18px 22px; border-bottom: 1px solid var(--line);
@@ -686,6 +740,14 @@
   /* Splash spinner upgraded to coffee drip too */
   .splash-spin { animation: none !important; border: none !important; width: auto !important; height: auto !important; }
 
+  /* Performance: disable expensive layered effects on small screens */
+  @media (max-width: 600px) {
+    .steam-stack { display: none; }
+    .glitter-overlay { display: none; }
+    body { background-attachment: scroll; } /* fixed + transform = jank on iOS */
+    .modal-backdrop { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+  }
+
   /* Reduced motion: disable all decorative animation */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
@@ -693,7 +755,7 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.001ms !important;
     }
-    body::before, .ai-panel::after, .steam-stack { display: none !important; }
+    body::before, .ai-panel::after, .steam-stack, .glitter-overlay { display: none !important; }
   }
 </style>
 </head>
@@ -750,8 +812,8 @@
     <div class="login-tab" data-mode="signup">Sign up</div>
   </div>
 
-  <input type="email" class="login-input" id="login-email" placeholder="Email" autocomplete="email" />
-  <input type="password" class="login-input" id="login-password" placeholder="Password (6+ chars)" autocomplete="current-password" />
+  <input type="email" class="login-input" id="login-email" placeholder="Email" autocomplete="email" maxlength="254" />
+  <input type="password" class="login-input" id="login-password" placeholder="Password (8+ chars)" autocomplete="current-password" maxlength="128" />
 
   <button class="login-btn primary" id="login-submit">Sign in</button>
   <button class="login-btn" id="login-magic">Email me a magic link instead</button>
@@ -927,7 +989,7 @@
         <div class="field">
           <label>API key (browser-only — never sent to our server)</label>
           <input type="password" id="ai-key" placeholder="sk-ant-… or sk-…" autocomplete="off" />
-          <p class="field-help">Stored in your browser's localStorage. Used only to call the AI provider directly. Get an Anthropic key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> or OpenAI at <a href="https://platform.openai.com" target="_blank">platform.openai.com</a>.</p>
+          <p class="field-help">Stored in your browser's localStorage. Used only to call the AI provider directly. Get an Anthropic key at <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer">console.anthropic.com</a> or OpenAI at <a href="https://platform.openai.com" target="_blank" rel="noopener noreferrer">platform.openai.com</a>.</p>
         </div>
         <div class="field">
           <label>Your taste preferences (synced to your account)</label>
@@ -1043,10 +1105,26 @@
   </div>
 </div>
 
+<!-- Styled confirm dialog (replaces native confirm/prompt) -->
+<div class="modal-backdrop hidden" id="confirm-modal">
+  <div class="modal" style="max-width: 440px;">
+    <div class="modal-head">
+      <h2 id="confirm-title">Confirm</h2>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-message" style="font-size: 14px; line-height: 1.55; color: #444;"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="icon-btn" id="confirm-cancel">Cancel</button>
+      <button class="icon-btn primary" id="confirm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- Supabase JS SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.3/dist/umd/supabase.min.js"></script>
 
 <script>
 // Polyfill structuredClone
@@ -1292,7 +1370,8 @@ async function handleLoginSubmit() {
   const password = document.getElementById("login-password").value;
   const btn = document.getElementById("login-submit");
   if (!email || !password) { loginMsg("error", "Email and password required."); return; }
-  if (mode === "signup" && password.length < 6) { loginMsg("error", "Password must be at least 6 characters."); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { loginMsg("error", "Please enter a valid email address."); return; }
+  if (mode === "signup" && password.length < 8) { loginMsg("error", "Password must be at least 8 characters."); return; }
   btn.disabled = true;
   hideLoginMsg();
   try {
@@ -1757,16 +1836,25 @@ async function skipOnboarding() {
 }
 
 async function deleteAccount() {
-  if (!confirm("Delete your account and all your coffee data? This cannot be undone.")) return;
-  if (!confirm("Are you absolutely sure? Type yes in the next prompt to confirm.")) return;
-  const conf = prompt("Type 'DELETE' to confirm.");
-  if (conf !== "DELETE") return;
+  const ok1 = await confirmDialog({
+    title: "Delete your account?",
+    message: "This permanently removes all your coffee data. The login itself can't be self-deleted from the client — you'll need to email support to fully remove the account.",
+    confirmLabel: "Continue",
+    danger: true
+  });
+  if (!ok1) return;
+  const ok2 = await confirmDialog({
+    title: "Last chance — really delete?",
+    message: "You'll be signed out after this. No undo.",
+    confirmLabel: "Delete everything",
+    danger: true
+  });
+  if (!ok2) return;
   try {
-    // Delete all coffees first (RLS lets us delete our own rows). Profile has cascade from auth.users on user delete.
     const { error: e1 } = await sb.from("coffees").delete().eq("user_id", state.user.id);
     if (e1) throw e1;
-    toast("Coffee data deleted. To fully delete your account, contact support — Supabase doesn't yet expose self-delete from client. Signing out.", "info");
-    setTimeout(() => signOut(), 4000);
+    toast("Coffee data deleted. Signing out.", "info");
+    setTimeout(() => signOut(), 1500);
   } catch (e) { toast("Delete failed: " + e.message, "error"); }
 }
 
@@ -2094,7 +2182,13 @@ async function saveCoffee() {
 
 async function deleteCoffee() {
   if (!state.editingId) return;
-  if (!confirm("Delete this coffee?")) return;
+  const ok = await confirmDialog({
+    title: "Delete this coffee?",
+    message: "This removes it from your tracker. This can't be undone.",
+    confirmLabel: "Delete",
+    danger: true
+  });
+  if (!ok) return;
   try {
     await deleteCoffeeRow(state.editingId);
     state.data.coffees = state.data.coffees.filter(c => c.id !== state.editingId);
@@ -2109,16 +2203,26 @@ function slugify(s) {
 }
 
 async function seedExamples() {
-  if (!confirm("Add 4 example coffees to your account?")) return;
+  const ok = await confirmDialog({
+    title: "Load 4 example coffees?",
+    message: "I'll add Camber Coffee Aroma Decaf, Camber Colombia La Despensa, Proud Mary Chocolate Bunnies, and Proud Mary Finca Momoto so you have something to play with. You can edit or delete any of them anytime.",
+    confirmLabel: "Load examples"
+  });
+  if (!ok) return;
   try {
     let pos = state.data.coffees.length;
     for (const seed of SEED_COFFEES) {
-      const saved = await upsertCoffee({ ...seed, position: pos++ });
+      // Add random suffix so re-loading examples doesn't collide with previously seeded slugs
+      const seedCopy = { ...seed, slug: seed.slug + "-" + Math.random().toString(36).slice(2, 6), position: pos++ };
+      const saved = await upsertCoffee(seedCopy);
       state.data.coffees.push(saved);
     }
     render(state.activeMethod);
     toast("Examples loaded", "success");
-  } catch (e) { toast("Seed failed: " + e.message, "error"); }
+  } catch (e) {
+    console.error("Seed failed:", e);
+    toast("Seed failed: " + (e.message || e), "error");
+  }
 }
 
 // ============================================================
@@ -2139,8 +2243,15 @@ function userContextBlock() {
   return "\n\nUSER CONTEXT (tailor your answer to this setup):\n" + lines.map(l => "- " + l).join("\n");
 }
 
+// Rate-limit AI calls: minimum 2s between requests
+let _lastAiCall = 0;
+const AI_RATE_LIMIT_MS = 2000;
+
 async function callAI(systemPrompt, userPrompt, opts = {}) {
   if (!state.settings.aiKey) throw new Error("Set your API key in Settings first.");
+  const now = Date.now();
+  if (now - _lastAiCall < AI_RATE_LIMIT_MS) throw new Error("Please wait a moment before making another AI request.");
+  _lastAiCall = now;
   const sys = systemPrompt + userContextBlock();
   if (state.settings.aiProvider === "anthropic") return callAnthropic(sys, userPrompt, opts);
   return callOpenAI(sys, userPrompt, opts);
@@ -2368,6 +2479,38 @@ async function applyAiSuggestion() {
 // ============================================================
 function showModal(id) { document.getElementById(id).classList.remove("hidden"); }
 function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
+
+// Promise-based styled confirm dialog (replaces native confirm/prompt)
+function confirmDialog({ title = "Confirm", message = "", confirmLabel = "Confirm", cancelLabel = "Cancel", danger = false } = {}) {
+  return new Promise(resolve => {
+    const modal = document.getElementById("confirm-modal");
+    document.getElementById("confirm-title").textContent = title;
+    document.getElementById("confirm-message").textContent = message;
+    const okBtn = document.getElementById("confirm-ok");
+    const cancelBtn = document.getElementById("confirm-cancel");
+    okBtn.textContent = confirmLabel;
+    cancelBtn.textContent = cancelLabel;
+    okBtn.className = "icon-btn primary" + (danger ? " danger" : "");
+    const cleanup = (val) => {
+      modal.classList.add("hidden");
+      okBtn.removeEventListener("click", onOk);
+      cancelBtn.removeEventListener("click", onCancel);
+      document.removeEventListener("keydown", onKey);
+      resolve(val);
+    };
+    const onOk = () => cleanup(true);
+    const onCancel = () => cleanup(false);
+    const onKey = (e) => {
+      if (e.key === "Enter") { e.preventDefault(); onOk(); }
+      else if (e.key === "Escape") { onCancel(); }
+    };
+    okBtn.addEventListener("click", onOk);
+    cancelBtn.addEventListener("click", onCancel);
+    document.addEventListener("keydown", onKey);
+    modal.classList.remove("hidden");
+    setTimeout(() => okBtn.focus(), 50);
+  });
+}
 
 let _toastTimer;
 function toast(msg, kind = "") {
