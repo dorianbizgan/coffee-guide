@@ -42,15 +42,22 @@
     position: relative;
   }
 
-  /* Suminagashi ink layer — drifting concentric rings, single SVG, single transform animation
-     The animation is on transform only, so the compositor handles it without repaints. */
+  /* Suminagashi ink layer — drifting concentric rings, single SVG, single transform animation */
   .sumi-bg {
     position: fixed; inset: 0;
     width: 100%; height: 100%;
     pointer-events: none;
     z-index: 0;
-    opacity: 0.42;
+    opacity: 0.32;
     will-change: transform;
+  }
+  /* Crema canvas — espresso particles broiling/rising on water */
+  .crema-canvas {
+    position: fixed; inset: 0;
+    width: 100vw; height: 100vh;
+    pointer-events: none;
+    z-index: 0;
+    mix-blend-mode: multiply;
   }
   .sumi-bg .sumi-ink {
     fill: none;
@@ -764,6 +771,9 @@
 </head>
 <body class="loading">
 
+<!-- Crema canvas: espresso particles broiling on the surface (drawn each frame on canvas) -->
+<canvas class="crema-canvas" id="crema-canvas" aria-hidden="true"></canvas>
+
 <!-- Suminagashi background: floating ink rings on paper. Single SVG, single transform anim. -->
 <svg class="sumi-bg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
   <defs>
@@ -1204,6 +1214,104 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
 });
 
+// =====================================================================
+// Crema particle canvas — multi-tonal espresso bubbles rising and swirling
+// 55 particles on desktop, 28 on mobile, ~60fps via single rAF loop
+// =====================================================================
+class CremaAnim {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext("2d", { alpha: true });
+    this.particles = [];
+    this.running = false;
+    this.lastT = 0;
+    this.handleResize = this.handleResize.bind(this);
+    window.addEventListener("resize", this.handleResize);
+    this.handleResize();
+    this.spawn();
+  }
+  handleResize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.w = window.innerWidth;
+    this.h = window.innerHeight;
+    this.canvas.width = this.w * dpr;
+    this.canvas.height = this.h * dpr;
+    this.canvas.style.width = this.w + "px";
+    this.canvas.style.height = this.h + "px";
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  spawn() {
+    const count = this.w < 700 ? 28 : 55;
+    // Multi-tonal espresso crema palette
+    const colors = [
+      [245, 215, 165],  // pale crema
+      [225, 175, 110],  // light tan
+      [195, 130, 70],   // amber
+      [155, 90, 45],    // bronze
+      [120, 60, 25],    // dark espresso
+      [255, 230, 195],  // foam highlight
+      [205, 155, 95],   // tiger stripe
+      [170, 105, 55]    // medium crema
+    ];
+    this.particles = [];
+    for (let i = 0; i < count; i++) {
+      this.particles.push({
+        x: Math.random() * this.w,
+        y: Math.random() * this.h,
+        r: 4 + Math.random() * 18,
+        vy: -0.12 - Math.random() * 0.42,
+        vx: (Math.random() - 0.5) * 0.14,
+        opacity: 0.18 + Math.random() * 0.36,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        phase: Math.random() * Math.PI * 2,
+        period: 6 + Math.random() * 8,
+        wobble: 0.4 + Math.random() * 1.6
+      });
+    }
+  }
+  step(t) {
+    if (!this.running) return;
+    const dt = this.lastT ? (t - this.lastT) / 16.67 : 1; // normalize against 60fps
+    this.lastT = t;
+    const ctx = this.ctx;
+    const w = this.w, h = this.h;
+    ctx.clearRect(0, 0, w, h);
+    const tSec = t / 1000;
+    for (const p of this.particles) {
+      p.y += p.vy * dt;
+      p.x += (p.vx + Math.sin(tSec / p.period + p.phase) * 0.18 * p.wobble) * dt;
+      if (p.y < -p.r * 2) { p.y = h + p.r; p.x = Math.random() * w; }
+      if (p.x < -p.r * 2) p.x = w + p.r;
+      if (p.x > w + p.r * 2) p.x = -p.r;
+      const [r, g, b] = p.color;
+      const grd = ctx.createRadialGradient(p.x - p.r * 0.3, p.y - p.r * 0.3, 0, p.x, p.y, p.r);
+      grd.addColorStop(0,    `rgba(${r},${g},${b},${p.opacity})`);
+      grd.addColorStop(0.55, `rgba(${r},${g},${b},${p.opacity * 0.45})`);
+      grd.addColorStop(1,    `rgba(${r},${g},${b},0)`);
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    requestAnimationFrame((tt) => this.step(tt));
+  }
+  start() { if (!this.running) { this.running = true; requestAnimationFrame((t) => this.step(t)); } }
+  stop() { this.running = false; }
+}
+
+(function startCrema() {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const c = document.getElementById("crema-canvas");
+  if (!c) return;
+  const anim = new CremaAnim(c);
+  anim.start();
+  // Pause when tab hidden to save battery
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) anim.stop();
+    else anim.start();
+  });
+})();
+
 // ============================================================
 // State
 // ============================================================
@@ -1456,7 +1564,8 @@ async function handleGoogleLogin() {
 }
 
 // ============================================================
-// DB layer
+// DB layer — raw fetch against Supabase REST endpoint
+// (deliberately avoids the SDK for data ops; SDK was hanging silently)
 // ============================================================
 function withTimeout(promise, ms, label) {
   return Promise.race([
@@ -1465,12 +1574,55 @@ function withTimeout(promise, ms, label) {
   ]);
 }
 
+async function sbFetch(path, { method = "GET", body = null, headers = {} } = {}) {
+  // Get current session token (this is local-storage read, fast)
+  let session;
+  try {
+    const r = await sb.auth.getSession();
+    session = r.data?.session;
+  } catch (e) {
+    throw new Error("Couldn't read session: " + e.message);
+  }
+  if (!session) throw new Error("Not signed in (session missing)");
+
+  const url = `${SUPABASE_URL}/rest/v1${path}`;
+  const ctrl = new AbortController();
+  const timeoutId = setTimeout(() => ctrl.abort(), 8000); // 8s hard cap
+
+  let res;
+  try {
+    res = await fetch(url, {
+      method,
+      signal: ctrl.signal,
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+        ...headers
+      },
+      body: body == null ? null : (typeof body === "string" ? body : JSON.stringify(body))
+    });
+  } catch (e) {
+    clearTimeout(timeoutId);
+    if (e.name === "AbortError") throw new Error(`Request timed out after 8s: ${method} ${path}`);
+    throw new Error(`Network error: ${e.message}`);
+  }
+  clearTimeout(timeoutId);
+
+  const text = await res.text().catch(() => "");
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} ${method} ${path} — ${text.slice(0, 300)}`);
+  }
+  if (!text) return null;
+  try { return JSON.parse(text); } catch { return null; }
+}
+
 async function loadFromDb() {
   if (!state.user) return;
   try {
-    // Profile (request all fields; tolerate missing equipment columns gracefully)
-    const { data: profile, error: pErr } = await sb.from("user_profiles").select("*").eq("user_id", state.user.id).maybeSingle();
-    if (pErr) console.warn("profile load:", pErr.message);
+    const profiles = await sbFetch(`/user_profiles?user_id=eq.${state.user.id}&select=*`);
+    const profile = (profiles || [])[0];
     state.data.preferences = profile?.preferences || "";
     if (profile?.ai_provider) state.settings.aiProvider = profile.ai_provider;
     state.data.equipment = {
@@ -1485,12 +1637,10 @@ async function loadFromDb() {
     state.data.units = profile?.units_pref || "metric";
     state.data.onboardingComplete = !!profile?.onboarding_complete;
 
-    // Coffees
-    const { data: rows, error: cErr } = await sb.from("coffees").select("*").eq("user_id", state.user.id).order("position", { ascending: true });
-    if (cErr) throw cErr;
+    const rows = await sbFetch(`/coffees?user_id=eq.${state.user.id}&select=*&order=position.asc`);
     state.data.coffees = (rows || []).map(rowToCoffee);
   } catch (e) {
-    console.error("loadFromDb", e);
+    console.error("[loadFromDb]", e);
     toast("Load failed: " + e.message, "error");
   }
 }
@@ -1531,46 +1681,42 @@ function coffeeToRow(c) {
 
 async function upsertCoffee(c) {
   const row = coffeeToRow(c);
+  console.log("[upsertCoffee] sending:", row, "isUpdate=", !!c.id);
+  let data;
   if (c.id) {
-    const { data, error } = await withTimeout(
-      sb.from("coffees").update(row).eq("id", c.id).select().single(),
-      15000, "Update coffee"
-    );
-    if (error) throw error;
-    return rowToCoffee(data);
+    data = await sbFetch(`/coffees?id=eq.${encodeURIComponent(c.id)}`, { method: "PATCH", body: row });
   } else {
-    const { data, error } = await withTimeout(
-      sb.from("coffees").insert(row).select().single(),
-      15000, "Insert coffee"
-    );
-    if (error) throw error;
-    return rowToCoffee(data);
+    data = await sbFetch(`/coffees`, { method: "POST", body: row });
   }
+  const saved = Array.isArray(data) ? data[0] : data;
+  if (!saved) throw new Error("Server returned no row after save");
+  console.log("[upsertCoffee] saved id:", saved.id);
+  return rowToCoffee(saved);
 }
+
 async function deleteCoffeeRow(id) {
-  const { error } = await withTimeout(sb.from("coffees").delete().eq("id", id), 15000, "Delete coffee");
-  if (error) throw error;
+  await sbFetch(`/coffees?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
 async function saveProfile(patch) {
-  const fullPatch = { user_id: state.user.id, ...patch };
-  const { data, error } = await withTimeout(
-    sb.from("user_profiles").upsert(fullPatch, { onConflict: "user_id" }).select(),
-    10000, "Save profile"
-  );
-  if (error) {
-    console.warn("[saveProfile] error:", error);
-    if (/column .* does not exist/i.test(error.message)) {
-      const safe = { user_id: state.user.id };
-      for (const k of ["preferences", "ai_provider", "display_name"]) if (k in patch) safe[k] = patch[k];
-      const { error: e2 } = await withTimeout(
-        sb.from("user_profiles").upsert(safe, { onConflict: "user_id" }).select(),
-        10000, "Save profile (fallback)"
-      );
-      if (e2) throw e2;
-      console.warn("Equipment columns not yet migrated — saved partial profile only (preferences/provider). Run the equipment migration to enable the rest.");
-      return;
+  console.log("[saveProfile] patch:", patch);
+  let updated;
+  try {
+    updated = await sbFetch(`/user_profiles?user_id=eq.${state.user.id}`, { method: "PATCH", body: patch });
+  } catch (e) {
+    if (/column .* does not exist/i.test(e.message)) {
+      const safe = {};
+      for (const k of ["preferences", "ai_provider", "display_name", "onboarding_complete"]) if (k in patch) safe[k] = patch[k];
+      updated = await sbFetch(`/user_profiles?user_id=eq.${state.user.id}`, { method: "PATCH", body: safe });
+      console.warn("[saveProfile] equipment columns not yet migrated — partial save only");
+    } else {
+      throw e;
     }
-    throw error;
+  }
+  // If 0 rows updated, the profile row doesn't exist yet — insert it
+  if (Array.isArray(updated) && updated.length === 0) {
+    console.log("[saveProfile] no profile row — inserting");
+    await sbFetch(`/user_profiles`, { method: "POST", body: { user_id: state.user.id, ...patch } });
   }
 }
 
@@ -1883,8 +2029,7 @@ async function deleteAccount() {
   });
   if (!ok2) return;
   try {
-    const { error: e1 } = await sb.from("coffees").delete().eq("user_id", state.user.id);
-    if (e1) throw e1;
+    await sbFetch(`/coffees?user_id=eq.${state.user.id}`, { method: "DELETE" });
     toast("Coffee data deleted. Signing out.", "info");
     setTimeout(() => signOut(), 1500);
   } catch (e) { toast("Delete failed: " + e.message, "error"); }
