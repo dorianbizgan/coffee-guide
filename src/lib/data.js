@@ -232,3 +232,95 @@ export const ACCENTS = [
   "oklch(0.62 0.14 75)",
   "oklch(0.45 0.1 28)",
 ];
+
+// ─── Grinder profiles ───────────────────────────────────────────────────
+// Each grinder has its own click range / step / unit. The Detail dial
+// reads these to size the slider; the AI prompt sends the range so the
+// model returns numbers in the right scale.
+//
+// `coarsePerStep` is the qualitative direction: for almost everyone,
+// LOWER number = FINER, HIGHER = COARSER. The Niche/some Mahlkönigs are
+// the same. We keep this consistent across all entries.
+//
+// To detect a grinder from a free-text gear field we lowercase + match
+// substrings. The fallback is the generic 0–10 scale.
+export const GRINDERS = [
+  { id: "comandante",   match: ["comandante", "c40"],          label: "Comandante C40",        min: 6,  max: 36, step: 1,   unit: "clicks",   defaultClicks: 22 },
+  { id: "1zpresso-jx",  match: ["1zpresso jx", "jx-pro", "jxpro"], label: "1Zpresso JX-Pro",  min: 30, max: 200, step: 1,  unit: "clicks",   defaultClicks: 90 },
+  { id: "1zpresso-zp6", match: ["1zpresso zp6", "zp6"],         label: "1Zpresso ZP6",          min: 0,  max: 90, step: 1,   unit: "clicks",   defaultClicks: 35 },
+  { id: "1zpresso-q2",  match: ["1zpresso q2", "q2"],           label: "1Zpresso Q2",           min: 0,  max: 36, step: 1,   unit: "clicks",   defaultClicks: 14 },
+  { id: "kingrinder-k6",match: ["kingrinder k6", "k6"],         label: "Kingrinder K6",         min: 0,  max: 90, step: 1,   unit: "clicks",   defaultClicks: 50 },
+  { id: "niche",        match: ["niche zero", "niche-zero", "niche"], label: "Niche Zero",     min: 0,  max: 50, step: 1,   unit: "notches",  defaultClicks: 22 },
+  { id: "df64",         match: ["df64", "df 64"],               label: "DF64",                  min: 0,  max: 80, step: 1,   unit: "notches",  defaultClicks: 30 },
+  { id: "ek43",         match: ["ek43", "ek 43"],               label: "Mahlkönig EK43",        min: 0,  max: 11, step: 0.1, unit: "",         defaultClicks: 5 },
+  { id: "acaia-orbit",  match: ["acaia orbit", "ssp v3", "ssp"],label: "Acaia Orbit (SSP)",     min: 0,  max: 10, step: 0.1, unit: "",         defaultClicks: 1.5 },
+  { id: "fellow-ode",   match: ["fellow ode", "ode"],           label: "Fellow Ode",            min: 1,  max: 11, step: 1,   unit: "settings", defaultClicks: 5 },
+  { id: "baratza-encore", match: ["baratza encore", "encore"],  label: "Baratza Encore",        min: 1,  max: 40, step: 1,   unit: "settings", defaultClicks: 18 },
+];
+
+const GENERIC_GRINDER = {
+  id: "generic", match: [], label: "Grinder",
+  min: 0, max: 10, step: 0.5, unit: "setting", defaultClicks: 5,
+};
+
+export function detectGrinder(name) {
+  if (!name) return GRINDERS[0]; // default Comandante
+  const n = String(name).toLowerCase();
+  for (const g of GRINDERS) {
+    if (g.match.some((m) => n.includes(m))) return g;
+  }
+  return { ...GENERIC_GRINDER, label: name };
+}
+
+// Map a grinder's clicks to a fineness ratio 0..1 (0 = finest, 1 = coarsest).
+// Then back to a per-method "ideal" clicks so we can detect way-out-of-range
+// dials and warn the user.
+export function clicksToFineness(grinder, clicks) {
+  const span = grinder.max - grinder.min;
+  if (span <= 0) return 0.5;
+  return Math.min(1, Math.max(0, (clicks - grinder.min) / span));
+}
+export function finenessToClicks(grinder, f01) {
+  return grinder.min + Math.max(0, Math.min(1, f01)) * (grinder.max - grinder.min);
+}
+
+// What range of fineness (0..1, 0=finest) is sane for each method.
+// Anything outside the band gets a soft "you sure?" warning in the UI.
+export const METHOD_FINENESS_BAND = {
+  espresso: [0.05, 0.30],
+  moka:     [0.20, 0.45],
+  v60:      [0.45, 0.75],
+  chemex:   [0.55, 0.80],
+  aeropress:[0.40, 0.75],
+  french:   [0.75, 0.95],
+  cold:     [0.85, 1.00],
+};
+
+export const METHOD_TEMP_BAND = {
+  espresso: [88, 96],
+  moka:     [95, 100],
+  v60:      [90, 99],
+  chemex:   [92, 99],
+  aeropress:[80, 95],
+  french:   [88, 96],
+  cold:     [4,  25],
+};
+
+// Returns null if the dial is sane, otherwise a short human-readable warning
+// explaining the suspected mismatch.
+export function dialWarning({ method, grinder, clicks, temp }) {
+  const m = method?.id || "v60";
+  const fineness = clicksToFineness(grinder, clicks);
+  const grindBand = METHOD_FINENESS_BAND[m];
+  const tempBand = METHOD_TEMP_BAND[m];
+  const issues = [];
+  if (grindBand) {
+    if (fineness < grindBand[0]) issues.push(`That grind is way too fine for ${method.short} — expect bitter & slow.`);
+    else if (fineness > grindBand[1]) issues.push(`That grind is way too coarse for ${method.short} — expect sour & weak.`);
+  }
+  if (tempBand) {
+    if (temp < tempBand[0]) issues.push(`Water at ${temp}°C is colder than ${method.short}'s usual ${tempBand[0]}–${tempBand[1]}°C — under-extracted.`);
+    else if (temp > tempBand[1]) issues.push(`Water at ${temp}°C is hotter than ${method.short}'s usual ${tempBand[0]}–${tempBand[1]}°C — risk of scorching.`);
+  }
+  return issues.length ? issues.join(" ") : null;
+}

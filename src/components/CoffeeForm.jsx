@@ -53,6 +53,25 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefillSearch, mode]);
 
+  // Whitelist Gemini's freeform process strings (e.g. "natural anaerobic")
+  // back to one of the form's allowed values so the choice grid lights up.
+  const normalizeProcess = (p) => {
+    if (!p) return "Washed";
+    const s = String(p).toLowerCase();
+    if (s.includes("anaerob")) return "Anaerobic Natural";
+    if (s.includes("pulped"))  return "Pulped Natural";
+    if (s.includes("honey"))   return "Honey";
+    if (s.includes("natural")) return "Natural";
+    if (s.includes("decaf"))   return "Washed"; // store decaf as a tag, not process
+    return "Washed";
+  };
+  const normalizeRoast = (r) => {
+    if (!r) return "medium";
+    const s = String(r).toLowerCase().replace(/\s+/g, "-");
+    const allowed = ["light", "medium-light", "medium", "medium-dark", "dark"];
+    return allowed.find((x) => s.includes(x)) || "medium";
+  };
+
   const handleAiLookup = async () => {
     if (!onAiLookup || !data._search?.trim()) return;
     setAiBusy(true); setAiError(null);
@@ -61,18 +80,20 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
       if (result) {
         setData((d) => ({
           ...d,
-          name: result.name || d.name,
-          roaster: result.roaster || d.roaster,
-          origin: result.origin || d.origin,
-          process: result.process || d.process,
-          roast: result.roast || d.roast,
-          variety: result.variety || d.variety,
+          name:      result.name      || d.name,
+          roaster:   result.roaster   || d.roaster,
+          origin:    result.origin    || d.origin,
+          process:   normalizeProcess(result.process || d.process),
+          roast:     normalizeRoast(result.roast || d.roast),
+          variety:   result.variety   || d.variety,
           elevation: result.elevation || d.elevation,
-          notes: notesAsString(result.notes),
-          _search: "",
+          notes:     notesAsString(result.notes) || d.notes,
+          bagSize:   result.bagSize   || d.bagSize,
+          _stamp:    result.stamp     || d._stamp || "",
+          _search:   "",
         }));
       } else {
-        setAiError("No matching coffee found online. Try a more specific search.");
+        setAiError("No matching coffee found. Try a more specific search.");
       }
     } catch (e) {
       setAiError(e.message || "Lookup failed.");
@@ -84,7 +105,9 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
   const submit = () => {
     const accent = initial?.accent || ACCENTS[Math.floor(Math.random() * ACCENTS.length)];
     const recommendedId = recommend({ roast: data.roast, process: data.process });
-    const stamp = initial?.stamp || ("Logged · " + new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }));
+    const stamp = initial?.stamp
+      || data._stamp
+      || ("Logged · " + new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }));
     onSubmit({
       ...(initial || {}),
       id: initial?.id || ("c" + Date.now()),
@@ -138,14 +161,14 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
         {step === 0 && (
           <div className="form">
             <div className="bean-search">
-              <label className="bean-search-label">Search a bean (optional)</label>
+              <label className="bean-search-label">Autofill from a bag name (optional)</label>
               <div className="bean-search-input">
                 <Icon name="search" size={16} />
                 <input
                   value={data._search}
                   onChange={(e) => set("_search", e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAiLookup(); } }}
-                  placeholder="Try “Onyx”, “Yirgacheffe”, “Sey”…"
+                  placeholder="Type the bag name — e.g. “Onyx Geometry”, “Sey La Esperanza”"
                 />
                 {onAiLookup && data._search?.length >= 2 && (
                   <button
@@ -155,11 +178,16 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
                     disabled={aiBusy}
                     style={{ marginLeft: 8 }}
                   >
-                    {aiBusy ? "Searching…" : "✦ Online"}
+                    {aiBusy ? "Looking up…" : "✦ Autofill"}
                   </button>
                 )}
               </div>
               {aiError && <div style={{ color: "var(--amber-700)", fontSize: 12, marginTop: 6 }}>{aiError}</div>}
+              {aiBusy && (
+                <div style={{ color: "var(--ink-mute)", fontSize: 12, marginTop: 6 }}>
+                  Searching the roaster's site for full details — usually 5–10s.
+                </div>
+              )}
               {data._search && data._search.length >= 2 && (
                 <div className="bean-results">
                   {searchBeans(data._search).length === 0 ? (

@@ -38,7 +38,7 @@ export default function App() {
   const [coffees, setCoffees] = useState([]);
   const [coffeesLoaded, setCoffeesLoaded] = useState(false);
   const [logs, setLogs] = useState([]);
-  const [profile, setProfileState] = useState({ gear: {}, tastePreferences: "", aiProvider: "anthropic" });
+  const [profile, setProfileState] = useState({ gear: {}, tastePreferences: "", aiProvider: "google" });
   const [profileBusy, setProfileBusy] = useState(false);
   const [editing, setEditing] = useState(null);
   const [adding, setAdding] = useState(false);
@@ -290,8 +290,12 @@ export default function App() {
   }, [user]);
 
   const requestAi = useCallback(async (ctx) => {
-    return suggestDialTweak({ ...ctx, preferences: profile.tastePreferences || "" });
-  }, [profile.tastePreferences]);
+    return suggestDialTweak({
+      ...ctx,
+      preferences: profile.tastePreferences || "",
+      preferredProvider: profile.aiProvider || undefined,
+    });
+  }, [profile.tastePreferences, profile.aiProvider]);
 
   const onSearchOnline = useCallback(async (query) => {
     setEditing(null);
@@ -300,8 +304,8 @@ export default function App() {
   }, []);
 
   const onAiLookupForForm = useCallback(async (q) => {
-    return lookupBeanOnline(q, profile.tastePreferences || "");
-  }, [profile.tastePreferences]);
+    return lookupBeanOnline(q, profile.tastePreferences || "", profile.aiProvider || undefined);
+  }, [profile.tastePreferences, profile.aiProvider]);
 
   if (!user) {
     return (

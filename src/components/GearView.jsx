@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "./Icons.jsx";
+import { GRINDERS, detectGrinder } from "../lib/data.js";
+import { aiStatus } from "../lib/ai.js";
 
 const GEAR_FIELDS = [
-  { k: "grinder", l: "Grinder", placeholder: "e.g. Comandante C40" },
   { k: "scale", l: "Scale", placeholder: "e.g. Acaia Pearl" },
   { k: "kettle", l: "Kettle", placeholder: "e.g. Fellow Stagg EKG" },
   { k: "espresso", l: "Espresso machine", placeholder: "e.g. Decent DE1, Linea Mini" },
@@ -13,7 +14,9 @@ const GEAR_FIELDS = [
 export function GearView({ profile, onSaveProfile, busy }) {
   const [gear, setGear] = useState(profile?.gear || {});
   const [taste, setTaste] = useState(profile?.tastePreferences || "");
-  const [aiProvider, setAiProvider] = useState(profile?.aiProvider || "anthropic");
+  const [aiProvider, setAiProvider] = useState(profile?.aiProvider || "google");
+  const [providerStatus, setProviderStatus] = useState({ anthropic: false, openai: false, google: false });
+  useEffect(() => { aiStatus().then(setProviderStatus); }, []);
   const set = (k, v) => setGear((g) => ({ ...g, [k]: v }));
   const dirty =
     JSON.stringify(gear) !== JSON.stringify(profile?.gear || {}) ||
@@ -42,6 +45,29 @@ export function GearView({ profile, onSaveProfile, busy }) {
       <section className="panel" style={{ marginTop: 16 }}>
         <h3>Equipment</h3>
         <div className="form" style={{ marginTop: 10 }}>
+          <div className="field">
+            <label>Grinder</label>
+            <div className="choice-grid">
+              {GRINDERS.map((g) => (
+                <div
+                  key={g.id}
+                  className={`choice ${detectGrinder(gear.grinder).id === g.id ? "active" : ""}`}
+                  onClick={() => set("grinder", g.label)}
+                >
+                  {g.label}
+                </div>
+              ))}
+            </div>
+            <input
+              value={gear.grinder || ""}
+              onChange={(e) => set("grinder", e.target.value)}
+              placeholder="…or type a custom grinder"
+              style={{ marginTop: 10 }}
+            />
+            <div style={{ fontSize: 12, color: "var(--ink-mute)", marginTop: 6 }}>
+              Detected scale: <strong>{detectGrinder(gear.grinder).min}–{detectGrinder(gear.grinder).max} {detectGrinder(gear.grinder).unit || "settings"}</strong> — the brew dial uses this range.
+            </div>
+          </div>
           {GEAR_FIELDS.reduce((rows, f, i) => {
             const ri = Math.floor(i / 2);
             (rows[ri] = rows[ri] || []).push(f);
@@ -76,18 +102,30 @@ export function GearView({ profile, onSaveProfile, busy }) {
       <section className="panel" style={{ marginTop: 16 }}>
         <h3>AI provider</h3>
         <p style={{ color: "var(--ink-mute)", fontSize: 13, marginTop: 4 }}>
-          The deployer covers the cost — pick which provider Crema should call. Not all may be configured.
+          Crema asks the server which providers have an API key configured (✓ = available). If your preferred provider isn't, the client falls back to whichever is.
         </p>
         <div className="choice-grid" style={{ marginTop: 10 }}>
           {[
+            { k: "google",    l: "Google Gemini" },
             { k: "anthropic", l: "Anthropic Claude" },
-            { k: "openai", l: "OpenAI GPT-4o" },
-            { k: "google", l: "Google Gemini" },
-          ].map((p) => (
-            <div key={p.k} className={`choice ${aiProvider === p.k ? "active" : ""}`} onClick={() => setAiProvider(p.k)}>
-              {p.l}
-            </div>
-          ))}
+            { k: "openai",    l: "OpenAI GPT-4o" },
+          ].map((p) => {
+            const available = !!providerStatus[p.k];
+            return (
+              <div
+                key={p.k}
+                className={`choice ${aiProvider === p.k ? "active" : ""}`}
+                onClick={() => setAiProvider(p.k)}
+                style={{ opacity: available ? 1 : 0.55 }}
+                title={available ? "Configured on this deployment" : "No API key set in Vercel"}
+              >
+                <span style={{ marginRight: 8, color: available ? "var(--forest-700)" : "var(--ink-mute)" }}>
+                  {available ? "✓" : "○"}
+                </span>
+                {p.l}
+              </div>
+            );
+          })}
         </div>
       </section>
 

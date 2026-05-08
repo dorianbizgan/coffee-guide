@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, MethodIcon } from "./Icons.jsx";
-import { BREW_METHODS, adjustRecipe, recommend } from "../lib/data.js";
+import { BREW_METHODS, adjustRecipe, recommend, detectGrinder, dialWarning } from "../lib/data.js";
 
 function parseStepTime(s) {
   if (!s) return [null, null];
@@ -126,26 +126,41 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
   const baseRecipe = adjustRecipe(method, coffee);
   const recommendedId = recommend(coffee);
 
-  const parseClicks = (s) => {
-    const m = String(s || "").match(/(\d+)\s*clicks?/i);
-    return m ? parseInt(m[1], 10) : 22;
+  // Pick a grinder profile from the user's gear field. Falls back to Comandante.
+  const grinder = useMemo(() => detectGrinder(gear?.grinder), [gear?.grinder]);
+
+  // Translate the recipe's "22 clicks" baseline (which is on the Comandante
+  // 6–36 scale) into this grinder's scale by mapping the relative position.
+  const COMANDANTE_RANGE = [6, 36];
+  const parseBaseClicks = (s) => {
+    const m = String(s || "").match(/([\d.]+)\s*clicks?/i);
+    return m ? parseFloat(m[1]) : 22;
   };
-  const baseClicks = parseClicks(baseRecipe.grind);
+  const baseRecipeClicks = parseBaseClicks(baseRecipe.grind);
+  const f01 = Math.min(1, Math.max(0, (baseRecipeClicks - COMANDANTE_RANGE[0]) / (COMANDANTE_RANGE[1] - COMANDANTE_RANGE[0])));
+  const baseClicks = grinder.step >= 1
+    ? Math.round(grinder.min + f01 * (grinder.max - grinder.min))
+    : Math.round((grinder.min + f01 * (grinder.max - grinder.min)) / grinder.step) * grinder.step;
   const baseTemp = baseRecipe.temp;
 
   const [temp, setTemp] = useState(baseTemp);
   const [clicks, setClicks] = useState(baseClicks);
-  useEffect(() => { setTemp(baseTemp); setClicks(baseClicks); /* eslint-disable-next-line */ }, [methodId]);
+  useEffect(() => { setTemp(baseTemp); setClicks(baseClicks); /* eslint-disable-next-line */ }, [methodId, grinder.id]);
 
+  // Map current clicks to a generic fineness descriptor for any grinder.
   const grindDescriptor = (n) => {
-    if (n <= 12) return "fine — espresso territory";
-    if (n <= 18) return "medium-fine — pourover, pulls clarity";
-    if (n <= 24) return "medium — balanced, forgiving";
-    if (n <= 30) return "medium-coarse — immersion, AeroPress";
+    const span = grinder.max - grinder.min;
+    const pct = span <= 0 ? 0.5 : (n - grinder.min) / span;
+    if (pct <= 0.18) return "fine — espresso territory";
+    if (pct <= 0.40) return "medium-fine — pourover, pulls clarity";
+    if (pct <= 0.60) return "medium — balanced, forgiving";
+    if (pct <= 0.80) return "medium-coarse — immersion, AeroPress";
     return "coarse — French press, cold brew";
   };
 
-  const recipe = { ...baseRecipe, temp, grind: `${clicks} clicks · ${grindDescriptor(clicks).split(" — ")[0]}` };
+  const clicksLabel = grinder.unit ? `${clicks} ${grinder.unit}` : `${clicks}`;
+  const recipe = { ...baseRecipe, temp, grind: `${clicksLabel} · ${grindDescriptor(clicks).split(" — ")[0]}` };
+  const warning = dialWarning({ method, grinder, clicks, temp });
 
   const noteKey = `cb_note_${coffee.id}_${methodId}`;
   const [note, setNote] = useState("");
@@ -203,6 +218,8 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
     try {
       const result = await requestAi({
         coffee, method, recipe, temp, clicks, tags, tasted, note,
+        grinder,
+        grinderRange: { min: grinder.min, max: grinder.max, unit: grinder.unit, step: grinder.step },
       });
       setAiResult(result);
     } catch (e) {
@@ -213,7 +230,11 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
   };
   const applyAi = () => {
     if (aiResult?.tempC) setTemp(Math.max(80, Math.min(99, Math.round(aiResult.tempC))));
-    if (aiResult?.clicks) setClicks(Math.max(6, Math.min(36, Math.round(aiResult.clicks))));
+    if (aiResult?.clicks != null) {
+      const c = parseFloat(aiResult.clicks);
+      const clamped = Math.max(grinder.min, Math.min(grinder.max, c));
+      setClicks(grinder.step >= 1 ? Math.round(clamped) : clamped);
+    }
     setAiResult(null);
   };
 
@@ -301,12 +322,25 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
 
           <div className="dial-row">
             <div className="dial-label">
-              <span className="l">Grind · <em>{gear?.grinder || "Comandante C40"}</em></span>
-              <span className="readout">{clicks}<small>clicks</small></span>
+              <span className="l">Grind · <em>{grinder.label}</em></span>
+              <span className="readout">{clicks}<small>{grinder.unit || ""}</small></span>
             </div>
-            <input type="range" min="6" max="36" step="1" value={clicks} onChange={(e) => setClicks(parseInt(e.target.value, 10))} className="slider" style={{ "--p": ((clicks - 6) / 30) * 100 + "%" }} />
+            <input
+              type="range"
+              min={grinder.min}
+              max={grinder.max}
+              step={grinder.step}
+              value={clicks}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                setClicks(grinder.step >= 1 ? Math.round(v) : v);
+              }}
+              className="slider"
+              style={{ "--p": (((clicks - grinder.min) / (grinder.max - grinder.min)) * 100 || 0) + "%" }}
+            />
             <div className="dial-scale"><span>fine</span><span className="grind-desc">{grindDescriptor(clicks)}</span><span>coarse</span></div>
           </div>
+          {warning && <div className="dial-warn">{warning}</div>}
         </div>
 
         <BrewTimer steps={method.steps} key={method.id} />
@@ -349,7 +383,7 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
             placeholder="A few words — body, sweetness, what you'd change next time…"
           />
           <div className="brewnote-actions">
-            <span className="brewnote-stamp">{temp}°C · {clicks} clicks</span>
+            <span className="brewnote-stamp">{temp}°C · {clicks} {grinder.unit || ""}</span>
             <div className="bn-btn-row">
               <button
                 className="btn btn-ghost btn-sm"
@@ -386,8 +420,8 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
                     </div>
                     <div className="ai-delta">
                       <span className="ai-l">Grind</span>
-                      <span className="ai-v">{aiResult.clicks} clicks</span>
-                      <span className="ai-diff">{aiResult.clicks > clicks ? `+${aiResult.clicks - clicks}` : aiResult.clicks < clicks ? `${aiResult.clicks - clicks}` : "—"}</span>
+                      <span className="ai-v">{aiResult.clicks} {grinder.unit || ""}</span>
+                      <span className="ai-diff">{aiResult.clicks > clicks ? `+${(aiResult.clicks - clicks).toFixed(grinder.step >= 1 ? 0 : 1)}` : aiResult.clicks < clicks ? `${(aiResult.clicks - clicks).toFixed(grinder.step >= 1 ? 0 : 1)}` : "—"}</span>
                     </div>
                   </div>
                   <p className="ai-advice">{aiResult.advice}</p>

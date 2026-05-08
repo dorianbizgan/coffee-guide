@@ -2420,7 +2420,30 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
 }
 .bn-label .bn-hint { text-transform: none; letter-spacing: 0; font-style: italic; opacity: 0.8; }
 .tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Brewnote rating chips ("Best yet", "Balanced", "Sour"…). The design stylesheet
+   only shipped .chip.flavor.on; the plain .chip.on rule was missing so toggles
+   had no visual feedback. */
+.chip.on { background: var(--forest-700); color: var(--paper); border-color: var(--forest-700); }
 .chip.flavor.on { background: var(--amber-500); color: var(--paper); border-color: var(--amber-500); }
+/* Soft inline warning banner shown below the dial when a value is way off
+   for the selected method. Looks like a tip card but with amber edges. */
+.dial-warn {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklch, var(--amber-500) 60%, transparent);
+  background: color-mix(in oklch, var(--amber-100) 40%, transparent);
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.45;
+  display: flex; align-items: flex-start; gap: 8px;
+}
+.dial-warn::before {
+  content: "⚠";
+  color: var(--amber-700);
+  font-weight: 700;
+  flex-shrink: 0;
+}
 .brewnote-text {
   width: 100%; box-sizing: border-box;
   background: var(--paper);
