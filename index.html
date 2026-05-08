@@ -14,6 +14,19 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Set the theme on <html> as early as possible so the page never flashes
+     the wrong palette. Reads localStorage, falls back to the OS preference. -->
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem("crema-theme-v1");
+    var theme = saved === "dark" || saved === "light"
+      ? saved
+      : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  } catch (e) { /* localStorage may be unavailable in private mode — fine */ }
+})();
+</script>
 <!-- Lottie player for splash animation. Pick any animation from https://lottiefiles.com/featured (filter by free), copy its .lottie URL, and paste it into the SPLASH_LOTTIE_URL constant in the script below. -->
 <script src="https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
 <style>
@@ -67,6 +80,61 @@
     --ease-out:     cubic-bezier(.16, 1, .3, 1);
     --ease-in-out:  cubic-bezier(.32, .72, 0, 1);
     --ease-spring:  cubic-bezier(.34, 1.4, .64, 1);
+  }
+
+  /* === Light theme (Sunrise) — slightly peachier paper + deeper greens.
+     Applies only when data-theme="light" is set (the inline <head> boot
+     script always sets one, defaulting to light if no preference saved
+     and no system dark-mode signal). This avoids the classic ":root, [x]"
+     bug where the selector list matches :root unconditionally. */
+  [data-theme="light"] {
+    --paper:      oklch(0.97 0.022 60);
+    --paper-2:    oklch(0.94 0.03 55);
+    --paper-3:    oklch(0.9  0.04 55);
+    --amber-500:  oklch(0.68 0.16 45);
+    --amber-300:  oklch(0.84 0.1  55);
+    --forest-700: oklch(0.28 0.05 160);
+  }
+
+  /* === Dark theme (Dusk) — rich Rivian-style forest base with ochre amber.
+     Buttons / recipe cells / badges glow yellow-gold against deep green paper. */
+  [data-theme="dark"] {
+    --paper:        oklch(0.22 0.04 155);
+    --paper-2:      oklch(0.27 0.045 155);
+    --paper-3:      oklch(0.32 0.05 155);
+    --ink:          oklch(0.96 0.02 90);
+    --ink-soft:     oklch(0.82 0.025 85);
+    --ink-mute:     oklch(0.62 0.03 80);
+    --line:         oklch(0.34 0.04 155);
+    --line-strong:  oklch(0.44 0.045 155);
+    --forest-900:   oklch(0.18 0.04 155);
+    --forest-700:   oklch(0.78 0.13 95);     /* gold-amber accent */
+    --forest-500:   oklch(0.7  0.12 90);
+    --forest-300:   oklch(0.55 0.08 90);
+    --forest-100:   oklch(0.32 0.05 155);
+    --amber-700:    oklch(0.82 0.16 85);
+    --amber-500:    oklch(0.78 0.17 80);
+    --amber-300:    oklch(0.62 0.14 75);
+    --amber-100:    oklch(0.34 0.07 90);
+    /* Re-alias the legacy names to match the new dark tokens. */
+    --bg:           var(--paper);
+    --card-bg:      var(--paper-2);
+    --muted:        var(--ink-soft);
+    --accent:       var(--amber-700);
+    --accent-deep:  var(--amber-500);
+  }
+  /* Paper texture inverts to a screen-blend on dark so the warm bloom and
+     deep forest corner read correctly. */
+  [data-theme="dark"] body::before {
+    background-image:
+      radial-gradient(circle at 20% 10%, oklch(0.7 0.13 90 / 0.18), transparent 55%),
+      radial-gradient(circle at 80% 80%, oklch(0.18 0.04 155 / 0.5), transparent 55%);
+    mix-blend-mode: screen;
+  }
+  [data-theme="dark"] body.show-login::after {
+    background:
+      radial-gradient(ellipse 60% 50% at 80% 20%, oklch(0.78 0.16 80 / 0.18), transparent 60%),
+      radial-gradient(ellipse 80% 60% at 20% 80%, oklch(0.32 0.05 155 / 0.5), transparent 60%);
   }
   html, body { height: 100%; }
   html { -webkit-text-size-adjust: 100%; }
@@ -252,16 +320,16 @@
   /* Login screen — frosted glass card on the crema. Apple-tier breathing room. */
   #login-screen {
     width: 100%; max-width: 440px;
-    background: rgba(255, 250, 240, 0.78);
+    /* Theme-aware: paper-2 tracks both modes (cream in light, dark forest
+       in dusk). color-mix gives a light backdrop-blur sheen on top. */
+    background: color-mix(in oklch, var(--paper-2) 88%, transparent);
     -webkit-backdrop-filter: blur(28px) saturate(140%);
     backdrop-filter: blur(28px) saturate(140%);
-    border: 1px solid rgba(255, 250, 240, 0.55);
+    border: 1px solid var(--line);
     border-radius: 22px;
     padding: 40px 36px 32px;
-    box-shadow:
-      0 30px 80px rgba(40, 18, 4, 0.42),
-      0 4px 16px rgba(40, 18, 4, 0.22),
-      inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    color: var(--ink);
+    box-shadow: var(--shadow-pop);
     animation: loginIn 0.8s var(--ease-out) both;
     position: relative; overflow: hidden;
   }
@@ -291,11 +359,13 @@
     text-transform: uppercase; color: var(--accent-deep);
   }
   .login-title {
-    font-size: 28px; font-weight: 700; text-align: center;
-    letter-spacing: -0.02em; margin-bottom: 8px;
-    background: linear-gradient(180deg, #2d160a, #5e3210);
-    -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent;
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 400;
+    text-align: center;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+    color: var(--ink);
   }
   .login-sub { font-size: 14px; color: #6b5840; text-align: center; margin-bottom: 26px; line-height: 1.5; }
 
@@ -324,8 +394,8 @@
   }
   .login-input {
     width: 100%; padding: 16px 14px 6px;
-    background: rgba(255, 255, 255, 0.85);
-    border: 1px solid rgba(40, 18, 4, 0.12);
+    background: var(--paper);
+    border: 1px solid var(--line);
     border-radius: 11px;
     font-size: 15px; font-family: inherit; color: var(--ink);
     outline: none;
@@ -334,8 +404,8 @@
   .login-input::placeholder { color: transparent; }
   .login-input:focus {
     border-color: var(--accent);
-    background: white;
-    box-shadow: 0 0 0 4px rgba(192, 132, 74, 0.18);
+    background: var(--paper);
+    box-shadow: 0 0 0 4px color-mix(in oklch, var(--amber-500) 22%, transparent);
   }
   .login-field-label {
     position: absolute;
@@ -663,13 +733,9 @@
     gap: 16px; margin-bottom: 6px; flex-wrap: wrap;
     padding: 4px 2px 0;
   }
-  h1 {
-    font-size: 24px; font-weight: 700; letter-spacing: -0.025em;
-    color: #1d0f04;
-    background: linear-gradient(180deg, #1d0f04 0%, #4a2710 100%);
-    -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
+  /* (Old global h1 with a hardcoded dark gradient + -webkit-text-fill-color
+     transparent removed — was clobbering var(--ink) in dark mode. The new
+     hero + login h1s carry their own color: var(--ink) declarations.) */
   .subtitle { font-size: 12.5px; color: #6b5840; margin-bottom: 22px; letter-spacing: 0.01em; }
 
   .header-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -796,6 +862,14 @@
   }
 
   .icon-btn.danger { color: #b54040; }
+
+  /* Theme toggle — same glass treatment as the rest, but icon-only with
+     the active icon swapped per theme. */
+  .theme-toggle { padding: 9px 11px; }
+  .theme-toggle svg { width: 16px; height: 16px; }
+  .theme-toggle .theme-icon-moon { display: none; }
+  [data-theme="dark"] .theme-toggle .theme-icon-sun  { display: none; }
+  [data-theme="dark"] .theme-toggle .theme-icon-moon { display: inline-block; }
   .icon-btn.danger:hover { border-color: #b54040; color: #b54040; }
 
   .user-menu { position: relative; }
@@ -2047,6 +2121,12 @@
     <button class="icon-btn" id="tip-btn" title="Ask a brewing question (cached, no waste)">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.6c.6.4 1 1.1 1 1.9V18h6v-1.5c0-.8.4-1.5 1-1.9A7 7 0 0 0 12 2z"/></svg>
       Tip
+    </button>
+    <!-- Light/dark theme toggle. Aria-label updates from JS so screen readers
+         announce the action that pressing it will perform. -->
+    <button class="icon-btn theme-toggle" id="theme-toggle" type="button" title="Switch theme" aria-label="Switch to dark theme">
+      <svg class="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
     <button class="icon-btn primary" id="add-btn" title="Add new coffee">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -6052,7 +6132,28 @@ function toast(msg, kind = "") {
   _toastTimer = setTimeout(() => el.classList.remove("show"), 3000);
 }
 
+// Toggle between light (sunrise) and dark (dusk). Saves the choice so
+// future visits skip the system-preference fallback. Updates aria-label so
+// screen readers announce what the next press will do. The pre-paint
+// inline <script> in <head> handles initial theme assignment.
+function toggleTheme() {
+  const html = document.documentElement;
+  const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  html.setAttribute("data-theme", next);
+  try { localStorage.setItem("crema-theme-v1", next); } catch (e) {}
+  const btn = document.getElementById("theme-toggle");
+  if (btn) btn.setAttribute("aria-label", next === "dark" ? "Switch to light theme" : "Switch to dark theme");
+}
+
 function bindEvents() {
+  // Theme toggle (light = sunrise, dark = dusk)
+  const themeBtn = document.getElementById("theme-toggle");
+  if (themeBtn) {
+    themeBtn.addEventListener("click", toggleTheme);
+    // Sync the initial aria-label to whatever the inline-head script picked.
+    const cur = document.documentElement.getAttribute("data-theme");
+    themeBtn.setAttribute("aria-label", cur === "dark" ? "Switch to light theme" : "Switch to dark theme");
+  }
   // Gradient picker — any of its three inputs rebuilds the hidden value
   ["ed-color-start", "ed-color-end", "ed-color-angle"].forEach(id => {
     const el = document.getElementById(id);
