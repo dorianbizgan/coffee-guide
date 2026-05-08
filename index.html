@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://udzsveyedwbmygvpvxpx.supabase.co wss://udzsveyedwbmygvpvxpx.supabase.co https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://lottie.host https://*.lottiefiles.com; img-src 'self' data: https://lottie.host https://*.lottiefiles.com; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests;">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<title>Coffee Brew Tracker</title>
+<title>Crema — espresso, V60, AeroPress · dialed in</title>
 <!-- Lottie player for splash animation. Pick any animation from https://lottiefiles.com/featured (filter by free), copy its .lottie URL, and paste it into the SPLASH_LOTTIE_URL constant in the script below. -->
 <script src="https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
 <style>
@@ -86,8 +86,11 @@
     width: 100vw; height: 100vh;
     pointer-events: none;
     z-index: -1;
-    mix-blend-mode: screen;
-    opacity: 0.85;
+    /* Canvas already uses additive (lighter) compositing internally; the
+       outer mix-blend-mode would double up the brightening and wash out
+       the dark crema tones, so we keep this as normal here. */
+    mix-blend-mode: normal;
+    opacity: 0.95;
   }
   @keyframes cremaDrift {
     0%   { transform: translate3d(0, 0, 0) rotate(0deg); }
@@ -1517,7 +1520,7 @@
 
 <div class="header-row">
   <div>
-    <h1>Coffee Brew Tracker</h1>
+    <h1>Crema</h1>
     <p class="subtitle" id="app-subtitle">Acaia Orbit · SSP Lab Sweet V3 · IMS 18g High-Flow</p>
   </div>
   <div class="header-controls">
@@ -1580,7 +1583,7 @@
 <div class="modal-backdrop hidden" id="onboarding-modal">
   <div class="modal" style="max-width: 560px;">
     <div class="modal-head">
-      <h2>Welcome to Coffee Brew Tracker ☕</h2>
+      <h2>Welcome to Crema ☕</h2>
       <button class="modal-close" onclick="skipOnboarding()">✕</button>
     </div>
     <div class="modal-body">
@@ -1933,24 +1936,56 @@ if (typeof supabase !== "undefined") {
 }
 
 // =====================================================================
-// Crema foam bubbles — tiny iridescent bubbles that slowly rise and pop,
-// like the foam on a fresh espresso shot. Far smaller and more numerous
-// than the old "blobs"; reads as actual foam, not as floating circles.
+// CremaFluid — high-density coffee crema simulator.
+//
+// The look we want: actual fresh-pulled crema seen close-up. Thousands of
+// tiny suspended particles, some rising to the meniscus, some sinking back
+// into the espresso below. Specular highlights catch the light at random
+// across the surface. Soft additive blending makes overlapping clusters
+// glow a touch brighter — you read them as moving foam, not as discrete
+// blobs of color.
+//
+// Design choices:
+//  - Pure Canvas2D + composite operations. No physics lib (Matter et al.
+//    are great for rigid-body fun but the cost-per-particle here would tank
+//    the high counts we need). At hundreds-to-thousands of particles, doing
+//    real n² interactions blows the frame budget anyway, so we do "soft"
+//    fluid dynamics via per-particle sin-wave drift + Perlin-ish wobble +
+//    additive overlap (the visual layer creates the "fluid" perception
+//    cheaply).
+//  - Two layers: a dense surface layer rising slowly + a deeper layer
+//    sinking faster. Wraps at the edges. Reads as turnover, not as a
+//    one-way conveyor belt.
+//  - Particles are sub-pixel-to-tiny (0.4–2.4 px on a DPR 2 buffer = grain
+//    of sand scale), and rendered as soft radial gradients via
+//    composite-operation: lighter so overlapping foam glows.
+//  - Specular flashes: every frame, a small fraction of particles trigger a
+//    bright pinprick highlight that fades over ~350ms — like the meniscus
+//    catching a light source.
+//  - Cursor magnetism (subtle): particles within ~80 px of the pointer
+//    drift toward it, so hovering feels like fingertip-on-foam.
 // =====================================================================
-class CremaFoam {
+class CremaFluid {
   constructor(canvas) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext("2d", { alpha: true });
-    this.bubbles = [];
+    this.ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
+    this.particles = [];
+    this.flashes = [];
     this.running = false;
     this.lastT = 0;
+    this.pointer = { x: -9999, y: -9999, active: false };
     this.handleResize = this.handleResize.bind(this);
+    this.handlePointer = this.handlePointer.bind(this);
+    this.handleLeave = this.handleLeave.bind(this);
     window.addEventListener("resize", this.handleResize);
+    window.addEventListener("pointermove", this.handlePointer, { passive: true });
+    window.addEventListener("pointerleave", this.handleLeave, { passive: true });
     this.handleResize();
     this.spawn();
   }
   handleResize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.dpr = dpr;
     this.w = window.innerWidth;
     this.h = window.innerHeight;
     this.canvas.width = this.w * dpr;
@@ -1959,27 +1994,42 @@ class CremaFoam {
     this.canvas.style.height = this.h + "px";
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
+  handlePointer(e) {
+    this.pointer.x = e.clientX;
+    this.pointer.y = e.clientY;
+    this.pointer.active = true;
+  }
+  handleLeave() { this.pointer.active = false; this.pointer.x = -9999; this.pointer.y = -9999; }
   spawn() {
-    const density = this.w < 700 ? 0.00012 : 0.00018;
+    // Density tuned per viewport size. ~700 on desktop, ~280 on mobile.
+    const density = this.w < 700 ? 0.0009 : 0.0014;
     const count = Math.round(this.w * this.h * density);
-    this.bubbles = [];
+    this.particles = [];
     for (let i = 0; i < count; i++) {
-      this.bubbles.push(this.makeBubble(true));
+      this.particles.push(this.makeParticle(true));
     }
   }
-  makeBubble(initial) {
+  makeParticle(initial) {
+    // 60% surface (rising, lighter, smaller), 40% deep (sinking, darker, slightly larger)
+    const surface = Math.random() < 0.6;
     return {
       x: Math.random() * this.w,
-      y: initial ? Math.random() * this.h : this.h + Math.random() * 60,
-      r: 0.6 + Math.random() * 2.4,           // tiny — actual foam scale
-      vy: -0.05 - Math.random() * 0.18,       // gentle rise
+      y: initial ? Math.random() * this.h : (surface ? this.h + Math.random() * 60 : -Math.random() * 60),
+      r: surface ? 0.4 + Math.random() * 1.6 : 0.8 + Math.random() * 1.8,    // grain-of-sand scale
+      vy: surface
+        ? -0.04 - Math.random() * 0.18                                        // rises
+        :  0.03 + Math.random() * 0.14,                                       // sinks
       vx: (Math.random() - 0.5) * 0.05,
-      life: 0,
-      maxLife: 8 + Math.random() * 12,        // seconds
-      opacity: 0.28 + Math.random() * 0.42,
-      tone: Math.random() < 0.7 ? "pale" : "gold", // mostly pale foam, occasional gold highlight
       phase: Math.random() * Math.PI * 2,
-      period: 5 + Math.random() * 5
+      period: 5 + Math.random() * 7,
+      wobble: 0.04 + Math.random() * 0.10,
+      brightness: 0.42 + Math.random() * 0.42,
+      surface,
+      // Tone palette: warm cream foam + warm amber crema + occasional bronze grain
+      tone: surface
+        ? (Math.random() < 0.18 ? [255, 232, 178] : [255, 246, 220])         // cream / soft gold
+        : (Math.random() < 0.30 ? [180, 110,  56] : [220, 158,  92]),        // amber / bronze
+      seed: Math.random()
     };
   }
   step(t) {
@@ -1987,49 +2037,111 @@ class CremaFoam {
     const dt = this.lastT ? Math.min((t - this.lastT) / 16.67, 3) : 1;
     this.lastT = t;
     const ctx = this.ctx;
-    ctx.clearRect(0, 0, this.w, this.h);
+    const w = this.w, h = this.h;
     const tSec = t / 1000;
-    for (let i = 0; i < this.bubbles.length; i++) {
-      const b = this.bubbles[i];
-      b.life += dt / 60;
-      b.y += b.vy * dt;
-      b.x += (b.vx + Math.sin(tSec / b.period + b.phase) * 0.04) * dt;
-      // Lifecycle: appear, drift, pop
-      const pct = b.life / b.maxLife;
-      let alpha = b.opacity;
-      if (pct < 0.15) alpha *= pct / 0.15;
-      else if (pct > 0.8) alpha *= Math.max(0, (1 - pct) / 0.2);
-      if (b.y < -10 || pct >= 1) { this.bubbles[i] = this.makeBubble(false); continue; }
-      // Draw the bubble — soft circle with a tiny highlight
-      const r = b.r;
-      const tone = b.tone === "gold"
-        ? [255, 220, 165]
-        : [255, 248, 232];
-      const grd = ctx.createRadialGradient(b.x - r * 0.3, b.y - r * 0.3, 0, b.x, b.y, r * 1.6);
-      grd.addColorStop(0,    `rgba(${tone[0]},${tone[1]},${tone[2]},${alpha})`);
-      grd.addColorStop(0.55, `rgba(${tone[0]},${tone[1]},${tone[2]},${alpha * 0.4})`);
-      grd.addColorStop(1,    `rgba(${tone[0]},${tone[1]},${tone[2]},0)`);
+    const px = this.pointer.x, py = this.pointer.y, pAct = this.pointer.active;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // PASS 1 — soft additive bodies (this is where the "glow" comes from)
+    ctx.globalCompositeOperation = "lighter";
+
+    for (let i = 0; i < this.particles.length; i++) {
+      const p = this.particles[i];
+
+      // Gentle drift + sin-wave wobble (cheap pseudo-fluid motion)
+      const wobX = Math.sin(tSec / p.period + p.phase) * p.wobble;
+      let vx = p.vx + wobX;
+      let vy = p.vy;
+
+      // Soft cursor magnetism — particles within 80px drift very gently toward pointer
+      if (pAct) {
+        const dx = px - p.x, dy = py - p.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < 6400) {
+          const f = (1 - d2 / 6400) * 0.025;
+          vx += dx * f * 0.012;
+          vy += dy * f * 0.012;
+        }
+      }
+
+      p.x += vx * dt;
+      p.y += vy * dt;
+
+      // Wrap at edges based on layer direction
+      if (p.surface) {
+        if (p.y < -p.r * 4) { p.y = h + p.r * 4; p.x = Math.random() * w; }
+      } else {
+        if (p.y > h + p.r * 4) { p.y = -p.r * 4; p.x = Math.random() * w; }
+      }
+      if (p.x < -p.r * 4) p.x = w + p.r * 4;
+      else if (p.x > w + p.r * 4) p.x = -p.r * 4;
+
+      // Render — a soft additive radial blob. The center is brightest and
+      // falls off to zero; many overlapping particles blend into cloudy bands.
+      const radius = p.r * 2.4;
+      const [tr, tg, tb] = p.tone;
+      const a = p.brightness * (p.surface ? 0.42 : 0.32);
+      const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius);
+      grd.addColorStop(0,    `rgba(${tr},${tg},${tb},${a})`);
+      grd.addColorStop(0.55, `rgba(${tr},${tg},${tb},${a * 0.45})`);
+      grd.addColorStop(1,    `rgba(${tr},${tg},${tb},0)`);
       ctx.fillStyle = grd;
       ctx.beginPath();
-      ctx.arc(b.x, b.y, r * 1.6, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
       ctx.fill();
-      // Bright pinprick highlight
-      ctx.fillStyle = `rgba(255,255,255,${alpha * 0.6})`;
+
+      // Specular highlight trigger — small fraction per frame, weighted to surface particles
+      if (Math.random() < (p.surface ? 0.00045 : 0.00012)) {
+        this.flashes.push({ x: p.x, y: p.y, r: p.r, life: 0, maxLife: 0.32 + Math.random() * 0.28 });
+      }
+    }
+
+    // PASS 2 — specular highlights (bright pinprick + halo, additive)
+    for (let i = this.flashes.length - 1; i >= 0; i--) {
+      const f = this.flashes[i];
+      f.life += dt / 60;
+      const pct = f.life / f.maxLife;
+      if (pct >= 1) { this.flashes.splice(i, 1); continue; }
+      // bell curve intensity (0 at start, peak at 0.5, 0 at end)
+      const intensity = Math.sin(pct * Math.PI);
+      const haloR = (f.r + 1) * 4 * (0.4 + intensity * 0.6);
+      // Halo
+      const halo = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, haloR);
+      halo.addColorStop(0,   `rgba(255,250,220,${intensity * 0.85})`);
+      halo.addColorStop(0.4, `rgba(255,238,180,${intensity * 0.32})`);
+      halo.addColorStop(1,   `rgba(255,238,180,0)`);
+      ctx.fillStyle = halo;
       ctx.beginPath();
-      ctx.arc(b.x - r * 0.3, b.y - r * 0.3, Math.max(0.3, r * 0.25), 0, Math.PI * 2);
+      ctx.arc(f.x, f.y, haloR, 0, Math.PI * 2);
+      ctx.fill();
+      // Bright pinprick at center — the "specular" hit
+      ctx.fillStyle = `rgba(255,255,255,${intensity})`;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 0.6 + intensity * 1.0, 0, Math.PI * 2);
       ctx.fill();
     }
-    requestAnimationFrame((tt) => this.step(tt));
+
+    ctx.globalCompositeOperation = "source-over";
+    this._raf = requestAnimationFrame((tt) => this.step(tt));
   }
-  start() { if (!this.running) { this.running = true; this.lastT = 0; requestAnimationFrame((t) => this.step(t)); } }
-  stop() { this.running = false; }
+  start() {
+    if (this.running) return;
+    this.running = true;
+    this.lastT = 0;
+    this._raf = requestAnimationFrame((t) => this.step(t));
+  }
+  stop() {
+    this.running = false;
+    if (this._raf) cancelAnimationFrame(this._raf);
+  }
 }
 
 (function startCrema() {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const c = document.getElementById("crema-canvas");
   if (!c) return;
-  const anim = new CremaFoam(c);
+  const anim = new CremaFluid(c);
   anim.start();
   // Pause when tab hidden to save battery
   document.addEventListener("visibilitychange", () => {
@@ -2165,12 +2277,30 @@ async function init() {
     if (session?.user) {
       state.user = session.user;
       await onSignedIn();
+    } else if (localStorage.getItem(GUEST_FLAG_KEY) === "1") {
+      // User came back as a guest but the previous anonymous session has
+      // lapsed (refresh-token expiry, cleared cookies, etc). Re-sign-in
+      // anonymously so they don't see a login screen they didn't expect.
+      console.log("[init] guest flag set, session missing — re-creating anonymous session");
+      try {
+        const { error } = await sb.auth.signInAnonymously();
+        if (error) throw error;
+        // onAuthStateChange will route us into onSignedIn() once the new
+        // session is created. Nothing else to do here.
+      } catch (e) {
+        console.warn("[init] anonymous re-sign-in failed, falling back to local demo:", e);
+        enterDemoMode();
+      }
     } else {
       onSignedOut();
     }
   } catch (e) {
     console.error("init auth check:", e);
-    onSignedOut();
+    if (localStorage.getItem(GUEST_FLAG_KEY) === "1") {
+      enterDemoMode();
+    } else {
+      onSignedOut();
+    }
   }
 }
 
@@ -2223,6 +2353,8 @@ function onSignedOut() {
 
 async function signOut() {
   closeUserDropdown();
+  // Drop guest intent so the user lands on login — they explicitly chose to leave.
+  clearGuestIntent();
   if (isDemoMode()) { exitDemoMode(); return; }
   const btn = document.getElementById("signout-btn");
   if (btn) { btn.disabled = true; btn.textContent = "Signing out…"; }
@@ -2421,6 +2553,10 @@ async function handleSetNewPassword() {
 //      are disabled in the Supabase project (or Supabase is unreachable).
 const DEMO_DATA_KEY = "coffee-tracker-demo-v1";
 const DEMO_FLAG_KEY = "coffee-tracker-demo-mode-v1";
+// Persisted guest intent — if set, we'll try to re-establish an anonymous
+// Supabase session on boot even if the previous one lapsed. This is what
+// keeps "Continue as guest" sticky across refreshes.
+const GUEST_FLAG_KEY = "coffee-tracker-guest-v1";
 
 function isDemoMode() {
   return localStorage.getItem(DEMO_FLAG_KEY) === "1";
@@ -2430,8 +2566,14 @@ function isGuestUser() {
   return !!state.user?.is_anonymous;
 }
 
+function markGuestIntent() { localStorage.setItem(GUEST_FLAG_KEY, "1"); }
+function clearGuestIntent() { localStorage.removeItem(GUEST_FLAG_KEY); }
+
 async function continueAsGuest() {
   hideLoginMsg();
+  // Persist intent right away so a refresh during the auth round-trip still
+  // routes the user back into guest mode (instead of dumping them to login).
+  markGuestIntent();
   // No Supabase available at all -> local-only demo
   if (!sb) { enterDemoMode(); return; }
   const btn = document.getElementById("login-demo");
@@ -2484,8 +2626,10 @@ function exitDemoMode() {
   if (isGuestUser()) {
     return saveGuestAccountPrompt();
   }
-  // Local demo: keep the data in localStorage; just drop the flag and route back.
+  // Local demo: drop both the demo flag and the guest intent flag, then return
+  // to login. Demo data stays in localStorage in case the user wants it back.
   localStorage.removeItem(DEMO_FLAG_KEY);
+  clearGuestIntent();
   state.user = null;
   document.body.classList.remove("demo-mode");
   document.getElementById("demo-banner").classList.add("hidden");
@@ -2515,6 +2659,11 @@ async function saveGuestAccountPrompt() {
   try {
     const { error } = await sb.auth.updateUser({ email, password });
     if (error) throw error;
+    // Once the user has linked an email + password they're no longer just a
+    // guest — drop the guest intent flag so future refreshes don't try to
+    // re-anonymous-sign-in. Their is_anonymous flag will flip to false on
+    // email confirmation.
+    clearGuestIntent();
     toast("Account saved. Check your inbox to confirm the email.", "success");
     // is_anonymous flips to false once email is confirmed; banner will hide on
     // the next sign-in. For now keep it visible so the user knows confirm is pending.
@@ -3607,6 +3756,30 @@ function humanizeDbError(e) {
 // ============================================================
 // AI calls
 // ============================================================
+// Shared system prompt for recipe generation. Schema enforcement happens
+// server-side via Gemini's responseSchema, so we don't need to spell out the
+// JSON shape here — just describe the coffee-expert persona, the equipment
+// constraints, and the bag-color hint.
+function recipeSystemPrompt(prefs) {
+  return [
+    "You are a deeply experienced home-barista expert producing brewing recipes.",
+    "",
+    "USER PREFERENCES:",
+    prefs || "(none provided)",
+    "",
+    "EQUIPMENT:",
+    "- Espresso: Acaia Orbit grinder + SSP Lab Sweet V3 burrs (use a numeric grind value like 1.3). 18g IMS High-Flow basket. 8 bar pressure, 10s preinfusion @ 2–3 bar.",
+    "- V60: Hoffmann method, 1:16.7 ratio (60g/L). 48g bloom @ 45s.",
+    "- AeroPress: inverted method.",
+    "",
+    "GUIDELINES:",
+    "- Pick numeric espresso grind values appropriate to roast level: light ≈ 1.1–1.4, medium ≈ 1.5–1.7, dark ≈ 1.7–2.0.",
+    "- For `color`, return a hex like #5c4a3a that matches the dominant color of the actual coffee bag from the roaster's site or marketing. If the bag isn't identifiable, pick a color that captures the origin/process character.",
+    "- `meta` should be terse: process · origin · altitude · varietal where known.",
+    "- Each method's `notes` should be one or two short sentences, focused on the next thing to try."
+  ].join("\n");
+}
+
 function userContextBlock() {
   const eq = state.data.equipment || {};
   const lines = [];
@@ -3687,6 +3860,7 @@ async function callAI(systemPrompt, userPrompt, opts = {}) {
   const serverProvider = pickServerProvider(preferred, opts);
   if (serverProvider) {
     try {
+      // Pass through any mode (e.g. "recipe" for structured output / faster responses)
       return await callServerAI(serverProvider, sys, userPrompt, opts);
     } catch (e) {
       if (e.code === "PROXY_UNAVAILABLE" && state.settings.aiKey) {
@@ -3709,7 +3883,7 @@ async function callAI(systemPrompt, userPrompt, opts = {}) {
   return callOpenAI(sys, userPrompt, opts);
 }
 
-async function callServerAI(provider, systemPrompt, userPrompt, { useWebSearch = false, jsonMode = false, model } = {}) {
+async function callServerAI(provider, systemPrompt, userPrompt, { useWebSearch = false, jsonMode = false, model, mode = "default", max_tokens } = {}) {
   // Get a fresh access token to authenticate against /api/ai
   let token = "";
   try {
@@ -3731,7 +3905,8 @@ async function callServerAI(provider, systemPrompt, userPrompt, { useWebSearch =
     body: JSON.stringify({
       provider, model, system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
-      useWebSearch, jsonMode, max_tokens: 2048
+      useWebSearch, jsonMode, mode,
+      ...(max_tokens != null ? { max_tokens } : {})
     })
   });
   if (res.status === 503) {
@@ -4166,11 +4341,12 @@ async function aiSearchOnline(query) {
 
   // Build prompt — reuse the same JSON shape as aiCreate so we get a full recipe back
   const prefs = state.data.preferences || "(none provided)";
-  const sys = `You are a coffee expert. USER PREFERENCES:\n${prefs}\n\nEQUIPMENT:\n- Espresso: Acaia Orbit + SSP Lab Sweet V3 burrs (numeric grind, e.g. 1.3). 18g IMS High-Flow basket.\n- V60: Hoffmann method, 1:16.7 ratio.\n- AeroPress: inverted.\n\nReturn ONLY valid JSON in this exact shape, no prose:\n{\n  "roaster": "...", "name": "...", "meta": "process · origin · altitude", "color": "#hex", "tags": ["..."],\n  "espresso": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Brew Temp": "...°F", "Dose": "18g", "Yield": "...", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "...s", "Basket": "IMS 18g Precision High-Flow"}, "notes": "..."},\n  "v60": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Water Temp": "...", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "..."}, "notes": "..."},\n  "aeropress": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Water Temp": "...", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "...", "Press Time": "0:30"}, "notes": "..."}\n}`;
+  const sys = recipeSystemPrompt(prefs);
   const user = `Find this coffee online and return a recipe tailored to my preferences:\n\n${query}\n\nUse web_search for the coffee's origin, process, altitude, varietal, roaster recommendations. Then return the JSON.`;
 
   try {
-    const text = await callAI(sys, user, { useWebSearch: true });
+    // Schema-enforced JSON for faster, more reliable parsing
+    const text = await callAI(sys, user, { useWebSearch: true, mode: "recipe" });
     if (!state.searchOnlineState || state.searchOnlineState.query !== query) return; // user navigated away / cancelled
     const parsed = extractJsonBlock(text);
     if (!parsed) {
@@ -4428,12 +4604,14 @@ async function aiCreate(useWebSearch) {
   }
   out.innerHTML = `${COFFEE_SPINNER}${useWebSearch ? "Searching the web..." : "Generating recipe..."}`;
   const prefs = state.data.preferences || "(none provided)";
-  const sys = `You are a coffee expert. USER PREFERENCES:\n${prefs}\n\nEQUIPMENT:\n- Espresso: Acaia Orbit + SSP Lab Sweet V3 burrs (numeric grind, e.g. 1.3). 18g IMS High-Flow basket.\n- V60: Hoffmann method, 1:16.7 ratio.\n- AeroPress: inverted.\n\nReturn ONLY valid JSON in this exact shape, no prose:\n{\n  "roaster": "...", "name": "...", "meta": "process · origin · altitude", "color": "#hex", "tags": ["..."],\n  "espresso": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Brew Temp": "...°F", "Dose": "18g", "Yield": "...", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "...s", "Basket": "IMS 18g Precision High-Flow"}, "notes": "..."},\n  "v60": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Water Temp": "...", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "..."}, "notes": "..."},\n  "aeropress": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Water Temp": "...", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "...", "Press Time": "0:30"}, "notes": "..."}\n}`;
+  const sys = recipeSystemPrompt(prefs);
   const user = useWebSearch
     ? `Find this coffee online and return a recipe tailored to my preferences:\n\n${desc}\n\nUse web_search for the coffee's origin, process, altitude, varietal, roaster recommendations. Then return the JSON.`
     : `Coffee: ${desc}\n\nReturn the JSON.`;
   try {
-    const text = await callAI(sys, user, { useWebSearch });
+    // mode: "recipe" tells the proxy to use Gemini's responseSchema so the model
+    // returns the exact JSON shape with no prose preamble — much faster + reliable.
+    const text = await callAI(sys, user, { useWebSearch, mode: "recipe" });
     const parsed = extractJsonBlock(text);
     if (!parsed) { out.innerHTML = "<strong>Couldn't parse JSON:</strong>\n\n" + escapeHtml(text); return; }
     applyRecipeToEditor(parsed);

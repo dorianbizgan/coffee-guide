@@ -1,6 +1,6 @@
 // Vercel serverless AI proxy.
 //
-// Why this exists: lets users run Coffee Brew Tracker without pasting an API key
+// Why this exists: lets users run Crema without pasting an API key
 // into the browser. The deployer sets ANTHROPIC_API_KEY (and optionally
 // OPENAI_API_KEY) once in Vercel's project env vars, and every signed-in user
 // of the deployment gets AI features for free at the deployer's cost.
@@ -20,6 +20,60 @@ const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || "sb_pub
 
 // Tip cards are cached so repeated identical prompts don't burn AI tokens.
 const TIP_CACHE_TTL_DAYS = 7;
+
+// Recipe schema — used as Gemini's responseSchema when mode="recipe" so the
+// model returns exactly the shape we expect with no prose preamble. This is
+// dramatically faster (no wasted tokens) and eliminates parse failures.
+const METHOD_SETTINGS_SCHEMA = (keys) => ({
+  type: "OBJECT",
+  properties: Object.fromEntries(keys.map(k => [k, { type: "STRING" }])),
+  propertyOrdering: keys
+});
+const RECIPE_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    roaster: { type: "STRING", description: "Name of the roaster" },
+    name:    { type: "STRING", description: "Coffee name" },
+    meta:    { type: "STRING", description: "Origin · process · altitude · varietal" },
+    color:   { type: "STRING", description: "Hex color matching the actual coffee bag's dominant color from the roaster's site (e.g. #5c4a3a)" },
+    tags:    { type: "ARRAY", items: { type: "STRING" } },
+    espresso: {
+      type: "OBJECT",
+      properties: {
+        settings: METHOD_SETTINGS_SCHEMA([
+          "Grind (Acaia Orbit SSP V3)", "Brew Temp", "Dose", "Yield",
+          "Pressure", "Preinfusion", "Total Shot Time", "Basket"
+        ]),
+        notes: { type: "STRING" }
+      },
+      required: ["settings"]
+    },
+    v60: {
+      type: "OBJECT",
+      properties: {
+        settings: METHOD_SETTINGS_SCHEMA([
+          "Grind (Acaia Orbit SSP V3)", "Water Temp", "Dose", "Water",
+          "Ratio", "Bloom", "Target Drawdown"
+        ]),
+        notes: { type: "STRING" }
+      },
+      required: ["settings"]
+    },
+    aeropress: {
+      type: "OBJECT",
+      properties: {
+        settings: METHOD_SETTINGS_SCHEMA([
+          "Grind (Acaia Orbit SSP V3)", "Water Temp", "Dose", "Water",
+          "Method", "Steep Time", "Press Time"
+        ]),
+        notes: { type: "STRING" }
+      },
+      required: ["settings"]
+    }
+  },
+  required: ["name", "color", "tags", "espresso", "v60", "aeropress"],
+  propertyOrdering: ["roaster", "name", "meta", "color", "tags", "espresso", "v60", "aeropress"]
+};
 
 const crypto = require("crypto");
 function hashTipKey({ provider, model, system, prompt, useWebSearch, jsonMode }) {
@@ -155,10 +209,14 @@ module.exports = async function handler(req, res) {
   const system = String(body.system || "");
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const userPrompt = messages[0]?.content || body.userPrompt || "";
-  const maxTokens = Math.min(Math.max(parseInt(body.max_tokens || 2048, 10) || 2048, 64), 4096);
   const useWebSearch = !!body.useWebSearch;
-  const jsonMode = !!body.jsonMode;
-  const mode = body.mode === "tip" ? "tip" : "default"; // "tip" requests are cached
+  const mode = body.mode === "tip" ? "tip" : body.mode === "recipe" ? "recipe" : "default";
+  // Recipe calls return JSON only — drop the cap to ~1500 to cut latency.
+  // The recipe schema fits comfortably within that.
+  const defaultMax = mode === "recipe" ? 1500 : 2048;
+  const maxTokens = Math.min(Math.max(parseInt(body.max_tokens || defaultMax, 10) || defaultMax, 64), 4096);
+  // Recipe and explicit JSON-mode requests both want JSON output.
+  const jsonMode = !!body.jsonMode || mode === "recipe";
 
   // Hard caps to keep costs bounded
   if (system.length > 8000 || userPrompt.length > 12000) {
@@ -246,9 +304,14 @@ module.exports = async function handler(req, res) {
     const reqBody = {
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-      generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 }
+      generationConfig: { maxOutputTokens: maxTokens, temperature: mode === "recipe" ? 0.4 : 0.7 }
     };
     if (jsonMode) reqBody.generationConfig.responseMimeType = "application/json";
+    // Structured output: when we know the exact schema, force the model to emit
+    // exactly that shape. Skips prose preamble, makes responses faster and more
+    // reliable. Note: schema + grounding can coexist on Gemini, but if we ever
+    // see issues we can guard with `if (!useWebSearch)`.
+    if (mode === "recipe") reqBody.generationConfig.responseSchema = RECIPE_SCHEMA;
     if (useWebSearch) reqBody.tools = [{ google_search: {} }];
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
       method: "POST",

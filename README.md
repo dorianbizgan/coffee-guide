@@ -1,4 +1,4 @@
-# Crema — Coffee Brew Tracker
+# Crema
 
 Multi-user espresso, V60, and AeroPress brew tracker with AI assist. Built on Supabase + Vercel, served as a single static `index.html` plus one serverless function.
 
