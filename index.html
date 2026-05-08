@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://udzsveyedwbmygvpvxpx.supabase.co wss://udzsveyedwbmygvpvxpx.supabase.co https://api.anthropic.com https://api.openai.com https://lottie.host https://*.lottiefiles.com; img-src 'self' data: https://lottie.host https://*.lottiefiles.com; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://udzsveyedwbmygvpvxpx.supabase.co wss://udzsveyedwbmygvpvxpx.supabase.co https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://lottie.host https://*.lottiefiles.com; img-src 'self' data: https://lottie.host https://*.lottiefiles.com; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests;">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Coffee Brew Tracker</title>
@@ -1511,6 +1511,7 @@
         <div class="field">
           <label>Provider</label>
           <select id="ai-provider">
+            <option value="google">Google (Gemini) — free tier, supports web search</option>
             <option value="anthropic">Anthropic (Claude) — supports web search</option>
             <option value="openai">OpenAI (GPT)</option>
           </select>
@@ -1852,7 +1853,7 @@ let state = {
     units: "metric",
     onboardingComplete: false
   },
-  settings: { aiProvider: "anthropic", aiKey: "" },  // browser-only
+  settings: { aiProvider: "google", aiKey: "" },  // browser-only — Google Gemini default (free tier)
   activeMethod: "espresso",
   searchTerm: "",
   editingId: null,
@@ -2668,7 +2669,7 @@ function refreshAiStatusCard() {
   if (!card || !titleEl || !subEl) return;
 
   const provider = document.getElementById("ai-provider")?.value || state.settings.aiProvider || "anthropic";
-  const providerLabel = provider === "openai" ? "OpenAI" : "Anthropic Claude";
+  const providerLabel = provider === "openai" ? "OpenAI" : provider === "google" ? "Google Gemini" : "Anthropic Claude";
 
   card.classList.remove("ai-status-card--ready", "ai-status-card--byok", "ai-status-card--missing", "ai-status-card--checking");
 
@@ -2697,7 +2698,8 @@ function refreshAiStatusCard() {
 
   card.classList.add("ai-status-card--missing");
   titleEl.textContent = "AI not connected";
-  subEl.innerHTML = "Set <code>ANTHROPIC_API_KEY</code> in Vercel for site-wide AI, or paste a personal key below.";
+  const envVar = provider === "openai" ? "OPENAI_API_KEY" : provider === "google" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY";
+  subEl.innerHTML = `Set <code>${envVar}</code> in Vercel for site-wide AI, or paste a personal key below.`;
   if (byok) byok.setAttribute("open", "");
 }
 
@@ -3284,6 +3286,7 @@ const aiProxy = {
   ready: false,            // true once we've checked the server
   anthropic: false,
   openai: false,
+  google: false,
   lastError: null
 };
 
@@ -3294,6 +3297,7 @@ async function probeAiProxy() {
     const json = await res.json();
     aiProxy.anthropic = !!json.anthropic;
     aiProxy.openai = !!json.openai;
+    aiProxy.google = !!json.google;
     aiProxy.ready = true;
   } catch (e) {
     // Most likely running outside Vercel (e.g. plain static host) — silent fallback
@@ -3304,10 +3308,12 @@ async function probeAiProxy() {
 
 function aiHasServerSupport(provider) {
   if (!aiProxy.ready) return false;
-  return provider === "openai" ? aiProxy.openai : aiProxy.anthropic;
+  if (provider === "openai") return aiProxy.openai;
+  if (provider === "google") return aiProxy.google;
+  return aiProxy.anthropic;
 }
 function aiAnyServerSupport() {
-  return aiProxy.ready && (aiProxy.anthropic || aiProxy.openai);
+  return aiProxy.ready && (aiProxy.anthropic || aiProxy.openai || aiProxy.google);
 }
 
 async function callAI(systemPrompt, userPrompt, opts = {}) {
@@ -3334,11 +3340,12 @@ async function callAI(systemPrompt, userPrompt, opts = {}) {
   // 2) BYOK fallback
   if (!state.settings.aiKey) {
     const hint = aiProxy.ready
-      ? "AI isn't connected. Either set an API key in Settings, or ask the deployer to add ANTHROPIC_API_KEY to Vercel."
+      ? "AI isn't connected. Either set an API key in Settings, or ask the deployer to add a server-side key to Vercel."
       : "Set your API key in Settings first.";
     throw new Error(hint);
   }
   if (provider === "anthropic") return callAnthropic(sys, userPrompt, opts);
+  if (provider === "google")    return callGemini(sys, userPrompt, opts);
   return callOpenAI(sys, userPrompt, opts);
 }
 
@@ -3409,6 +3416,26 @@ async function callOpenAI(systemPrompt, userPrompt, { jsonMode = false, model = 
   return (json.choices?.[0]?.message?.content || "").trim();
 }
 
+async function callGemini(systemPrompt, userPrompt, { useWebSearch = false, jsonMode = false, model = "gemini-2.5-flash" } = {}) {
+  const body = {
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+    generationConfig: { maxOutputTokens: 2048, temperature: 0.7 }
+  };
+  if (jsonMode) body.generationConfig.responseMimeType = "application/json";
+  if (useWebSearch) body.tools = [{ google_search: {} }];
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(state.settings.aiKey)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error("Gemini API: " + res.status + " " + (await res.text()).slice(0, 300));
+  const json = await res.json();
+  const parts = json.candidates?.[0]?.content?.parts || [];
+  return parts.map(p => p.text || "").join("\n").trim();
+}
+
 function extractJsonBlock(text) {
   let m = text.match(/```json\s*([\s\S]*?)```/i) || text.match(/```\s*([\s\S]*?)```/i);
   if (m) { try { return JSON.parse(m[1]); } catch (e) {} }
@@ -3419,10 +3446,15 @@ function extractJsonBlock(text) {
 
 async function aiGenerateNew() { await aiCreate(false); }
 async function aiLookupOnline() {
-  if (state.settings.aiProvider !== "anthropic") { toast("Online lookup needs Anthropic.", "error"); return; }
-  // Web search is only supported on Anthropic, not OpenAI. Either a server key OR client key is fine.
-  if (!aiHasServerSupport("anthropic") && !state.settings.aiKey) {
-    toast("Online lookup needs Anthropic AI configured. Add a key in Settings or set ANTHROPIC_API_KEY in Vercel.", "error");
+  // Web search is supported by Anthropic (web_search tool) and Google (google_search grounding) — not OpenAI.
+  const provider = state.settings.aiProvider;
+  if (provider !== "anthropic" && provider !== "google") {
+    toast("Online lookup needs Anthropic or Google. Switch provider in Settings.", "error");
+    return;
+  }
+  if (!aiHasServerSupport(provider) && !state.settings.aiKey) {
+    const which = provider === "google" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY";
+    toast(`Online lookup needs an API key. Add yours in Settings, or set ${which} in Vercel.`, "error");
     return;
   }
   await aiCreate(true);

@@ -31,10 +31,27 @@ Multi-user espresso, V60, and AeroPress brew tracker with AI assist. Built on Su
 
 1. Fork or push this repo.
 2. Import the repo at https://vercel.com/new.
-3. **(Recommended) Add an `ANTHROPIC_API_KEY`** environment variable in Vercel → Project → Settings → Environment Variables. Get one at https://console.anthropic.com/. With this set, every signed-in user of your deployment gets AI features without pasting a key. Optionally also set `OPENAI_API_KEY`.
+3. **Pick an AI provider and add its key** in Vercel → Project → Settings → Environment Variables (recommended — every signed-in user then gets AI without pasting a key):
+
+   | Provider                      | Env var             | Pricing                                                                 |
+   | ----------------------------- | ------------------- | ----------------------------------------------------------------------- |
+   | **Google Gemini** *(default)* | `GEMINI_API_KEY`    | Free tier: ~15 req/min, 1500 req/day on Gemini 2.5 Flash. No card.      |
+   | Anthropic Claude              | `ANTHROPIC_API_KEY` | Pay-as-you-go ($3 / $15 per million in / out tokens for Sonnet 4.6)     |
+   | OpenAI                        | `OPENAI_API_KEY`    | Pay-as-you-go                                                           |
+
+   You only need one. The app defaults to Google because it's free for personal use; switch to Anthropic or OpenAI in Settings → AI provider.
 4. Deploy.
 
 If you skip step 3, the app still works — users can paste their own key under Settings → AI provider → Advanced.
+
+### Google Gemini setup (the free path)
+
+1. Visit https://aistudio.google.com/app/apikey, sign in with a Google account, and click **Create API key**.
+2. Copy the key (starts with `AIza…`).
+3. In Vercel → Project → Settings → Environment Variables, add `GEMINI_API_KEY` with that value, scope to **Production, Preview, Development**.
+4. Redeploy (Vercel → Deployments → click the latest → **Redeploy**) so the function picks up the new env var.
+
+That's it. The app's "Search online + generate" feature uses Gemini's `google_search` grounding — also free.
 
 ## Configure the Supabase project (one-time)
 

@@ -79,7 +79,8 @@ module.exports = async function handler(req, res) {
     return jsonResponse(res, 200, {
       anthropic: !!process.env.ANTHROPIC_API_KEY,
       openai: !!process.env.OPENAI_API_KEY,
-      version: 1
+      google: !!process.env.GEMINI_API_KEY,
+      version: 2
     });
   }
   if (req.method !== "POST") {
@@ -102,7 +103,10 @@ module.exports = async function handler(req, res) {
   try { body = await readBody(req); }
   catch { return jsonResponse(res, 400, { error: "Bad JSON body" }); }
 
-  const provider = body.provider === "openai" ? "openai" : "anthropic";
+  const provider =
+    body.provider === "openai" ? "openai" :
+    body.provider === "google" ? "google" :
+    "anthropic";
   const system = String(body.system || "");
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const userPrompt = messages[0]?.content || body.userPrompt || "";
@@ -145,24 +149,48 @@ module.exports = async function handler(req, res) {
       return jsonResponse(res, 200, { text: out, provider: "anthropic", model: reqBody.model });
     }
 
-    // OpenAI
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) return jsonResponse(res, 503, { error: "Server-side OpenAI not configured" });
+    if (provider === "openai") {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) return jsonResponse(res, 503, { error: "Server-side OpenAI not configured" });
+      const reqBody = {
+        model: body.model || "gpt-4o",
+        messages: [{ role: "system", content: system }, { role: "user", content: userPrompt }]
+      };
+      if (jsonMode) reqBody.response_format = { type: "json_object" };
+      const r = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+        body: JSON.stringify(reqBody)
+      });
+      const text = await r.text();
+      if (!r.ok) return jsonResponse(res, r.status, { error: `OpenAI ${r.status}: ${text.slice(0, 400)}` });
+      const json = JSON.parse(text);
+      const out = (json.choices?.[0]?.message?.content || "").trim();
+      return jsonResponse(res, 200, { text: out, provider: "openai", model: reqBody.model });
+    }
+
+    // Google Gemini (free tier covers light personal use of this app)
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return jsonResponse(res, 503, { error: "Server-side Gemini not configured" });
+    const model = body.model || "gemini-2.5-flash";
     const reqBody = {
-      model: body.model || "gpt-4o",
-      messages: [{ role: "system", content: system }, { role: "user", content: userPrompt }]
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+      generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 }
     };
-    if (jsonMode) reqBody.response_format = { type: "json_object" };
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+    if (jsonMode) reqBody.generationConfig.responseMimeType = "application/json";
+    if (useWebSearch) reqBody.tools = [{ google_search: {} }];
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(reqBody)
     });
     const text = await r.text();
-    if (!r.ok) return jsonResponse(res, r.status, { error: `OpenAI ${r.status}: ${text.slice(0, 400)}` });
+    if (!r.ok) return jsonResponse(res, r.status, { error: `Gemini ${r.status}: ${text.slice(0, 400)}` });
     const json = JSON.parse(text);
-    const out = (json.choices?.[0]?.message?.content || "").trim();
-    return jsonResponse(res, 200, { text: out, provider: "openai", model: reqBody.model });
+    const parts = json.candidates?.[0]?.content?.parts || [];
+    const out = parts.map(p => p.text || "").join("\n").trim();
+    return jsonResponse(res, 200, { text: out, provider: "google", model });
   } catch (e) {
     return jsonResponse(res, 502, { error: "Upstream error: " + (e?.message || String(e)).slice(0, 300) });
   }
