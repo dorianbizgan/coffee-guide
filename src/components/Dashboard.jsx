@@ -1,6 +1,23 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, MethodIcon } from "./Icons.jsx";
 import { BREW_METHODS, adjustRecipe } from "../lib/data.js";
+
+// Document-level click-away. The .method-menu-bg viewport overlay we used to
+// rely on gets trapped inside the card's bounds whenever the card has a CSS
+// transform (any of the magnetic/tilt/iridescent hover modes), so it stops
+// covering the viewport. Listening on document avoids that entirely.
+function useClickAway(ref, onAway, enabled) {
+  useEffect(() => {
+    if (!enabled) return undefined;
+    const handle = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onAway();
+    };
+    // Pointerdown so we close before the click resolves on the underlying
+    // card and accidentally navigates to the detail view.
+    document.addEventListener("pointerdown", handle, true);
+    return () => document.removeEventListener("pointerdown", handle, true);
+  }, [ref, onAway, enabled]);
+}
 
 export function Dashboard({ coffees, onOpen, onAdd, onChangeMethod, onToggleFavorite, onSearchOnline, user }) {
   const [filter, setFilter] = useState("all");
@@ -138,6 +155,8 @@ function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite }) {
   const recipe = adjustRecipe(method, coffee);
   const stop = (e) => e.stopPropagation();
   const pick = (e, id) => { e.stopPropagation(); onChangeMethod(id); setOpenMenu(false); };
+  const switchRef = useRef(null);
+  useClickAway(switchRef, () => setOpenMenu(false), openMenu);
 
   return (
     <article className="card" style={{ "--accent": coffee.accent, alignItems: "stretch", borderRadius: "18px" }} onClick={onOpen}>
@@ -150,12 +169,25 @@ function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite }) {
         title={coffee.favorite ? "Unfavorite" : "Favorite"}
         aria-label="Toggle favorite"
         style={{
-          position: "absolute", top: 14, right: 14, border: 0, background: "transparent",
-          color: coffee.favorite ? "var(--amber-500)" : "var(--ink-mute)",
-          cursor: "pointer", padding: 4, lineHeight: 0, zIndex: 2,
+          // Top-left corner so it doesn't overlap the upper-right .card-stamp.
+          position: "absolute",
+          top: 14,
+          left: 14,
+          border: 0,
+          background: coffee.favorite ? "var(--amber-100)" : "transparent",
+          color: coffee.favorite ? "var(--amber-700)" : "var(--ink-mute)",
+          cursor: "pointer",
+          padding: 6,
+          lineHeight: 0,
+          zIndex: 2,
+          borderRadius: 999,
+          opacity: coffee.favorite ? 1 : 0.55,
+          transition: "opacity .15s ease, background .15s ease",
         }}
+        onMouseEnter={(e) => { if (!coffee.favorite) e.currentTarget.style.opacity = 1; }}
+        onMouseLeave={(e) => { if (!coffee.favorite) e.currentTarget.style.opacity = 0.55; }}
       >
-        <Icon name="star" size={18} stroke={coffee.favorite ? 0 : 1.6} />
+        <Icon name="star" size={16} stroke={coffee.favorite ? 0 : 1.6} />
       </button>
       <div className="card-roaster">{coffee.roaster}</div>
       <h2 className="card-name">{coffee.name}</h2>
@@ -182,7 +214,7 @@ function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite }) {
         <div className="cheat-item"><div className="v">{recipe.time}</div><div className="l">Time</div></div>
       </div>
       <div className="card-foot">
-        <div className="method-switch" onClick={stop}>
+        <div className="method-switch" ref={switchRef} onClick={stop}>
           <button className={`method-badge-btn ${openMenu ? "open" : ""}`} onClick={(e) => { stop(e); setOpenMenu((o) => !o); }}>
             <span className="method-icon"><MethodIcon id={method.id} /></span>
             {method.short}
@@ -191,19 +223,16 @@ function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite }) {
             </svg>
           </button>
           {openMenu && (
-            <>
-              <div className="method-menu-bg" onClick={(e) => { stop(e); setOpenMenu(false); }} />
-              <div className="method-menu" onClick={stop}>
-                <div className="method-menu-h">Switch brew method</div>
-                {BREW_METHODS.map((m) => (
-                  <button key={m.id} className={`method-menu-item ${m.id === method.id ? "active" : ""}`} onClick={(e) => pick(e, m.id)}>
-                    <span className="method-icon"><MethodIcon id={m.id} size={14} /></span>
-                    <span>{m.short}</span>
-                    {m.id === method.id && <span className="check">✓</span>}
-                  </button>
-                ))}
-              </div>
-            </>
+            <div className="method-menu" onClick={stop}>
+              <div className="method-menu-h">Switch brew method</div>
+              {BREW_METHODS.map((m) => (
+                <button key={m.id} className={`method-menu-item ${m.id === method.id ? "active" : ""}`} onClick={(e) => pick(e, m.id)}>
+                  <span className="method-icon"><MethodIcon id={m.id} size={14} /></span>
+                  <span>{m.short}</span>
+                  {m.id === method.id && <span className="check">✓</span>}
+                </button>
+              ))}
+            </div>
           )}
         </div>
         <span

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "./lib/supabase.js";
 import {
   loadCoffees, saveCoffee, deleteCoffee, setFavorite, setMethod,
@@ -44,7 +44,20 @@ export default function App() {
   const [adding, setAdding] = useState(false);
   const [prefillSearch, setPrefillSearch] = useState("");
   const [userMenu, setUserMenu] = useState(false);
+  const userMenuRef = useRef(null);
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  // Close user menu on any click outside it. Mirrors the click-away in
+  // Dashboard.jsx — a fixed-position backdrop wouldn't work in cards/modals
+  // that use CSS transforms (any tilt/magnetic hover trap fixed children).
+  useEffect(() => {
+    if (!userMenu) return undefined;
+    const handle = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setUserMenu(false);
+    };
+    document.addEventListener("pointerdown", handle, true);
+    return () => document.removeEventListener("pointerdown", handle, true);
+  }, [userMenu]);
 
   // Bind tweak data attributes onto <html>
   useEffect(() => {
@@ -353,24 +366,21 @@ export default function App() {
           <button className="btn btn-amber btn-sm" onClick={() => { setEditing(null); setAdding(true); }}>
             <Icon name="plus" size={14} /> New brew
           </button>
-          <div className="user-chip-wrap">
+          <div className="user-chip-wrap" ref={userMenuRef}>
             <button className="user-chip" onClick={() => setUserMenu((o) => !o)}>
               <span className="user-avatar">{(user.name || "?").slice(0, 1).toUpperCase()}</span>
               <span className="user-name">{(user.name || "you").split(" ")[0]}</span>
               {user.mode === "guest" && <span className="user-badge">Guest</span>}
             </button>
             {userMenu && (
-              <>
-                <div className="method-menu-bg" onClick={() => setUserMenu(false)} />
-                <div className="user-menu">
-                  <div className="user-menu-h">
-                    <div className="user-menu-name">{user.name}</div>
-                    <div className="user-menu-email">{user.email || "Local device only"}</div>
-                  </div>
-                  <button className="method-menu-item" onClick={() => { setUserMenu(false); setView({ name: "gear" }); }}>Preferences</button>
-                  <button className="method-menu-item" onClick={signOut}>{user.mode === "guest" ? "Exit guest mode" : "Sign out"}</button>
+              <div className="user-menu">
+                <div className="user-menu-h">
+                  <div className="user-menu-name">{user.name}</div>
+                  <div className="user-menu-email">{user.email || "Local device only"}</div>
                 </div>
-              </>
+                <button className="method-menu-item" onClick={() => { setUserMenu(false); setView({ name: "gear" }); }}>Preferences</button>
+                <button className="method-menu-item" onClick={signOut}>{user.mode === "guest" ? "Exit guest mode" : "Sign out"}</button>
+              </div>
             )}
           </div>
         </nav>

@@ -316,7 +316,7 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
               <span className="l">Water temperature</span>
               <span className="readout">{temp}<small>°C</small></span>
             </div>
-            <input type="range" min="80" max="99" step="1" value={temp} onChange={(e) => setTemp(parseInt(e.target.value, 10))} className="slider" style={{ "--p": ((temp - 80) / 19) * 100 + "%" }} />
+            <input type="range" min="80" max="99" step="1" value={temp} onChange={(e) => setTemp(parseInt(e.target.value, 10))} className="slider slider-temp" style={{ "--p": ((temp - 80) / 19) * 100 + "%" }} />
             <div className="dial-scale"><span>80°</span><span>89°</span><span>99°</span></div>
           </div>
 
