@@ -40,63 +40,29 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    /* Deep crema with a warm radial bloom — the surface of a freshly-pulled shot */
-    background:
-      radial-gradient(ellipse 110% 70% at 22% 18%, #ffe6b8 0%, transparent 55%),
-      radial-gradient(ellipse 90% 80% at 88% 110%, #5a2e0f 0%, transparent 60%),
-      linear-gradient(165deg, #f3cf8e 0%, #d99a52 35%, #a86426 70%, #5e3210 100%);
+    /* Quiet warm cream background — single static gradient, paints once,
+       does not animate. The "espresso character" now lives in the
+       interactive elements (glass buttons, frosted cards), not the canvas. */
+    background: linear-gradient(170deg, #f7ecd0 0%, #ebd6a8 50%, #d6b075 100%);
     background-attachment: fixed;
     min-height: 100vh;
     padding: 24px 16px 80px;
     color: var(--ink);
     letter-spacing: -0.005em;
-    /* No position/z-index set so we don't create a stacking context;
-       crema layers below use z-index: -1 to sit between body background and content. */
   }
 
-  /* Crema layers: the actual marbled "tiger striped" espresso surface.
-     They sit at z-index:-1 so the rest of the page (which uses default stacking)
-     can render above without needing explicit positioning rules. */
-  .crema-bg {
-    position: fixed; inset: -8%;
-    width: 116%; height: 116%;
-    pointer-events: none;
-    z-index: -3;
-    opacity: 0.92;
-    will-change: transform;
-    animation: cremaDrift 60s ease-in-out infinite alternate;
-  }
-  .crema-speckle {
-    position: fixed; inset: 0;
-    pointer-events: none;
-    z-index: -2;
-    opacity: 0.32;
-    mix-blend-mode: screen;
-  }
-  .crema-glow {
+  /* A single soft warm bloom near the top — paints once on the GPU and
+     never touches the renderer again. Adds a hint of "shaft of light" depth
+     without any particles, SVG filters, or animation. */
+  .bg-accent {
     position: fixed; inset: 0;
     pointer-events: none;
     z-index: -1;
     background:
-      radial-gradient(ellipse 70% 55% at 50% 38%, rgba(255, 220, 160, 0.32) 0%, rgba(255,220,160,0) 65%),
-      radial-gradient(ellipse 100% 100% at 50% 50%, transparent 55%, rgba(20, 8, 2, 0.35) 100%);
+      radial-gradient(ellipse 70% 50% at 50% -10%, rgba(255, 232, 188, 0.55) 0%, rgba(255, 232, 188, 0) 60%),
+      radial-gradient(ellipse 90% 60% at 50% 110%, rgba(94, 50, 16, 0.18) 0%, rgba(94, 50, 16, 0) 60%);
   }
-  .crema-canvas {
-    position: fixed; inset: 0;
-    width: 100vw; height: 100vh;
-    pointer-events: none;
-    z-index: -1;
-    /* Canvas already uses additive (lighter) compositing internally; the
-       outer mix-blend-mode would double up the brightening and wash out
-       the dark crema tones, so we keep this as normal here. */
-    mix-blend-mode: normal;
-    opacity: 0.95;
-  }
-  @keyframes cremaDrift {
-    0%   { transform: translate3d(0, 0, 0) rotate(0deg); }
-    50%  { transform: translate3d(-8px, 4px, 0) rotate(0.4deg); }
-    100% { transform: translate3d(6px, -6px, 0) rotate(-0.3deg); }
-  }
+
   body.loading { overflow: hidden; padding: 0; }
   body.show-login {
     padding: 0; min-height: 100vh;
@@ -222,42 +188,112 @@
     letter-spacing: 0.06em; text-transform: uppercase;
   }
 
+  /* Login buttons share the glass-refraction recipe with .icon-btn — same
+     translucent gradient + backdrop blur+saturate for the "looks-like-glass"
+     pass, same dual inset shadows for top-edge specular and bottom-edge
+     shading, same caustic sheen on hover. Only differences: full width and
+     larger padding for the auth form. */
   .login-btn {
-    width: 100%; padding: 13px; border-radius: 12px;
+    width: 100%; padding: 13px;
+    border-radius: 12px;
     font-size: 14.5px; font-weight: 600; cursor: pointer;
-    border: 1px solid rgba(40, 18, 4, 0.12);
-    background: rgba(255, 255, 255, 0.88);
+    background:
+      linear-gradient(180deg,
+        rgba(255, 252, 240, 0.62) 0%,
+        rgba(255, 250, 232, 0.32) 55%,
+        rgba(255, 240, 210, 0.20) 100%);
+    -webkit-backdrop-filter: blur(14px) saturate(180%);
+    backdrop-filter: blur(14px) saturate(180%);
+    border: 1px solid rgba(255, 250, 240, 0.55);
     color: var(--ink);
     font-family: inherit;
-    transition: transform 0.18s var(--ease-out), border-color 0.2s var(--ease-out), box-shadow 0.25s var(--ease-out), background 0.2s var(--ease-out);
     display: inline-flex; align-items: center; justify-content: center; gap: 10px;
     margin-bottom: 10px;
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      inset 0 -1px 0 rgba(40, 18, 4, 0.18),
+      0 4px 12px rgba(40, 18, 4, 0.10),
+      0 1px 2px rgba(40, 18, 4, 0.08);
+    transition:
+      transform 0.18s var(--ease-out),
+      box-shadow 0.25s var(--ease-out),
+      border-color 0.18s var(--ease-out);
+  }
+  .login-btn::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(
+      110deg,
+      transparent 35%,
+      rgba(255, 250, 220, 0.55) 50%,
+      transparent 65%
+    );
+    transform: translateX(-110%);
+    transition: transform 0.7s cubic-bezier(.2,.8,.2,1);
+    pointer-events: none;
+    border-radius: inherit;
+    mix-blend-mode: screen;
   }
   .login-btn:hover {
     transform: translateY(-1px);
-    border-color: rgba(192, 132, 74, 0.5);
-    box-shadow: 0 8px 24px rgba(120, 60, 20, 0.18);
-  }
-  .login-btn.primary {
-    background: linear-gradient(180deg, #1d0f04 0%, #3a1c08 100%);
-    color: #fff8e6; border-color: transparent;
+    border-color: rgba(255, 250, 240, 0.78);
     box-shadow:
-      0 1px 0 rgba(255,225,170,0.28) inset,
-      0 -1px 0 rgba(0,0,0,0.4) inset,
-      0 8px 22px rgba(40, 18, 4, 0.32);
-    position: relative; overflow: hidden;
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 0 rgba(40, 18, 4, 0.22),
+      0 10px 24px rgba(40, 18, 4, 0.18),
+      0 2px 4px rgba(40, 18, 4, 0.10);
+  }
+  .login-btn:hover::after { transform: translateX(110%); }
+  .login-btn:active {
+    transform: translateY(0);
+    box-shadow:
+      inset 0 2px 5px rgba(40, 18, 4, 0.22),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.45),
+      0 1px 3px rgba(40, 18, 4, 0.10);
+  }
+
+  /* Primary — same glass mechanic, deeper espresso tint */
+  .login-btn.primary {
+    background:
+      linear-gradient(180deg,
+        rgba(58, 28, 8, 0.94) 0%,
+        rgba(29, 15, 4, 0.96) 100%);
+    color: #fff8e6;
+    border-color: rgba(255, 225, 170, 0.18);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 225, 170, 0.42),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+      0 8px 22px rgba(40, 18, 4, 0.32),
+      0 1px 2px rgba(0, 0, 0, 0.20);
   }
   .login-btn.primary::after {
-    content: ""; position: absolute; inset: 0;
-    background: linear-gradient(110deg, transparent 30%, rgba(255, 220, 160, 0.32) 50%, transparent 70%);
-    transform: translateX(-110%);
-    transition: transform 0.9s var(--ease-out);
-    pointer-events: none;
+    background: linear-gradient(
+      110deg,
+      transparent 35%,
+      rgba(255, 220, 160, 0.32) 50%,
+      transparent 65%
+    );
   }
-  .login-btn.primary:hover::after { transform: translateX(110%); }
-  .login-btn.primary:hover { background: linear-gradient(180deg, #2a1408 0%, #4a2a12 100%); }
+  .login-btn.primary:hover {
+    background:
+      linear-gradient(180deg,
+        rgba(74, 40, 18, 0.96) 0%,
+        rgba(40, 20, 8, 0.96) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 225, 170, 0.55),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+      0 14px 32px rgba(40, 18, 4, 0.42),
+      0 2px 4px rgba(0, 0, 0, 0.20);
+  }
+  .login-btn.primary:active {
+    box-shadow:
+      inset 0 2px 5px rgba(0, 0, 0, 0.45),
+      inset 0 -1px 0 rgba(255, 225, 170, 0.20),
+      0 1px 3px rgba(0, 0, 0, 0.18);
+  }
+
   .login-btn:disabled { opacity: 0.55; cursor: wait; transform: none; }
   .login-btn svg { width: 18px; height: 18px; }
 
@@ -460,41 +496,133 @@
     transform: translateY(-50%); width: 14px; height: 14px; color: #aa8a60;
   }
 
+  /* ============================================================
+     Glass refraction buttons — efficient "looks like a glass tile" effect
+     ============================================================
+     Recipe (all GPU-accelerated, no SVG filters, no animation cost at rest):
+     1. backdrop-filter: blur + saturation boost. The saturation makes warm
+        tones from behind appear richer through the button — the same way
+        real glass amplifies color. This is the actual "refraction" — light
+        bending through, with chromatic enhancement. Composited on the GPU.
+     2. A linear-gradient background with translucent stops gives the
+        meniscus / curvature feel.
+     3. Two inset box-shadows: a 1px bright top edge (light entering) and
+        a 1px darker bottom edge (light exiting). This is what makes the
+        button read as 3D-curved glass, not flat. A regular drop-shadow
+        below grounds it.
+     4. A ::after layer sweeps a soft caustic across on hover (transform
+        only — no layout/paint, just GPU compositing).
+     5. :active swaps the box-shadow into an inset depression so press
+        physics feel right (light goes from above-glass to inside-glass).
+     ============================================================ */
+
   .icon-btn {
-    background: rgba(255, 250, 240, 0.85);
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(40, 18, 4, 0.14);
-    border-radius: 10px;
-    padding: 8px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    /* Translucent base — colour comes from what's behind, just like glass. */
+    background:
+      linear-gradient(180deg,
+        rgba(255, 252, 240, 0.55) 0%,
+        rgba(255, 250, 232, 0.28) 55%,
+        rgba(255, 240, 210, 0.18) 100%);
+    -webkit-backdrop-filter: blur(14px) saturate(180%);
+    backdrop-filter: blur(14px) saturate(180%);
+    border: 1px solid rgba(255, 250, 240, 0.55);
+    border-radius: 12px;
+    padding: 9px 14px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
     font-size: 12.5px; font-weight: 600; color: #2a1a0a;
-    transition: transform 0.15s var(--ease-out), border-color 0.18s var(--ease-out), box-shadow 0.2s var(--ease-out), color 0.15s var(--ease-out);
     font-family: inherit;
-  }
-  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .icon-btn svg { width: 14px; height: 14px; }
-  /* Crema gradient ombre — primary buttons */
-  .icon-btn.primary {
-    background: linear-gradient(135deg, var(--crema-5) 0%, var(--crema-4) 45%, var(--crema-3) 100%);
-    color: #2a1a0a;
-    border: 0;
-    padding: 8px 12px;
+    position: relative;
+    overflow: hidden;
     box-shadow:
-      0 1px 0 rgba(255,240,210,0.5) inset,
-      0 -1px 0 rgba(80,40,15,0.12) inset,
-      0 2px 6px rgba(160,104,48,0.28);
-    transition: transform 0.18s var(--ease-out), box-shadow 0.25s var(--ease-out), filter 0.25s var(--ease-out);
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),     /* top edge specular */
+      inset 0 -1px 0 rgba(40, 18, 4, 0.18),        /* bottom edge shaded */
+      0 4px 12px rgba(40, 18, 4, 0.10),            /* drop shadow */
+      0 1px 2px rgba(40, 18, 4, 0.08);
+    transition:
+      transform 0.18s var(--ease-out),
+      box-shadow 0.25s var(--ease-out),
+      border-color 0.18s var(--ease-out);
+  }
+  .icon-btn svg { width: 14px; height: 14px; }
+
+  /* Caustic sheen — a single off-axis gradient that slides across on hover.
+     Pure transform animation; the GPU just translates an existing layer. */
+  .icon-btn::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(
+      110deg,
+      transparent 35%,
+      rgba(255, 250, 220, 0.55) 50%,
+      transparent 65%
+    );
+    transform: translateX(-110%);
+    transition: transform 0.7s cubic-bezier(.2,.8,.2,1);
+    pointer-events: none;
+    border-radius: inherit;
+    mix-blend-mode: screen;
+  }
+
+  .icon-btn:hover {
+    transform: translateY(-1px);
+    border-color: rgba(255, 250, 240, 0.78);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 0 rgba(40, 18, 4, 0.22),
+      0 10px 24px rgba(40, 18, 4, 0.18),
+      0 2px 4px rgba(40, 18, 4, 0.10);
+  }
+  .icon-btn:hover::after { transform: translateX(110%); }
+
+  .icon-btn:active {
+    transform: translateY(0);
+    box-shadow:
+      inset 0 2px 5px rgba(40, 18, 4, 0.22),       /* depressed inward */
+      inset 0 -1px 0 rgba(255, 255, 255, 0.45),
+      0 1px 3px rgba(40, 18, 4, 0.10);
+  }
+
+  /* Primary — same glass mechanic, deeper espresso tint */
+  .icon-btn.primary {
+    background:
+      linear-gradient(180deg,
+        rgba(58, 28, 8, 0.92) 0%,
+        rgba(29, 15, 4, 0.94) 100%);
+    color: #fff8e6;
+    border-color: rgba(255, 225, 170, 0.18);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 225, 170, 0.42),     /* gold rim light */
+      inset 0 -1px 0 rgba(0, 0, 0, 0.5),           /* deep bottom edge */
+      0 8px 22px rgba(40, 18, 4, 0.32),
+      0 1px 2px rgba(0, 0, 0, 0.20);
+  }
+  .icon-btn.primary::after {
+    background: linear-gradient(
+      110deg,
+      transparent 35%,
+      rgba(255, 220, 160, 0.32) 50%,
+      transparent 65%
+    );
   }
   .icon-btn.primary:hover {
-    background: linear-gradient(135deg, var(--crema-5), var(--crema-4) 35%, var(--crema-2));
-    color: #2a1a0a;
-    transform: translateY(-1px);
+    background:
+      linear-gradient(180deg,
+        rgba(74, 40, 18, 0.96) 0%,
+        rgba(40, 20, 8, 0.96) 100%);
     box-shadow:
-      0 1px 0 rgba(255,240,210,0.7) inset,
-      0 -1px 0 rgba(80,40,15,0.15) inset,
-      0 6px 18px rgba(160,104,48,0.4);
+      inset 0 1px 0 rgba(255, 225, 170, 0.55),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+      0 14px 32px rgba(40, 18, 4, 0.42),
+      0 2px 4px rgba(0, 0, 0, 0.20);
   }
-  .icon-btn.primary:active { transform: translateY(0); filter: brightness(0.96); }
+  .icon-btn.primary:active {
+    box-shadow:
+      inset 0 2px 5px rgba(0, 0, 0, 0.45),
+      inset 0 -1px 0 rgba(255, 225, 170, 0.20),
+      0 1px 3px rgba(0, 0, 0, 0.18);
+  }
+
   .icon-btn.danger { color: #b54040; }
   .icon-btn.danger:hover { border-color: #b54040; color: #b54040; }
 
@@ -1147,23 +1275,8 @@
   .sparkle.s13 { animation: twinkle 3.5s steps(42) 2.4s  infinite; fill: #fff0d0; }
   .sparkle.s14 { animation: twinkle 2.5s steps(30) 1.3s  infinite; fill: #ffffff; }
 
-  .icon-btn.primary {
-    position: relative; overflow: hidden;
-  }
-  .icon-btn.primary::before {
-    content: "";
-    position: absolute; inset: 0;
-    background: linear-gradient(
-      110deg,
-      transparent 35%,
-      rgba(212,165,116,0.35) 50%,
-      transparent 65%
-    );
-    transform: translateX(-100%);
-    transition: transform 0.7s cubic-bezier(.2,.7,.3,1);
-    pointer-events: none;
-  }
-  .icon-btn.primary:hover::before { transform: translateX(100%); }
+  /* (Old ::before sheen removed — handled by the unified ::after sweep on
+     all .icon-btn variants in the glass-refraction block above.) */
 
   /* Card hover — subtle warm lift */
   .card { transition: transform 0.35s cubic-bezier(.2,.7,.3,1), box-shadow 0.35s ease; }
@@ -1272,13 +1385,10 @@
   /* Splash spinner upgraded to coffee drip too */
   .splash-spin { animation: none !important; border: none !important; width: auto !important; height: auto !important; }
 
-  /* Performance: lighten layered effects on small screens */
+  /* Performance: drop a few decorative effects on small screens */
   @media (max-width: 600px) {
     .steam-stack { display: none; }
     .glitter-overlay { display: none; }
-    .crema-bg { opacity: 0.78; }
-    .crema-speckle { opacity: 0.18; }
-    .crema-canvas { opacity: 0.6; }
     body { background-attachment: scroll; }
     .modal-backdrop { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
     .header-controls { width: 100%; }
@@ -1293,89 +1403,16 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.001ms !important;
     }
-    .ai-panel::after, .steam-stack, .glitter-overlay, .crema-canvas { display: none !important; }
-    .crema-bg { animation: none !important; }
+    .ai-panel::after, .steam-stack, .glitter-overlay { display: none !important; }
   }
 </style>
 </head>
 <body class="loading">
 
-<!-- Espresso crema layer: turbulence-derived tiger striping (the real marbled streaks of a fresh shot).
-     Single SVG, GPU-friendly, slowly drifts via CSS transform. -->
-<svg class="crema-bg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-  <defs>
-    <!-- Crema base gradient: light foam at top-left, deep espresso at bottom-right -->
-    <radialGradient id="crema-grad" cx="28%" cy="22%" r="120%">
-      <stop offset="0%"  stop-color="#ffe5b3" stop-opacity="0"/>
-      <stop offset="40%" stop-color="#dba461" stop-opacity="0.1"/>
-      <stop offset="80%" stop-color="#783d12" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#2a1305" stop-opacity="0.32"/>
-    </radialGradient>
-
-    <!-- Tiger stripes: low-frequency horizontal turbulence pushed into stark organic streaks
-         of dark espresso through the crema. This is the actual "tiger striping" pattern. -->
-    <filter id="tiger-stripes" x="-5%" y="-5%" width="110%" height="110%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.0055 0.034" numOctaves="3" seed="11" stitchTiles="stitch" result="noise"/>
-      <!-- Threshold + colorize into deep espresso veins -->
-      <feColorMatrix in="noise" type="matrix" values="
-        0 0 0 0 0.16
-        0 0 0 0 0.07
-        0 0 0 0 0.02
-        0 0 0 2.4 -0.85" result="veins"/>
-      <feGaussianBlur in="veins" stdDeviation="0.7" result="softVeins"/>
-      <feComposite in="softVeins" in2="softVeins" operator="over"/>
-    </filter>
-
-    <!-- Marbled crema highlights: lighter golden swirls that catch the light -->
-    <filter id="crema-highlight" x="-5%" y="-5%" width="110%" height="110%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.011 0.018" numOctaves="2" seed="5" stitchTiles="stitch" result="n2"/>
-      <feColorMatrix in="n2" type="matrix" values="
-        0 0 0 0 1
-        0 0 0 0 0.86
-        0 0 0 0 0.58
-        0 0 0 1.1 -0.55"/>
-      <feGaussianBlur stdDeviation="2"/>
-    </filter>
-
-    <!-- Fine micro-foam: tiny crema bubbles pressed into the surface -->
-    <filter id="crema-foam" x="0" y="0" width="100%" height="100%">
-      <feTurbulence type="fractalNoise" baseFrequency="3.2" numOctaves="1" seed="7" stitchTiles="stitch"/>
-      <feColorMatrix type="matrix" values="
-        0 0 0 0 1
-        0 0 0 0 0.94
-        0 0 0 0 0.78
-        0 0 0 0.55 -0.18"/>
-    </filter>
-  </defs>
-
-  <!-- Layer 1: golden crema gradient base -->
-  <rect width="100%" height="100%" fill="url(#crema-grad)"/>
-  <!-- Layer 2: marbled lighter highlights — the "ghosts" of crema swirls -->
-  <rect width="100%" height="100%" filter="url(#crema-highlight)" opacity="0.42" style="mix-blend-mode: screen;"/>
-  <!-- Layer 3: dark tiger striping — the marquee feature -->
-  <rect width="100%" height="100%" filter="url(#tiger-stripes)" opacity="0.78" style="mix-blend-mode: multiply;"/>
-</svg>
-
-<!-- Foam micro-speckle, separate so it doesn't drift with the tiger stripes -->
-<svg class="crema-speckle" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-  <defs>
-    <filter id="speckle-fine" x="0" y="0" width="100%" height="100%">
-      <feTurbulence type="fractalNoise" baseFrequency="2.4" numOctaves="1" seed="13" stitchTiles="stitch"/>
-      <feColorMatrix type="matrix" values="
-        0 0 0 0 1
-        0 0 0 0 0.96
-        0 0 0 0 0.86
-        0 0 0 0.42 -0.12"/>
-    </filter>
-  </defs>
-  <rect width="100%" height="100%" filter="url(#speckle-fine)"/>
-</svg>
-
-<!-- Soft warm vignette over everything -->
-<div class="crema-glow" aria-hidden="true"></div>
-
-<!-- Live foam bubble canvas — small bubbles slowly rising and popping -->
-<canvas class="crema-canvas" id="crema-canvas" aria-hidden="true"></canvas>
+<!-- Soft-focus radial accent (single static gradient, no animation, no
+     particles) — adds a hint of depth without paying the cost of any
+     filter/blend pipeline. -->
+<div class="bg-accent" aria-hidden="true"></div>
 
 <!-- Loading splash: Lottie player with CSS drip as fallback -->
 <div class="splash" id="splash">
@@ -1935,220 +1972,10 @@ if (typeof supabase !== "undefined") {
   });
 }
 
-// =====================================================================
-// CremaFluid — high-density coffee crema simulator.
-//
-// The look we want: actual fresh-pulled crema seen close-up. Thousands of
-// tiny suspended particles, some rising to the meniscus, some sinking back
-// into the espresso below. Specular highlights catch the light at random
-// across the surface. Soft additive blending makes overlapping clusters
-// glow a touch brighter — you read them as moving foam, not as discrete
-// blobs of color.
-//
-// Design choices:
-//  - Pure Canvas2D + composite operations. No physics lib (Matter et al.
-//    are great for rigid-body fun but the cost-per-particle here would tank
-//    the high counts we need). At hundreds-to-thousands of particles, doing
-//    real n² interactions blows the frame budget anyway, so we do "soft"
-//    fluid dynamics via per-particle sin-wave drift + Perlin-ish wobble +
-//    additive overlap (the visual layer creates the "fluid" perception
-//    cheaply).
-//  - Two layers: a dense surface layer rising slowly + a deeper layer
-//    sinking faster. Wraps at the edges. Reads as turnover, not as a
-//    one-way conveyor belt.
-//  - Particles are sub-pixel-to-tiny (0.4–2.4 px on a DPR 2 buffer = grain
-//    of sand scale), and rendered as soft radial gradients via
-//    composite-operation: lighter so overlapping foam glows.
-//  - Specular flashes: every frame, a small fraction of particles trigger a
-//    bright pinprick highlight that fades over ~350ms — like the meniscus
-//    catching a light source.
-//  - Cursor magnetism (subtle): particles within ~80 px of the pointer
-//    drift toward it, so hovering feels like fingertip-on-foam.
-// =====================================================================
-class CremaFluid {
-  constructor(canvas) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
-    this.particles = [];
-    this.flashes = [];
-    this.running = false;
-    this.lastT = 0;
-    this.pointer = { x: -9999, y: -9999, active: false };
-    this.handleResize = this.handleResize.bind(this);
-    this.handlePointer = this.handlePointer.bind(this);
-    this.handleLeave = this.handleLeave.bind(this);
-    window.addEventListener("resize", this.handleResize);
-    window.addEventListener("pointermove", this.handlePointer, { passive: true });
-    window.addEventListener("pointerleave", this.handleLeave, { passive: true });
-    this.handleResize();
-    this.spawn();
-  }
-  handleResize() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    this.dpr = dpr;
-    this.w = window.innerWidth;
-    this.h = window.innerHeight;
-    this.canvas.width = this.w * dpr;
-    this.canvas.height = this.h * dpr;
-    this.canvas.style.width = this.w + "px";
-    this.canvas.style.height = this.h + "px";
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-  handlePointer(e) {
-    this.pointer.x = e.clientX;
-    this.pointer.y = e.clientY;
-    this.pointer.active = true;
-  }
-  handleLeave() { this.pointer.active = false; this.pointer.x = -9999; this.pointer.y = -9999; }
-  spawn() {
-    // Density tuned per viewport size. ~700 on desktop, ~280 on mobile.
-    const density = this.w < 700 ? 0.0009 : 0.0014;
-    const count = Math.round(this.w * this.h * density);
-    this.particles = [];
-    for (let i = 0; i < count; i++) {
-      this.particles.push(this.makeParticle(true));
-    }
-  }
-  makeParticle(initial) {
-    // 60% surface (rising, lighter, smaller), 40% deep (sinking, darker, slightly larger)
-    const surface = Math.random() < 0.6;
-    return {
-      x: Math.random() * this.w,
-      y: initial ? Math.random() * this.h : (surface ? this.h + Math.random() * 60 : -Math.random() * 60),
-      r: surface ? 0.4 + Math.random() * 1.6 : 0.8 + Math.random() * 1.8,    // grain-of-sand scale
-      vy: surface
-        ? -0.04 - Math.random() * 0.18                                        // rises
-        :  0.03 + Math.random() * 0.14,                                       // sinks
-      vx: (Math.random() - 0.5) * 0.05,
-      phase: Math.random() * Math.PI * 2,
-      period: 5 + Math.random() * 7,
-      wobble: 0.04 + Math.random() * 0.10,
-      brightness: 0.42 + Math.random() * 0.42,
-      surface,
-      // Tone palette: warm cream foam + warm amber crema + occasional bronze grain
-      tone: surface
-        ? (Math.random() < 0.18 ? [255, 232, 178] : [255, 246, 220])         // cream / soft gold
-        : (Math.random() < 0.30 ? [180, 110,  56] : [220, 158,  92]),        // amber / bronze
-      seed: Math.random()
-    };
-  }
-  step(t) {
-    if (!this.running) return;
-    const dt = this.lastT ? Math.min((t - this.lastT) / 16.67, 3) : 1;
-    this.lastT = t;
-    const ctx = this.ctx;
-    const w = this.w, h = this.h;
-    const tSec = t / 1000;
-    const px = this.pointer.x, py = this.pointer.y, pAct = this.pointer.active;
-
-    ctx.clearRect(0, 0, w, h);
-
-    // PASS 1 — soft additive bodies (this is where the "glow" comes from)
-    ctx.globalCompositeOperation = "lighter";
-
-    for (let i = 0; i < this.particles.length; i++) {
-      const p = this.particles[i];
-
-      // Gentle drift + sin-wave wobble (cheap pseudo-fluid motion)
-      const wobX = Math.sin(tSec / p.period + p.phase) * p.wobble;
-      let vx = p.vx + wobX;
-      let vy = p.vy;
-
-      // Soft cursor magnetism — particles within 80px drift very gently toward pointer
-      if (pAct) {
-        const dx = px - p.x, dy = py - p.y;
-        const d2 = dx * dx + dy * dy;
-        if (d2 < 6400) {
-          const f = (1 - d2 / 6400) * 0.025;
-          vx += dx * f * 0.012;
-          vy += dy * f * 0.012;
-        }
-      }
-
-      p.x += vx * dt;
-      p.y += vy * dt;
-
-      // Wrap at edges based on layer direction
-      if (p.surface) {
-        if (p.y < -p.r * 4) { p.y = h + p.r * 4; p.x = Math.random() * w; }
-      } else {
-        if (p.y > h + p.r * 4) { p.y = -p.r * 4; p.x = Math.random() * w; }
-      }
-      if (p.x < -p.r * 4) p.x = w + p.r * 4;
-      else if (p.x > w + p.r * 4) p.x = -p.r * 4;
-
-      // Render — a soft additive radial blob. The center is brightest and
-      // falls off to zero; many overlapping particles blend into cloudy bands.
-      const radius = p.r * 2.4;
-      const [tr, tg, tb] = p.tone;
-      const a = p.brightness * (p.surface ? 0.42 : 0.32);
-      const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius);
-      grd.addColorStop(0,    `rgba(${tr},${tg},${tb},${a})`);
-      grd.addColorStop(0.55, `rgba(${tr},${tg},${tb},${a * 0.45})`);
-      grd.addColorStop(1,    `rgba(${tr},${tg},${tb},0)`);
-      ctx.fillStyle = grd;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Specular highlight trigger — small fraction per frame, weighted to surface particles
-      if (Math.random() < (p.surface ? 0.00045 : 0.00012)) {
-        this.flashes.push({ x: p.x, y: p.y, r: p.r, life: 0, maxLife: 0.32 + Math.random() * 0.28 });
-      }
-    }
-
-    // PASS 2 — specular highlights (bright pinprick + halo, additive)
-    for (let i = this.flashes.length - 1; i >= 0; i--) {
-      const f = this.flashes[i];
-      f.life += dt / 60;
-      const pct = f.life / f.maxLife;
-      if (pct >= 1) { this.flashes.splice(i, 1); continue; }
-      // bell curve intensity (0 at start, peak at 0.5, 0 at end)
-      const intensity = Math.sin(pct * Math.PI);
-      const haloR = (f.r + 1) * 4 * (0.4 + intensity * 0.6);
-      // Halo
-      const halo = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, haloR);
-      halo.addColorStop(0,   `rgba(255,250,220,${intensity * 0.85})`);
-      halo.addColorStop(0.4, `rgba(255,238,180,${intensity * 0.32})`);
-      halo.addColorStop(1,   `rgba(255,238,180,0)`);
-      ctx.fillStyle = halo;
-      ctx.beginPath();
-      ctx.arc(f.x, f.y, haloR, 0, Math.PI * 2);
-      ctx.fill();
-      // Bright pinprick at center — the "specular" hit
-      ctx.fillStyle = `rgba(255,255,255,${intensity})`;
-      ctx.beginPath();
-      ctx.arc(f.x, f.y, 0.6 + intensity * 1.0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    ctx.globalCompositeOperation = "source-over";
-    this._raf = requestAnimationFrame((tt) => this.step(tt));
-  }
-  start() {
-    if (this.running) return;
-    this.running = true;
-    this.lastT = 0;
-    this._raf = requestAnimationFrame((t) => this.step(t));
-  }
-  stop() {
-    this.running = false;
-    if (this._raf) cancelAnimationFrame(this._raf);
-  }
-}
-
-(function startCrema() {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const c = document.getElementById("crema-canvas");
-  if (!c) return;
-  const anim = new CremaFluid(c);
-  anim.start();
-  // Pause when tab hidden to save battery
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) anim.stop();
-    else anim.start();
-  });
-})();
+// (Background particle simulator removed — the visual identity now lives in
+// the glass-refraction buttons and frosted cards rather than an animated
+// background layer. Static gradient + bg-accent div paint once and never
+// touch the renderer again, so we get a totally idle CPU.)
 
 // ============================================================
 // State
