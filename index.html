@@ -4,59 +4,118 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
 <meta name="theme-color" content="#ebd5a0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://udzsveyedwbmygvpvxpx.supabase.co wss://udzsveyedwbmygvpvxpx.supabase.co https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://lottie.host https://*.lottiefiles.com; img-src 'self' data: https://lottie.host https://*.lottiefiles.com; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https://udzsveyedwbmygvpvxpx.supabase.co wss://udzsveyedwbmygvpvxpx.supabase.co https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://lottie.host https://*.lottiefiles.com; img-src 'self' data: https://lottie.host https://*.lottiefiles.com; font-src 'self' https://fonts.gstatic.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests;">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Crema — espresso, V60, AeroPress · dialed in</title>
+<!-- Display + body type from Google Fonts. Instrument Serif gives the "trail
+     field guide" editorial feel; Geist is the body sans. preconnect+stylesheet
+     follows Google's recommended boot ordering. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!-- Lottie player for splash animation. Pick any animation from https://lottiefiles.com/featured (filter by free), copy its .lottie URL, and paste it into the SPLASH_LOTTIE_URL constant in the script below. -->
 <script src="https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #f7ecd1;
-    --card-bg: #fffaf2;
-    --ink: #1d0f04;
-    --muted: #8a7560;
-    --line: #ecdfc5;
-    --accent: #c0844a;
-    --accent-deep: #8a4f1c;
-    --accent-soft: rgba(192, 132, 74, 0.14);
-    --accent-glow: rgba(192, 132, 74, 0.55);
-    /* Espresso crema palette — pale foam → deep espresso */
-    --crema-foam: #fff1cf;
-    --crema-pale: #f3d9a3;
-    --crema-amber: #d9a464;
-    --crema-deep: #a96b2e;
-    --crema-shadow: #5b3210;
-    --espresso-vein: #2a1305;
-    --espresso-bottom: #170803;
+    /* === Trail Brew · Coffee Field Guide palette ===
+       Adopted from the Claude Design handoff. Alpine green + warm amber on
+       warm cream paper. OKLCH everywhere for perceptual evenness. */
+    --paper:        oklch(0.965 0.013 82);
+    --paper-2:      oklch(0.94  0.018 80);
+    --paper-3:      oklch(0.91  0.022 80);
+    --ink:          oklch(0.22  0.022 150);
+    --ink-soft:     oklch(0.38  0.025 150);
+    --ink-mute:     oklch(0.55  0.02  145);
+    --line:         oklch(0.85  0.018 130);
+    --line-strong:  oklch(0.7   0.025 140);
+
+    --forest-900:   oklch(0.22 0.025 155);
+    --forest-700:   oklch(0.32 0.04  155);
+    --forest-500:   oklch(0.45 0.05  155);
+    --forest-300:   oklch(0.72 0.04  150);
+    --forest-100:   oklch(0.88 0.025 145);
+
+    --amber-700:    oklch(0.55 0.13 60);
+    --amber-500:    oklch(0.72 0.14 65);
+    --amber-300:    oklch(0.86 0.08 70);
+    --amber-100:    oklch(0.94 0.04 75);
+
+    /* Aliases mapping the new palette onto the legacy variable names so the
+       existing code keeps working without a global rename. */
+    --bg:           var(--paper);
+    --card-bg:      var(--paper-2);
+    --muted:        var(--ink-soft);
+    --accent:       var(--amber-700);
+    --accent-deep:  var(--forest-700);
+    --accent-soft:  oklch(from var(--amber-500) l c h / 0.14);
+    --accent-glow:  oklch(from var(--amber-500) l c h / 0.55);
+
+    --shadow-card:  0 1px 0 oklch(0.85 0.02 130 / 0.6),
+                    0 12px 28px -18px oklch(0.32 0.04 155 / 0.35);
+    --shadow-pop:   0 24px 60px -28px oklch(0.32 0.04 155 / 0.4);
+
+    --radius-sm: 6px;
+    --radius:    12px;
+    --radius-lg: 18px;
+
+    --font-display: "Instrument Serif", "Cormorant Garamond", Georgia, serif;
+    --font-body:    "Geist", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
     /* Apple-style easings — emphatic decel + smooth */
-    --ease-out: cubic-bezier(.16, 1, .3, 1);
-    --ease-in-out: cubic-bezier(.32, .72, 0, 1);
-    --ease-spring: cubic-bezier(.34, 1.4, .64, 1);
+    --ease-out:     cubic-bezier(.16, 1, .3, 1);
+    --ease-in-out:  cubic-bezier(.32, .72, 0, 1);
+    --ease-spring:  cubic-bezier(.34, 1.4, .64, 1);
   }
   html, body { height: 100%; }
   html { -webkit-text-size-adjust: 100%; }
   body {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    /* Base honey tone, blended toward the average color of the user's
-       coffee collection (set on :root via --collection-tint by JS). */
-    background-color: #ebd5a0;
-    background-image: linear-gradient(180deg, var(--collection-tint, transparent), transparent 60%);
+    background: var(--paper);
     background-attachment: fixed;
-    /* 100dvh tracks the dynamic viewport so the page fills the actual screen
-       on mobile (no white strip below the URL bar) without overflowing. */
     min-height: 100dvh;
     width: 100%;
     padding: 24px 16px 80px;
-    /* Account for iOS notch / Android nav buttons. */
     padding-top: calc(24px + env(safe-area-inset-top, 0px));
     padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     color: var(--ink);
-    letter-spacing: -0.005em;
+    line-height: 1.45;
+    font-size: 16px;
+    letter-spacing: 0;
+  }
+  /* Paper texture: warm radial bloom + sage shadow corner. From the Trail
+     Brew design. Paints once, no animation. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+      radial-gradient(circle at 20% 10%, oklch(0.85 0.04 80 / 0.3), transparent 50%),
+      radial-gradient(circle at 80% 80%, oklch(0.8 0.05 140 / 0.18), transparent 55%);
+    mix-blend-mode: multiply;
+  }
+  /* Display headings get the serif. Coffee names + big numbers will use
+     it via explicit class overrides below. */
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    margin: 0;
+    line-height: 1.05;
+  }
+  .eyebrow {
+    font-family: var(--font-body);
+    text-transform: uppercase;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    color: var(--ink-mute);
   }
   /* Stop iOS from zooming in when an input gets focus. The trigger is any
      input with a font-size below 16px — we set 16px on focus and keep the
@@ -75,11 +134,103 @@
 
   body.loading { overflow: hidden; padding: 0; }
   body.show-login {
-    padding: 16px;
-    padding-top: calc(16px + env(safe-area-inset-top, 0px));
-    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    padding: 0;
     min-height: 100dvh;
-    display: flex; align-items: center; justify-content: center;
+  }
+  /* Login shell: split-layout container. Pitch on the left, auth card on
+     the right. Stacks vertically on small screens. */
+  #login-shell {
+    display: none;
+    min-height: 100dvh;
+    width: 100%;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 60px;
+    align-items: start;
+    padding: 56px 56px;
+    padding-top: calc(56px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    max-width: 1300px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+  body.show-login #login-shell { display: grid; }
+  /* Soft warm + sage radial wash behind the split. */
+  body.show-login::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 60% 50% at 80% 20%, oklch(0.86 0.08 70 / 0.55), transparent 60%),
+      radial-gradient(ellipse 80% 60% at 20% 80%, oklch(0.82 0.04 145 / 0.6), transparent 60%);
+  }
+  .login-pitch {
+    display: flex; flex-direction: column; gap: 0;
+    padding-top: 8px;
+  }
+  .login-pitch .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 36px; }
+  .login-pitch .brand-mark {
+    width: 44px; height: 44px;
+    display: grid; place-items: center;
+    color: var(--forest-700);
+  }
+  .login-pitch .brand-name {
+    font-family: var(--font-display);
+    font-size: 28px; line-height: 1;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .login-pitch .brand-name em { color: var(--amber-700); font-style: italic; }
+  .login-pitch .brand-tag {
+    font-size: 9.5px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--ink-mute);
+    margin-top: 4px; font-weight: 500;
+  }
+  .login-eyebrow { color: var(--amber-700); }
+  .login-h1 {
+    font-family: var(--font-display);
+    font-size: clamp(48px, 6.5vw, 84px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-top: 16px;
+    color: var(--ink);
+    padding-bottom: 0.12em;     /* avoid clipping descenders like 'g' in "guide" */
+    font-weight: 400;
+  }
+  .login-h1 em { color: var(--amber-700); font-style: italic; }
+  .login-sub-pitch {
+    margin-top: 22px;
+    font-size: 17px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+    max-width: 50ch;
+  }
+  .login-feats {
+    list-style: none;
+    margin: 36px 0 0; padding: 0;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .login-feats li {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 15px; color: var(--ink);
+  }
+  .feat-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--forest-700);
+    flex-shrink: 0;
+  }
+  /* On narrow screens, stack vertically and shrink padding. */
+  @media (max-width: 920px) {
+    #login-shell {
+      grid-template-columns: 1fr;
+      padding: 28px 20px;
+      gap: 36px;
+    }
+    .login-pitch .brand { margin-bottom: 20px; }
+    .login-h1 { font-size: clamp(36px, 8vw, 56px); }
+    .login-feats { margin-top: 24px; }
   }
 
   /* Loading splash — same crema look as the rest of the site */
@@ -444,6 +595,65 @@
     color: var(--ink);
   }
 
+  /* Trail Brew hero — personalized greeting with date + 3 stats */
+  .hero {
+    max-width: 1200px;
+    margin: 0 auto 32px;
+    padding: 24px 4px 28px;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 36px;
+    align-items: end;
+    border-bottom: 1px solid var(--line);
+  }
+  .hero-text { min-width: 0; }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(38px, 6vw, 64px);
+    line-height: 0.98;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-top: 12px;
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: var(--amber-700);
+  }
+  .hero-sub {
+    margin-top: 16px;
+    font-size: 16px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    max-width: 56ch;
+    text-wrap: pretty;
+  }
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    padding-bottom: 4px;
+  }
+  .hero-stat .num {
+    font-family: var(--font-display);
+    font-size: 42px;
+    line-height: 1;
+    color: var(--forest-700);
+    letter-spacing: -0.02em;
+  }
+  .hero-stat .lbl {
+    margin-top: 6px;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--ink-mute);
+    font-weight: 500;
+  }
+  @media (max-width: 700px) {
+    .hero { grid-template-columns: 1fr; gap: 24px; padding: 16px 4px 20px; }
+    .hero-stats { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .hero-stat .num { font-size: 30px; }
+  }
+
   /* App header — refined typography and spacing */
   #app-root {
     max-width: 1280px; margin: 0 auto;
@@ -677,18 +887,38 @@
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 18px;
   }
+  /* Editorial card — adopted from the Trail Brew Field Guide design.
+     Paper background, alpine accent rail at the top, dotted divider
+     between the meta and the cheat sheet. The whole card uses the
+     coffee's stored colour ONLY as a top accent rail (--accent), not as
+     the full header background. Much more "boutique cafe menu" than the
+     old colour-block card. */
   .card {
-    background: rgba(255, 252, 245, 0.92);
-    -webkit-backdrop-filter: blur(14px) saturate(115%);
-    backdrop-filter: blur(14px) saturate(115%);
-    border: 1px solid rgba(255, 250, 240, 0.5);
-    border-radius: 14px;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    position: relative;
     overflow: hidden;
-    box-shadow:
-      0 6px 22px rgba(40, 18, 4, 0.18),
-      0 1px 2px rgba(40, 18, 4, 0.10);
-    scroll-margin-top: 16px; position: relative;
-    transition: transform 0.35s cubic-bezier(.2,.7,.3,1), box-shadow 0.35s ease;
+    display: flex;
+    flex-direction: column;
+    min-height: 360px;
+    scroll-margin-top: 16px;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-card);
+    border-color: var(--line-strong);
+  }
+  /* Top accent rail (uses the coffee's stored gradient/hex via --accent) */
+  .card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: var(--accent-rail, var(--forest-700));
   }
   @keyframes cardBounce {
     0% { transform: scale(1); }
@@ -716,102 +946,168 @@
   @keyframes ringFade { 0% { opacity: 1; } 100% { opacity: 0; } }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Card header — same height across every card so the grid reads as a
-     proper grid (uneven headers used to make the cards look mismatched).
-     We pin a fixed total height and clamp the long fields to a fixed line
-     count via line-clamp. */
+  /* Editorial card content — paper-coloured, no longer a tinted header strip.
+     The accent rail above (::before) plus an optional stamp in the corner
+     gives identity. */
   .card-header {
-    padding: 16px 20px; color: white; position: relative;
-    height: 116px;            /* roaster line + 2 lines of name + 1 line of meta */
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    gap: 4px;
-    overflow: hidden;
+    padding: 0; color: var(--ink); position: relative;
+    background: transparent;
+    display: flex; flex-direction: column;
+    flex: 1;
+  }
+  .card-stamp {
+    position: absolute;
+    top: 6px;
+    right: 0;
+    font-family: var(--font-body);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    text-align: right;
+    line-height: 1.5;
+    pointer-events: none;
   }
   .card-roaster {
-    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em;
-    opacity: 0.78; font-weight: 600;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    padding-right: 80px;
+    font-family: var(--font-body);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.18em;
+    color: var(--ink-mute);
+    margin-top: 4px;
+    font-weight: 500;
   }
   .card-name {
-    font-size: 17px; font-weight: 700; line-height: 1.2;
-    letter-spacing: -0.01em;
-    padding-right: 80px;
-    /* Clamp to two lines so headers stay the same height. */
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    font-family: var(--font-display);
+    font-size: 30px;
+    line-height: 1.05;
+    letter-spacing: -0.015em;
+    margin-top: 8px;
+    color: var(--ink);
+    font-weight: 400;
+    max-width: 78%;
+    text-wrap: balance;
   }
   .card-meta {
-    font-size: 11.5px; opacity: 0.72;
-    padding-right: 80px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    margin-top: auto;        /* anchor to bottom so all cards align */
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.4;
   }
-  .card-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; }
-  /* Star/favorite button — sits in the top-LEFT corner of the header. */
+  /* Dotted divider between meta and the brew cheat sheet — the editorial
+     touch from the design. */
+  .card-divider {
+    height: 1px;
+    margin: 16px 0 14px;
+    background: repeating-linear-gradient(to right,
+      var(--line-strong) 0 4px,
+      transparent 4px 8px);
+  }
+  /* Action row — bottom of the card now (was overlaid on a tinted header). */
+  .card-actions {
+    display: flex; gap: 6px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+  .card-actions button {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .card-actions button:hover {
+    background: var(--forest-100);
+    color: var(--forest-700);
+    border-color: var(--forest-500);
+  }
+  .card-actions svg { width: 14px; height: 14px; }
+  /* Favorite star — small chip at the top-right of the card body. */
   .card-fav-btn {
-    position: absolute; top: 12px; left: 12px;
-    background: rgba(255, 255, 255, 0.18);
+    position: absolute; top: 18px; right: 18px;
+    background: transparent;
     border: 0;
-    width: 32px; height: 32px; border-radius: 50%;
+    width: 32px; height: 32px;
+    border-radius: 50%;
     display: inline-flex; align-items: center; justify-content: center;
     cursor: pointer;
-    color: white;
-    transition: background 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+    color: var(--ink-mute);
+    z-index: 2;
+    transition: background 0.18s var(--ease-out), transform 0.18s var(--ease-out), color 0.18s var(--ease-out);
   }
-  .card-fav-btn svg { width: 16px; height: 16px; }
-  .card-fav-btn:hover { background: rgba(255, 255, 255, 0.32); transform: scale(1.06); }
+  .card-fav-btn svg { width: 18px; height: 18px; }
+  .card-fav-btn:hover { background: var(--paper-3); transform: scale(1.06); }
   .card-fav-btn:active { transform: scale(0.94); }
-  .card-fav-btn.is-fav { background: rgba(255, 220, 120, 0.32); }
-  .card-fav-btn.is-fav svg { filter: drop-shadow(0 1px 2px rgba(120, 80, 0, 0.4)); }
-  /* Card-name + meta need extra left padding so they don't sit under the star. */
-  .card-fav-btn ~ .card-roaster,
-  .card-fav-btn ~ .card-name,
-  .card-fav-btn ~ .card-meta { padding-left: 40px; }
-  .card-actions button {
-    background: rgba(255,255,255,0.18); border: 0; color: white;
-    width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
-    display: inline-flex; align-items: center; justify-content: center;
-    transition: background 0.15s;
-  }
-  .card-actions button:hover { background: rgba(255,255,255,0.32); }
-  .card-actions svg { width: 14px; height: 14px; }
+  .card-fav-btn.is-fav { color: var(--amber-700); }
 
+  /* Settings table — clean text rows, no white-on-color padding. */
+  .card-body { display: flex; flex-direction: column; gap: 0; }
   .setting-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 20px; border-bottom: 1px solid #f2f2f2; font-size: 13px;
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
   }
-  .setting-row:last-child { border-bottom: none; }
-  .setting-label { color: var(--muted); }
-  .setting-value { font-weight: 600; color: var(--ink); }
-
+  .setting-row:last-child { border-bottom: 0; }
+  .setting-label {
+    color: var(--ink-mute);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 500;
+  }
+  .setting-value {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 400;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
   .notes-section {
-    background: #fafaf8; border-top: 1px solid #f0f0f0;
-    padding: 12px 20px; font-size: 12px; color: #666; line-height: 1.5;
+    margin-top: 12px;
+    padding: 12px 14px;
+    background: var(--paper-3);
+    border-radius: 10px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    line-height: 1.5;
   }
-  .notes-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #bbb; margin-bottom: 4px; }
+  .notes-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--ink-mute);
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
   .status-badge {
     display: inline-flex;
     align-items: center; justify-content: center;
     text-align: center;
-    font-size: 10px; padding: 3px 10px;
-    border-radius: 20px; margin-top: 6px;
-    font-weight: 600;
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 500;
     line-height: 1.3;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     white-space: nowrap;
   }
-  .status-dialing { background: #fff3cd; color: #856404; }
-  .status-dialed { background: #d1e7dd; color: #0a3622; }
-  .status-next { background: #e8d5f5; color: #4a1a72; }
+  .status-dialing { background: var(--amber-100);   color: var(--amber-700);  }
+  .status-dialed  { background: var(--forest-100);  color: var(--forest-700); }
+  .status-next    { background: var(--paper-3);     color: var(--ink-mute);   }
   .tag {
-    display: inline-block; background: #f0ede8; color: #666;
-    font-size: 10px; padding: 2px 7px; border-radius: 10px;
-    margin-right: 3px; margin-bottom: 3px;
+    display: inline-block;
+    background: var(--paper-3);
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    margin-right: 4px; margin-bottom: 4px;
+    font-weight: 500;
   }
 
   .compare-bar {
@@ -1590,7 +1886,34 @@
   </div>
 </div>
 
-<!-- Login screen (shown when no session) -->
+<!-- Login: split layout (pitch | auth card) — adopted from the Trail Brew
+     Field Guide design. Stacks on small screens. -->
+<div id="login-shell" class="hidden">
+  <section class="login-pitch">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 40 40" width="38" height="38" fill="none">
+          <path d="M20 6c-3.5 3.5-6 6-6 9.5 0 2.4 2.5 4 6 4s6-1.6 6-4c0-3.5-2.5-6-6-9.5z" fill="currentColor"/>
+          <path d="M20 14c-2.8 2.8-4.6 4.6-4.6 6.8 0 1.8 2 3.2 4.6 3.2s4.6-1.4 4.6-3.2c0-2.2-1.8-4-4.6-6.8z" fill="currentColor"/>
+          <path d="M20 21c-2 2-3.4 3.4-3.4 5 0 1.4 1.5 2.4 3.4 2.4s3.4-1 3.4-2.4c0-1.6-1.4-3-3.4-5z" fill="currentColor"/>
+          <path d="M20 27v5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">Crema<em>.</em></div>
+        <div class="brand-tag">Coffee field guide</div>
+      </div>
+    </div>
+    <div class="eyebrow login-eyebrow">Pour with intention</div>
+    <h1 class="login-h1">A field guide for<br/>your <em>next</em> brew.</h1>
+    <p class="login-sub-pitch">Log every bag, get a tuned recipe, and keep a cheat sheet on your dashboard. Switch methods on a whim — Crema follows along.</p>
+    <ul class="login-feats">
+      <li><span class="feat-dot"></span>Recipes that adjust to roast level &amp; process</li>
+      <li><span class="feat-dot"></span>Step-by-step timer for every brew method</li>
+      <li><span class="feat-dot"></span>Your shelf, gear, and notes — all in one place</li>
+    </ul>
+  </section>
+
 <div id="login-screen" class="hidden" role="dialog" aria-labelledby="login-title">
   <div class="login-mark">
     <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -1688,12 +2011,31 @@
 
   <div class="login-foot">Your coffees stay yours — encrypted in your private vault, never sold, never seen by us.</div>
 </div>
+</div><!-- /login-shell -->
 
 <!-- App (shown when authenticated) -->
 <div id="app-root" style="display:none;">
 
+<!-- Personalized hero — adopted from the Trail Brew Field Guide design.
+     Greeting + date on the left, three stats (beans / favs / latest)
+     on the right. JS fills the slots on every render. -->
+<section class="hero">
+  <div class="hero-text">
+    <div class="eyebrow" id="hero-eyebrow">—</div>
+    <h1 id="hero-greet">Good morning.</h1>
+    <p class="hero-sub" id="hero-sub">Pour with intention. Pull a card to see its cheat sheet, or log something new.</p>
+  </div>
+  <div class="hero-stats" id="hero-stats">
+    <div class="hero-stat"><div class="num" id="hero-stat-beans">0</div><div class="lbl">Beans on shelf</div></div>
+    <div class="hero-stat"><div class="num" id="hero-stat-fav">0</div><div class="lbl">Favorites</div></div>
+    <div class="hero-stat"><div class="num" id="hero-stat-recent">—</div><div class="lbl">Last logged</div></div>
+  </div>
+</section>
+
 <div class="header-row">
-  <div>
+  <!-- Brand h1 lives in the hero now; this row keeps the toolbar (search,
+       tip, add, settings, user menu). -->
+  <div style="display:none;">
     <h1>Crema</h1>
     <p class="subtitle" id="app-subtitle">Acaia Orbit · SSP Lab Sweet V3 · IMS 18g High-Flow</p>
   </div>
@@ -3288,30 +3630,39 @@ function render(method) {
     if (isFresh) state._freshCardId = null;
     const settingRows = Object.entries(d.settings || {}).map(([k, v]) => `<div class="setting-row"><span class="setting-label">${escapeHtml(k)}</span><span class="setting-value">${escapeHtml(v)}</span></div>`).join("");
     const tags = (c.tags || []).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join("");
-    const steam = isDialed ? `<div class="steam-stack" aria-hidden="true"><span class="steam-wisp w1"></span><span class="steam-wisp w2"></span><span class="steam-wisp w3"></span></div>` : "";
-    const starFill = c.favorite ? '#fff1cf' : 'none';
-    const starStroke = c.favorite ? '#fff1cf' : 'currentColor';
+    const starFill = c.favorite ? 'currentColor' : 'none';
+    // The accent rail uses whatever the user picked (gradient or hex).
+    const accent = sanitizeColor(c.color) || "var(--forest-700)";
+    // Stamp top-right is roast/origin info, two short lines.
+    const stamp = (() => {
+      const roastTag = (c.tags || []).find(t => /light|medium|dark|decaf/i.test(t)) || "";
+      const originTag = (c.tags || []).find(t => !/light|medium|dark|decaf|washed|natural|honey|anaerob/i.test(t)) || "";
+      const lines = [];
+      if (roastTag)  lines.push(escapeHtml(roastTag));
+      if (originTag) lines.push(escapeHtml(originTag));
+      return lines.length ? `<div class="card-stamp">${lines.map(l => `<div>${l}</div>`).join("")}</div>` : "";
+    })();
     card.innerHTML = `
-      <div class="card-header" style="background:${sanitizeColor(c.color)}">
-        ${steam}
-        <button class="card-fav-btn ${c.favorite ? 'is-fav' : ''}" title="${c.favorite ? 'Unfavorite' : 'Favorite'}" onclick="toggleFavorite('${escapeAttr(c.id)}')">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${starFill}" stroke="${starStroke}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      <div class="card-header">
+        ${stamp}
+        <button class="card-fav-btn ${c.favorite ? 'is-fav' : ''}" title="${c.favorite ? 'Unfavorite' : 'Favorite'}" onclick="event.stopPropagation();toggleFavorite('${escapeAttr(c.id)}')">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </button>
         <div class="card-roaster">${escapeHtml(c.roaster)}</div>
-        <div class="card-name">${escapeHtml(c.name)}</div>
+        <h2 class="card-name">${escapeHtml(c.name)}</h2>
         <div class="card-meta">${escapeHtml(c.meta || "")}</div>
+        <div class="card-tags" style="margin-top:10px;">${tags}<span class="status-badge ${statusClass[d.status]||"status-next"}" style="margin-left:6px;">${escapeHtml(d.statusLabel||"—")}</span></div>
+        <div class="card-divider"></div>
+        <div class="card-body">${settingRows}</div>
+        ${d.notes ? `<div class="notes-section"><div class="notes-label">Notes</div>${escapeHtml(d.notes)}</div>` : ""}
         <div class="card-actions">
-          <button title="Log a brew" onclick="openBrewLog('${escapeAttr(c.id)}', '${escapeAttr(method)}')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg></button>
-          <button title="AI assist" onclick="openAiModal('${escapeAttr(c.id)}')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 2 L13.5 8.5 L20 10 L13.5 11.5 L12 18 L10.5 11.5 L4 10 L10.5 8.5 Z"/></svg></button>
-          <button title="Edit" onclick="openEditModal('${escapeAttr(c.id)}')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button title="Log a brew" onclick="event.stopPropagation();openBrewLog('${escapeAttr(c.id)}', '${escapeAttr(method)}')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg></button>
+          <button title="AI assist" onclick="event.stopPropagation();openAiModal('${escapeAttr(c.id)}')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 2 L13.5 8.5 L20 10 L13.5 11.5 L12 18 L10.5 11.5 L4 10 L10.5 8.5 Z"/></svg></button>
+          <button title="Edit" onclick="event.stopPropagation();openEditModal('${escapeAttr(c.id)}')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
         </div>
-      </div>
-      <div class="card-body">${settingRows}</div>
-      <div class="notes-section">
-        <div class="notes-label">Notes</div>
-        ${escapeHtml(d.notes || "")}
-        <br/><div style="margin-top:6px">${tags}<span class="status-badge ${statusClass[d.status]||"status-next"}">${escapeHtml(d.statusLabel||"—")}</span></div>
       </div>`;
+    // Accent rail uses the user's chosen colour (gradient or hex).
+    card.style.setProperty("--accent-rail", accent);
     grid.appendChild(card);
   });
 
@@ -3319,6 +3670,7 @@ function render(method) {
   // colour of the user's coffees. Keeps the visual identity tied to the
   // collection without paying for an animated layer.
   applyCollectionTint();
+  renderHero();
   // Extra brew methods the user has registered globally (no per-method
   // recipe storage yet — these are surfaced as labels so the user sees what
   // they've added and so the AI prompt can reference them).
@@ -3339,6 +3691,63 @@ function render(method) {
 // Cheap "average colour" — pick the first colour of each card (we already
 // store hex strings) and average their RGB. Result is exposed via a CSS
 // variable so the body's gradient overlay reflects the user's collection.
+// Personalized hero greeting — "Good morning, {first name}" + today's date,
+// plus three stats pulled from the user's collection. Updates on every
+// render() so freshly-added coffees / favorites bump the counts.
+function renderHero() {
+  const eyebrow = document.getElementById("hero-eyebrow");
+  const greet   = document.getElementById("hero-greet");
+  const sub     = document.getElementById("hero-sub");
+  const beans   = document.getElementById("hero-stat-beans");
+  const fav     = document.getElementById("hero-stat-fav");
+  const recent  = document.getElementById("hero-stat-recent");
+  if (!greet) return;
+
+  const isGuest = isGuestUser() || isDemoMode();
+  const fullName = (state.user && (state.user.user_metadata?.name || (state.user.email || "").split("@")[0])) || "";
+  const firstName = fullName.split(/[\s.@]/)[0];
+  const display = firstName || (isGuest ? "Guest" : "Avery");
+
+  const hour = new Date().getHours();
+  const tod = hour < 5 ? "evening" : hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+
+  if (eyebrow) {
+    eyebrow.textContent = isGuest
+      ? "Guest shelf · local to this device"
+      : new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  }
+  greet.innerHTML = `Good ${tod}, <em>${escapeHtml(display)}</em>.`;
+
+  const count = state.data.coffees.length;
+  const favCount = state.data.coffees.filter(c => c.favorite).length;
+  // "Last logged" = most recent brew log entry across all coffees.
+  let mostRecent = null;
+  for (const c of state.data.coffees) {
+    const last = (c.brew_log || []).slice(-1)[0];
+    if (last && (!mostRecent || last.created_at > mostRecent.created_at)) {
+      mostRecent = last;
+    }
+  }
+  let recentLabel = "—";
+  if (mostRecent && mostRecent.created_at) {
+    const d = new Date(mostRecent.created_at);
+    const diffDays = Math.floor((Date.now() - d.getTime()) / 86400000);
+    recentLabel = diffDays === 0 ? "Today" : diffDays === 1 ? "Yesterday" : diffDays + "d ago";
+  }
+  if (beans)  beans.textContent  = String(count).padStart(2, "0");
+  if (fav)    fav.textContent    = String(favCount).padStart(2, "0");
+  if (recent) recent.textContent = recentLabel;
+
+  if (sub) {
+    if (count === 0) {
+      sub.textContent = "Your shelf is empty. Search the bar above for a roaster + bean, or load a few examples to get started.";
+    } else {
+      const freshest = state.data.coffees[state.data.coffees.length - 1];
+      sub.innerHTML = `${count} bean${count === 1 ? "" : "s"} on your shelf — freshest is <strong style="color:var(--ink); font-weight: 500;">${escapeHtml(freshest.name)}</strong>. Pull a card to see its cheat sheet, or log something new.`;
+    }
+  }
+}
+
 function applyCollectionTint() {
   const colors = (state.data.coffees || [])
     .map(c => c.color)
