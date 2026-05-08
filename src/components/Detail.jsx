@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, MethodIcon } from "./Icons.jsx";
-import { BREW_METHODS, adjustRecipe, recommend, detectGrinder, dialWarning, snapClicks, formatClicks, quantize } from "../lib/data.js";
+import { BREW_METHODS, adjustRecipe, recommend, resolveGrinder, dialWarning, grinderCapability, snapClicks, formatClicks, quantize } from "../lib/data.js";
 
 function parseStepTime(s) {
   if (!s) return [null, null];
@@ -126,8 +126,11 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
   const baseRecipe = adjustRecipe(method, coffee);
   const recommendedId = recommend(coffee);
 
-  // Pick a grinder profile from the user's gear field. Falls back to Comandante.
-  const grinder = useMemo(() => detectGrinder(gear?.grinder), [gear?.grinder]);
+  // Pick a grinder profile from the user's gear field. Honors any custom
+  // scale the user pinned in GearView; falls back to a name match (then to
+  // Comandante).
+  const grinder = useMemo(() => resolveGrinder(gear), [gear?.grinder, gear?.grinderCustom]);
+  const capabilityWarning = grinderCapability(grinder, method);
 
   // Translate the recipe's "22 clicks" baseline (which is on the Comandante
   // 6–36 scale) into this grinder's scale by mapping the relative position.
@@ -275,13 +278,28 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
         </div>
 
         <div className="method-tabs">
-          {BREW_METHODS.map((m) => (
-            <button key={m.id} className={`method-tab ${m.id === methodId ? "active" : ""}`} onClick={() => handleMethod(m.id)}>
-              <span className="ico"><MethodIcon id={m.id} size={15} /></span>
-              {m.short}
-            </button>
-          ))}
+          {BREW_METHODS.map((m) => {
+            const incompatible = grinder?.goodFor && !grinder.goodFor.includes(m.id);
+            return (
+              <button
+                key={m.id}
+                className={`method-tab ${m.id === methodId ? "active" : ""}`}
+                onClick={() => handleMethod(m.id)}
+                title={incompatible ? `${grinder.label} isn't ideal for ${m.short}` : ""}
+                style={incompatible ? { opacity: 0.6 } : undefined}
+              >
+                <span className="ico"><MethodIcon id={m.id} size={15} /></span>
+                {m.short}
+                {incompatible && <span style={{ marginLeft: 4, color: "var(--amber-700)", fontSize: 10 }}>!</span>}
+              </button>
+            );
+          })}
         </div>
+        {capabilityWarning && (
+          <div className="dial-warn" style={{ marginTop: 12 }}>
+            {capabilityWarning}
+          </div>
+        )}
 
         <div className="recipe-grid">
           <div className="recipe-cell accent"><div className="l">Dose</div><div><span className="v">{recipe.dose}</span><span className="u">g</span></div></div>

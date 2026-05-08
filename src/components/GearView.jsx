@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Icon } from "./Icons.jsx";
-import { GRINDERS, detectGrinder } from "../lib/data.js";
+import { GRINDERS, detectGrinder, resolveGrinder, BREW_METHODS } from "../lib/data.js";
 import { aiStatus } from "../lib/ai.js";
 
 const GEAR_FIELDS = [
@@ -48,15 +48,21 @@ export function GearView({ profile, onSaveProfile, busy }) {
           <div className="field">
             <label>Grinder</label>
             <div className="choice-grid">
-              {GRINDERS.map((g) => (
-                <div
-                  key={g.id}
-                  className={`choice ${detectGrinder(gear.grinder).id === g.id ? "active" : ""}`}
-                  onClick={() => set("grinder", g.label)}
-                >
-                  {g.label}
-                </div>
-              ))}
+              {GRINDERS.map((g) => {
+                const isActive = !gear.grinderCustom && detectGrinder(gear.grinder).id === g.id;
+                return (
+                  <div
+                    key={g.id}
+                    className={`choice ${isActive ? "active" : ""}`}
+                    onClick={() => setGear((prev) => {
+                      const { grinderCustom, ...rest } = prev;
+                      return { ...rest, grinder: g.label };
+                    })}
+                  >
+                    {g.label}
+                  </div>
+                );
+              })}
             </div>
             <input
               value={gear.grinder || ""}
@@ -64,9 +70,19 @@ export function GearView({ profile, onSaveProfile, busy }) {
               placeholder="…or type a custom grinder"
               style={{ marginTop: 10 }}
             />
-            <div style={{ fontSize: 12, color: "var(--ink-mute)", marginTop: 6 }}>
-              Detected scale: <strong>{detectGrinder(gear.grinder).min}–{detectGrinder(gear.grinder).max} {detectGrinder(gear.grinder).unit || "settings"}</strong> — the brew dial uses this range.
-            </div>
+            {(() => {
+              const resolved = resolveGrinder(gear);
+              const isUnknown = resolved.id === "generic" || !!gear.grinderCustom;
+              return (
+                <>
+                  <div style={{ fontSize: 12, color: "var(--ink-mute)", marginTop: 6 }}>
+                    Active scale: <strong>{resolved.min}–{resolved.max}{resolved.step < 1 ? " (step " + resolved.step + ")" : ""} {resolved.unit || "settings"}</strong>
+                    {gear.grinderCustom ? " · custom" : isUnknown ? " · generic fallback" : " · built-in"}
+                  </div>
+                  {isUnknown && <CustomScaleEditor gear={gear} setGear={setGear} />}
+                </>
+              );
+            })()}
           </div>
           {GEAR_FIELDS.reduce((rows, f, i) => {
             const ri = Math.floor(i / 2);
@@ -134,6 +150,100 @@ export function GearView({ profile, onSaveProfile, busy }) {
           {busy ? "Saving…" : "Save preferences"}
         </button>
       </div>
+    </div>
+  );
+}
+
+// Lets the user pin a numeric scale + brew-method capability list when their
+// grinder isn't in our built-in dropdown. Stored on gear.grinderCustom so
+// resolveGrinder() in data.js picks it up.
+function CustomScaleEditor({ gear, setGear }) {
+  const c = gear.grinderCustom || {};
+  const setCustom = (patch) => setGear((prev) => ({
+    ...prev,
+    grinderCustom: { ...(prev.grinderCustom || {}), ...patch },
+  }));
+  const clearCustom = () => setGear((prev) => {
+    const { grinderCustom, ...rest } = prev;
+    return rest;
+  });
+  const goodFor = Array.isArray(c.goodFor) ? c.goodFor : [];
+  const toggleMethod = (id) => {
+    const next = goodFor.includes(id) ? goodFor.filter((x) => x !== id) : [...goodFor, id];
+    setCustom({ goodFor: next });
+  };
+
+  return (
+    <div className="panel" style={{ marginTop: 12, padding: "14px 16px", background: "var(--paper-3)" }}>
+      <div className="bn-label" style={{ marginBottom: 10 }}>Custom scale + capability</div>
+      <p style={{ fontSize: 12, color: "var(--ink-mute)", marginTop: 0, marginBottom: 12 }}>
+        Pin a numeric range so the brew dial uses the right scale, and tick the methods this grinder can actually nail. Crema warns you when you pick a method outside that list.
+      </p>
+      <div className="form-row">
+        <div className="field">
+          <label>Min</label>
+          <input
+            type="number"
+            value={c.min ?? ""}
+            onChange={(e) => setCustom({ min: e.target.value === "" ? undefined : parseFloat(e.target.value) })}
+            placeholder="0"
+          />
+        </div>
+        <div className="field">
+          <label>Max</label>
+          <input
+            type="number"
+            value={c.max ?? ""}
+            onChange={(e) => setCustom({ max: e.target.value === "" ? undefined : parseFloat(e.target.value) })}
+            placeholder="40"
+          />
+        </div>
+        <div className="field">
+          <label>Step</label>
+          <input
+            type="number"
+            step="0.01"
+            value={c.step ?? ""}
+            onChange={(e) => setCustom({ step: e.target.value === "" ? undefined : parseFloat(e.target.value) })}
+            placeholder="1"
+          />
+        </div>
+        <div className="field">
+          <label>Unit label</label>
+          <input
+            value={c.unit ?? ""}
+            onChange={(e) => setCustom({ unit: e.target.value })}
+            placeholder="clicks · notches · settings"
+          />
+        </div>
+      </div>
+      <div className="field" style={{ marginTop: 8 }}>
+        <label>Methods this grinder can do well</label>
+        <div className="choice-grid">
+          {BREW_METHODS.map((m) => (
+            <div
+              key={m.id}
+              className={`choice ${goodFor.includes(m.id) ? "active" : ""}`}
+              onClick={() => toggleMethod(m.id)}
+            >
+              {m.short}
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 12, color: "var(--ink-mute)", marginTop: 6 }}>
+          Leave empty to disable capability warnings.
+        </div>
+      </div>
+      {gear.grinderCustom && (
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={clearCustom}
+          style={{ marginTop: 10 }}
+        >
+          Clear custom scale (use default)
+        </button>
+      )}
     </div>
   );
 }

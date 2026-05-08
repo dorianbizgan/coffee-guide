@@ -244,23 +244,32 @@ export const ACCENTS = [
 //
 // To detect a grinder from a free-text gear field we lowercase + match
 // substrings. The fallback is the generic 0–10 scale.
+// `goodFor` is the list of brew methods this grinder can actually nail. Some
+// grinders physically can't reach the right particle size — e.g. the Fellow
+// Ode has no espresso burrs, the Comandante is too coarse-stepped for
+// reliable espresso, the EK43 is overkill for French press but won't go
+// coarse enough for proper cold brew.
 export const GRINDERS = [
-  { id: "comandante",   match: ["comandante", "c40"],          label: "Comandante C40",        min: 6,  max: 36, step: 1,   unit: "clicks",   defaultClicks: 22 },
-  { id: "1zpresso-jx",  match: ["1zpresso jx", "jx-pro", "jxpro"], label: "1Zpresso JX-Pro",  min: 30, max: 200, step: 1,  unit: "clicks",   defaultClicks: 90 },
-  { id: "1zpresso-zp6", match: ["1zpresso zp6", "zp6"],         label: "1Zpresso ZP6",          min: 0,  max: 90, step: 1,   unit: "clicks",   defaultClicks: 35 },
-  { id: "1zpresso-q2",  match: ["1zpresso q2", "q2"],           label: "1Zpresso Q2",           min: 0,  max: 36, step: 1,   unit: "clicks",   defaultClicks: 14 },
-  { id: "kingrinder-k6",match: ["kingrinder k6", "k6"],         label: "Kingrinder K6",         min: 0,  max: 90, step: 1,   unit: "clicks",   defaultClicks: 50 },
-  { id: "niche",        match: ["niche zero", "niche-zero", "niche"], label: "Niche Zero",     min: 0,  max: 50, step: 1,   unit: "notches",  defaultClicks: 22 },
-  { id: "df64",         match: ["df64", "df 64"],               label: "DF64",                  min: 0,  max: 80, step: 1,   unit: "notches",  defaultClicks: 30 },
-  { id: "ek43",         match: ["ek43", "ek 43"],               label: "Mahlkönig EK43",        min: 0,  max: 11, step: 0.1, unit: "",         defaultClicks: 5 },
-  { id: "acaia-orbit",  match: ["acaia orbit", "ssp v3", "ssp"],label: "Acaia Orbit (SSP)",     min: 0,  max: 10, step: 0.1, unit: "",         defaultClicks: 1.5 },
-  { id: "fellow-ode",   match: ["fellow ode", "ode"],           label: "Fellow Ode",            min: 1,  max: 11, step: 1,   unit: "settings", defaultClicks: 5 },
-  { id: "baratza-encore", match: ["baratza encore", "encore"],  label: "Baratza Encore",        min: 1,  max: 40, step: 1,   unit: "settings", defaultClicks: 18 },
+  { id: "comandante",   match: ["comandante", "c40"],              label: "Comandante C40",        min: 6,  max: 36,  step: 1,   unit: "clicks",   defaultClicks: 22, goodFor: ["v60", "aeropress", "chemex", "moka", "french"] },
+  { id: "1zpresso-jx",  match: ["1zpresso jx", "jx-pro", "jxpro"], label: "1Zpresso JX-Pro",       min: 30, max: 200, step: 1,   unit: "clicks",   defaultClicks: 90, goodFor: ["v60", "aeropress", "chemex", "moka", "french", "cold"] },
+  { id: "1zpresso-zp6", match: ["1zpresso zp6", "zp6"],            label: "1Zpresso ZP6",          min: 0,  max: 90,  step: 1,   unit: "clicks",   defaultClicks: 35, goodFor: ["v60", "aeropress", "chemex", "moka", "french"] },
+  { id: "1zpresso-q2",  match: ["1zpresso q2", "q2"],              label: "1Zpresso Q2",           min: 0,  max: 36,  step: 1,   unit: "clicks",   defaultClicks: 14, goodFor: ["v60", "aeropress", "chemex", "moka"] },
+  { id: "kingrinder-k6",match: ["kingrinder k6", "k6"],            label: "Kingrinder K6",         min: 0,  max: 90,  step: 1,   unit: "clicks",   defaultClicks: 50, goodFor: ["v60", "aeropress", "chemex", "moka", "french", "cold"] },
+  { id: "niche",        match: ["niche zero", "niche-zero", "niche"], label: "Niche Zero",         min: 0,  max: 50,  step: 1,   unit: "notches",  defaultClicks: 22, goodFor: ["espresso", "moka", "v60", "aeropress", "chemex"] },
+  { id: "df64",         match: ["df64", "df 64"],                  label: "DF64",                  min: 0,  max: 80,  step: 1,   unit: "notches",  defaultClicks: 30, goodFor: ["espresso", "moka", "v60", "aeropress"] },
+  { id: "ek43",         match: ["ek43", "ek 43"],                  label: "Mahlkönig EK43",        min: 0,  max: 11,  step: 0.1, unit: "",         defaultClicks: 5,  goodFor: ["espresso", "v60", "aeropress", "chemex"] },
+  { id: "acaia-orbit",  match: ["acaia orbit", "ssp v3", "ssp"],   label: "Acaia Orbit (SSP)",     min: 0,  max: 10,  step: 0.1, unit: "",         defaultClicks: 1.5, goodFor: ["espresso", "v60", "aeropress", "chemex"] },
+  { id: "fellow-ode",   match: ["fellow ode", "ode"],              label: "Fellow Ode",            min: 1,  max: 11,  step: 1,   unit: "settings", defaultClicks: 5,  goodFor: ["v60", "aeropress", "chemex", "french"] },
+  { id: "baratza-encore", match: ["baratza encore", "encore"],     label: "Baratza Encore",        min: 1,  max: 40,  step: 1,   unit: "settings", defaultClicks: 18, goodFor: ["v60", "aeropress", "chemex", "french", "cold"] },
 ];
 
 const GENERIC_GRINDER = {
   id: "generic", match: [], label: "Grinder",
   min: 0, max: 10, step: 0.5, unit: "setting", defaultClicks: 5,
+  // Generic grinders default to "we don't know" — UI treats this as no
+  // capability constraint, no warning shown. Users can override via the
+  // custom scale form in GearView.
+  goodFor: null,
 };
 
 export function detectGrinder(name) {
@@ -270,6 +279,39 @@ export function detectGrinder(name) {
     if (g.match.some((m) => n.includes(m))) return g;
   }
   return { ...GENERIC_GRINDER, label: name };
+}
+
+// Resolve the active grinder profile from a `gear` JSONB. Honors:
+//   gear.grinderCustom = { min, max, step, unit, goodFor }  ← user override
+// before falling back to `gear.grinder` (string) → detectGrinder.
+//
+// gear.grinder is still the source of truth for the LABEL — custom is the
+// sidecar with the numeric scale. That way "Acme MZ-12" still shows as
+// "Acme MZ-12" even when the user has pinned a custom scale.
+export function resolveGrinder(gear) {
+  const fromName = detectGrinder(gear?.grinder);
+  const custom = gear?.grinderCustom;
+  if (custom && (Number.isFinite(custom.min) || Number.isFinite(custom.max))) {
+    return {
+      ...fromName,
+      label: gear?.grinder || fromName.label,
+      min: Number.isFinite(custom.min) ? custom.min : fromName.min,
+      max: Number.isFinite(custom.max) ? custom.max : fromName.max,
+      step: Number.isFinite(custom.step) && custom.step > 0 ? custom.step : fromName.step,
+      unit: custom.unit ?? fromName.unit,
+      goodFor: Array.isArray(custom.goodFor) ? custom.goodFor : fromName.goodFor,
+    };
+  }
+  return fromName;
+}
+
+// Returns null if the grinder is well-suited to the brew method, otherwise
+// a short human warning. `goodFor: null` (generic / unknown grinders) skips
+// the check so we don't nag users who haven't told us what they own.
+export function grinderCapability(grinder, method) {
+  if (!grinder?.goodFor) return null;
+  if (grinder.goodFor.includes(method?.id)) return null;
+  return `Heads up — your ${grinder.label} isn't a great match for ${method?.short || method?.name}. Most users who own one stick to: ${grinder.goodFor.join(", ")}.`;
 }
 
 // Map a grinder's clicks to a fineness ratio 0..1 (0 = finest, 1 = coarsest).
