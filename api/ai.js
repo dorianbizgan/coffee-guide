@@ -26,8 +26,7 @@ const TIP_CACHE_TTL_DAYS = 7;
 // dramatically faster (no wasted tokens) and eliminates parse failures.
 const METHOD_SETTINGS_SCHEMA = (keys) => ({
   type: "OBJECT",
-  properties: Object.fromEntries(keys.map(k => [k, { type: "STRING" }])),
-  propertyOrdering: keys
+  properties: Object.fromEntries(keys.map(k => [k, { type: "STRING" }]))
 });
 const RECIPE_SCHEMA = {
   type: "OBJECT",
@@ -45,8 +44,7 @@ const RECIPE_SCHEMA = {
           "Pressure", "Preinfusion", "Total Shot Time", "Basket"
         ]),
         notes: { type: "STRING" }
-      },
-      required: ["settings"]
+      }
     },
     v60: {
       type: "OBJECT",
@@ -56,8 +54,7 @@ const RECIPE_SCHEMA = {
           "Ratio", "Bloom", "Target Drawdown"
         ]),
         notes: { type: "STRING" }
-      },
-      required: ["settings"]
+      }
     },
     aeropress: {
       type: "OBJECT",
@@ -67,12 +64,10 @@ const RECIPE_SCHEMA = {
           "Method", "Steep Time", "Press Time"
         ]),
         notes: { type: "STRING" }
-      },
-      required: ["settings"]
+      }
     }
   },
-  required: ["name", "color", "tags", "espresso", "v60", "aeropress"],
-  propertyOrdering: ["roaster", "name", "meta", "color", "tags", "espresso", "v60", "aeropress"]
+  required: ["name", "espresso", "v60", "aeropress"]
 };
 
 const crypto = require("crypto");
@@ -306,13 +301,16 @@ module.exports = async function handler(req, res) {
       contents: [{ role: "user", parts: [{ text: userPrompt }] }],
       generationConfig: { maxOutputTokens: maxTokens, temperature: mode === "recipe" ? 0.4 : 0.7 }
     };
-    if (jsonMode) reqBody.generationConfig.responseMimeType = "application/json";
-    // Structured output: when we know the exact schema, force the model to emit
-    // exactly that shape. Skips prose preamble, makes responses faster and more
-    // reliable. Note: schema + grounding can coexist on Gemini, but if we ever
-    // see issues we can guard with `if (!useWebSearch)`.
-    if (mode === "recipe") reqBody.generationConfig.responseSchema = RECIPE_SCHEMA;
-    if (useWebSearch) reqBody.tools = [{ google_search: {} }];
+    // Gemini constraint: when the google_search tool is active you CANNOT
+    // also set responseMimeType=application/json or responseSchema. The API
+    // returns 400 INVALID_ARGUMENT. So when grounding is on we let the model
+    // emit prose-with-JSON and rely on extractJsonBlock client-side.
+    if (useWebSearch) {
+      reqBody.tools = [{ google_search: {} }];
+    } else {
+      if (jsonMode) reqBody.generationConfig.responseMimeType = "application/json";
+      if (mode === "recipe") reqBody.generationConfig.responseSchema = RECIPE_SCHEMA;
+    }
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

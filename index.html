@@ -3760,8 +3760,12 @@ function humanizeDbError(e) {
 // server-side via Gemini's responseSchema, so we don't need to spell out the
 // JSON shape here — just describe the coffee-expert persona, the equipment
 // constraints, and the bag-color hint.
-function recipeSystemPrompt(prefs) {
-  return [
+//
+// When `grounded` is true (web search active), the AI cannot use responseSchema
+// alongside grounding tools, so we ALSO spell the JSON shape out so the prose
+// response still contains the right keys for extractJsonBlock to pull out.
+function recipeSystemPrompt(prefs, { grounded = false } = {}) {
+  const base = [
     "You are a deeply experienced home-barista expert producing brewing recipes.",
     "",
     "USER PREFERENCES:",
@@ -3777,7 +3781,19 @@ function recipeSystemPrompt(prefs) {
     "- For `color`, return a hex like #5c4a3a that matches the dominant color of the actual coffee bag from the roaster's site or marketing. If the bag isn't identifiable, pick a color that captures the origin/process character.",
     "- `meta` should be terse: process · origin · altitude · varietal where known.",
     "- Each method's `notes` should be one or two short sentences, focused on the next thing to try."
-  ].join("\n");
+  ];
+  if (grounded) {
+    base.push(
+      "",
+      "OUTPUT FORMAT:",
+      "Return only a JSON object inside a ```json fenced block, with this exact shape:",
+      `{"roaster":"...","name":"...","meta":"...","color":"#hex","tags":["..."],`,
+      `"espresso":{"settings":{"Grind (Acaia Orbit SSP V3)":"...","Brew Temp":"...","Dose":"18g","Yield":"...","Pressure":"8 bar","Preinfusion":"10s @ 2–3 bar","Total Shot Time":"...","Basket":"IMS 18g Precision High-Flow"},"notes":"..."},`,
+      `"v60":{"settings":{"Grind (Acaia Orbit SSP V3)":"...","Water Temp":"...","Dose":"24g","Water":"400g","Ratio":"1:16.7 (Hoffmann 60g/L)","Bloom":"48g / 45s","Target Drawdown":"..."},"notes":"..."},`,
+      `"aeropress":{"settings":{"Grind (Acaia Orbit SSP V3)":"...","Water Temp":"...","Dose":"18g","Water":"200g","Method":"Inverted","Steep Time":"...","Press Time":"0:30"},"notes":"..."}}`
+    );
+  }
+  return base.join("\n");
 }
 
 function userContextBlock() {
@@ -4339,9 +4355,11 @@ async function aiSearchOnline(query) {
     }
   }, 2400);
 
-  // Build prompt — reuse the same JSON shape as aiCreate so we get a full recipe back
+  // Build prompt — reuse the same JSON shape as aiCreate so we get a full recipe back.
+  // Search-online uses web grounding, so we ask the model to spell the JSON shape
+  // explicitly (Gemini doesn't allow responseSchema alongside the google_search tool).
   const prefs = state.data.preferences || "(none provided)";
-  const sys = recipeSystemPrompt(prefs);
+  const sys = recipeSystemPrompt(prefs, { grounded: true });
   const user = `Find this coffee online and return a recipe tailored to my preferences:\n\n${query}\n\nUse web_search for the coffee's origin, process, altitude, varietal, roaster recommendations. Then return the JSON.`;
 
   try {
@@ -4604,7 +4622,7 @@ async function aiCreate(useWebSearch) {
   }
   out.innerHTML = `${COFFEE_SPINNER}${useWebSearch ? "Searching the web..." : "Generating recipe..."}`;
   const prefs = state.data.preferences || "(none provided)";
-  const sys = recipeSystemPrompt(prefs);
+  const sys = recipeSystemPrompt(prefs, { grounded: useWebSearch });
   const user = useWebSearch
     ? `Find this coffee online and return a recipe tailored to my preferences:\n\n${desc}\n\nUse web_search for the coffee's origin, process, altitude, varietal, roaster recommendations. Then return the JSON.`
     : `Coffee: ${desc}\n\nReturn the JSON.`;
