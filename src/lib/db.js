@@ -59,6 +59,8 @@ function rowToCoffee(row) {
     stamp: row.stamp || "",
     favorite: !!row.favorite,
     decaf: !!row.decaf,
+    storage: row.storage || "room",
+    frozenSince: row.frozen_since || "",
     brewLog: row.brew_log || [],
   };
 }
@@ -82,6 +84,8 @@ function coffeeToRow(c, userId) {
     stamp: c.stamp || null,
     favorite: !!c.favorite,
     decaf: !!c.decaf,
+    storage: c.storage || "room",
+    frozen_since: c.frozenSince || null,
   };
 }
 

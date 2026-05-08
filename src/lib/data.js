@@ -140,7 +140,72 @@ export function adjustRecipe(method, coffee) {
     adj.temp = Math.max(80, adj.temp - 2);
     adj.grind = adj.grind + " (decaf — coarser)";
   }
+  // Age + storage adjustment. Cold brew is unaffected because the long
+  // contact time washes out small staling differences.
+  if (method.id !== "cold") {
+    const ageAdj = ageAdjustment(coffee);
+    if (ageAdj.clicks || ageAdj.temp) {
+      adj.clicks = adj.clicks + ageAdj.clicks;
+      adj.temp = Math.min(99, Math.max(80, adj.temp + ageAdj.temp));
+      adj.grind = adj.grind + ` (${ageAdj.label})`;
+    }
+  }
   return adj;
+}
+
+// ─── Bean age + storage ──────────────────────────────────────────────────
+// Storage method changes how fast a coffee stales. Multipliers are
+// rule-of-thumb based on the well-known "freezer pauses aging" finding:
+//   room    1.00 — baseline
+//   vacuum  0.65 — slow but not stopped (oxygen still leaches in over time)
+//   fridge  0.80 — slows oxidation a little but moisture & smells hurt
+//   freezer 0.05 — effectively paused (sealed)
+const STORAGE_MULTIPLIER = { room: 1.0, vacuum: 0.65, fridge: 0.8, freezer: 0.05 };
+
+export function effectiveAgeDays(coffee) {
+  if (!coffee?.roastDate) return null;
+  const roast = new Date(coffee.roastDate);
+  if (Number.isNaN(roast.getTime())) return null;
+  const now = Date.now();
+  const totalDays = (now - roast.getTime()) / 86400000;
+  if (totalDays < 0) return 0;
+  const storage = coffee.storage || "room";
+
+  // Two-phase model when the user told us when the bag went into the freezer.
+  if (storage === "freezer" && coffee.frozenSince) {
+    const frozen = new Date(coffee.frozenSince);
+    if (!Number.isNaN(frozen.getTime())) {
+      const beforeFreeze = Math.max(0, (frozen.getTime() - roast.getTime()) / 86400000);
+      const inFreezer    = Math.max(0, (now - frozen.getTime()) / 86400000);
+      return beforeFreeze + inFreezer * STORAGE_MULTIPLIER.freezer;
+    }
+  }
+  return totalDays * (STORAGE_MULTIPLIER[storage] ?? 1);
+}
+
+// Returns { clicks, temp, label } describing the age-driven nudge.
+// `clicks` is in the Comandante 6–36 sense — positive = coarser, negative = finer.
+// Detail.jsx remaps that to the user's grinder via snapClicks.
+export function ageAdjustment(coffee) {
+  const age = effectiveAgeDays(coffee);
+  if (age == null) return { clicks: 0, temp: 0, label: "" };
+  if (age < 4)   return { clicks: +1, temp:  0, label: "fresh — coarser" };
+  if (age < 14)  return { clicks:  0, temp:  0, label: "" };       // sweet spot
+  if (age < 30)  return { clicks: -1, temp: +1, label: "past peak — finer" };
+  return            { clicks: -2, temp: +2, label: "stale — much finer + hotter" };
+}
+
+// Display helper for the bag-info panel + AI prompt.
+export function ageSummary(coffee) {
+  const days = effectiveAgeDays(coffee);
+  if (days == null) return null;
+  const rounded = Math.max(0, Math.round(days));
+  let band;
+  if (days < 4)       band = "Resting";
+  else if (days < 14) band = "Sweet spot";
+  else if (days < 30) band = "Past peak";
+  else                band = "Stale";
+  return { days: rounded, band };
 }
 
 export const BEAN_CATALOG = [

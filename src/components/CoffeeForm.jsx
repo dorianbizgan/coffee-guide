@@ -35,6 +35,8 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
     variety: initial?.variety || "",
     bagSize: initial?.bagSize || "250g",
     roastDate: initial?.roastDate || new Date().toISOString().slice(0, 10),
+    storage: initial?.storage || "room",
+    frozenSince: initial?.frozenSince || "",
     grinder: initial?.grinder || "Comandante C40",
     brewer: initial?.method || "v60",
     _search: prefillSearch || "",
@@ -139,6 +141,11 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
       variety: data.variety || "—",
       roastDate: data.roastDate,
       bagSize: data.bagSize,
+      storage: data.storage,
+      // Only persist frozenSince when storage is freezer; clearing storage
+      // clears the date so we don't end up with stale dates causing weird
+      // age math after the user moves the bag back to room temp.
+      frozenSince: data.storage === "freezer" ? (data.frozenSince || data.roastDate) : "",
       method: initial?.method || data.brewer || recommendedId,
       accent,
       stamp,
@@ -317,6 +324,41 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
                 <label>Roast date</label>
                 <input type="date" value={data.roastDate} onChange={(e) => set("roastDate", e.target.value)} />
               </div>
+            </div>
+            <div className="field">
+              <label>Storage</label>
+              <div className="choice-grid">
+                {[
+                  { k: "room",    l: "Room temp" },
+                  { k: "vacuum",  l: "Vacuum sealed" },
+                  { k: "fridge",  l: "Fridge" },
+                  { k: "freezer", l: "Freezer" },
+                ].map((s) => (
+                  <div
+                    key={s.k}
+                    className={`choice ${data.storage === s.k ? "active" : ""}`}
+                    onClick={() => set("storage", s.k)}
+                  >
+                    {s.l}
+                  </div>
+                ))}
+              </div>
+              {data.storage === "freezer" && (
+                <div className="form-row" style={{ marginTop: 10 }}>
+                  <div className="field">
+                    <label>Frozen since (optional)</label>
+                    <input
+                      type="date"
+                      value={data.frozenSince || ""}
+                      onChange={(e) => set("frozenSince", e.target.value)}
+                      max={new Date().toISOString().slice(0, 10)}
+                    />
+                    <div style={{ fontSize: 12, color: "var(--ink-mute)", marginTop: 6 }}>
+                      Leave blank to assume the bag's been frozen the whole time since roast. Aging in the freezer counts at ~5% of normal.
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

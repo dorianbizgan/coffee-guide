@@ -109,7 +109,18 @@ export async function suggestDialTweak({
   const decafLine = coffee.decaf
     ? "\nThis bean is DECAF. Decaf beans are softer & more porous, so they extract faster than regular beans at the same setting — typically a coarser grind and slightly cooler water than the equivalent caffeinated bean."
     : "";
-  const userPrompt = `You are a coffee brewing coach. The user is brewing ${coffee.name} from ${coffee.roaster} (${coffee.origin}, ${coffee.process}${coffee.decaf ? " · decaf" : ""}, ${coffee.roast} roast) using ${method.name}.${decafLine}
+  const ageLine = (() => {
+    if (!coffee.roastDate) return "";
+    const totalDays = Math.round((Date.now() - new Date(coffee.roastDate).getTime()) / 86400000);
+    const storage = coffee.storage || "room";
+    const storageNote = storage === "freezer"
+      ? ` · stored in freezer${coffee.frozenSince ? ` since ${coffee.frozenSince}` : ""} (aging effectively paused)`
+      : storage === "vacuum" ? " · vacuum-sealed (slow aging)"
+      : storage === "fridge" ? " · refrigerated (slow but moisture/odor risk)"
+      : " · room temperature (normal aging)";
+    return `\nBag age: ${totalDays} days off roast${storageNote}. Fresh beans (<4d) need coarser to manage degassing; past peak (>14d) needs finer + slightly hotter to compensate for staling.`;
+  })();
+  const userPrompt = `You are a coffee brewing coach. The user is brewing ${coffee.name} from ${coffee.roaster} (${coffee.origin}, ${coffee.process}${coffee.decaf ? " · decaf" : ""}, ${coffee.roast} roast) using ${method.name}.${decafLine}${ageLine}
 Current dial: ${temp}°C water, ${clicks} ${grinderRange?.unit || "clicks"} on a ${grinderLabel}, ${recipe.dose}g dose, 1:${recipe.ratio} ratio, ${recipe.time} total.
 Grinder valid range: ${rangeLabel}.
 Bean's expected notes: ${(coffee.notes || []).join(", ") || "—"}.

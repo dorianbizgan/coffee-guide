@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, MethodIcon } from "./Icons.jsx";
-import { BREW_METHODS, adjustRecipe, recommend, resolveGrinder, dialWarning, grinderCapability, snapClicks, formatClicks, quantize } from "../lib/data.js";
+import { BREW_METHODS, adjustRecipe, recommend, resolveGrinder, dialWarning, grinderCapability, snapClicks, formatClicks, quantize, ageSummary, ageAdjustment, effectiveAgeDays } from "../lib/data.js";
 
 function parseStepTime(s) {
   if (!s) return [null, null];
@@ -523,6 +523,31 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
           {coffee.roastDate && (
             <div className="gear-row"><span className="k">Days off roast</span><span className="v">~{Math.round((Date.now() - new Date(coffee.roastDate).getTime()) / 86400000)}d</span></div>
           )}
+          <div className="gear-row">
+            <span className="k">Storage</span>
+            <span className="v" style={{ textTransform: "capitalize" }}>
+              {coffee.storage || "room"}{coffee.storage === "freezer" && coffee.frozenSince ? ` · since ${coffee.frozenSince}` : ""}
+            </span>
+          </div>
+          {(() => {
+            const age = ageSummary(coffee);
+            const adj = ageAdjustment(coffee);
+            if (!age) return null;
+            return (
+              <>
+                <div className="gear-row">
+                  <span className="k">Effective age</span>
+                  <span className="v">~{age.days}d <span style={{ color: "var(--ink-mute)", fontSize: 12 }}>· {age.band}</span></span>
+                </div>
+                {adj.label && (
+                  <div className="gear-row">
+                    <span className="k">Auto-adjust</span>
+                    <span className="v" style={{ color: "var(--amber-700)", fontSize: 12 }}>{adj.label}</span>
+                  </div>
+                )}
+              </>
+            );
+          })()}
           <div className="gear-row"><span className="k">Cups remaining</span><span className="v">~{Math.max(0, Math.round(parseInt(coffee.bagSize || "0", 10) / (recipe.dose || 18)))}</span></div>
         </div>
 
