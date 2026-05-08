@@ -367,24 +367,31 @@
     margin-bottom: 8px;
     color: var(--ink);
   }
-  .login-sub { font-size: 14px; color: #6b5840; text-align: center; margin-bottom: 26px; line-height: 1.5; }
+  .login-sub { font-size: 14px; color: var(--ink-soft); text-align: center; margin-bottom: 26px; line-height: 1.5; }
 
   .login-tabs {
-    display: flex; gap: 2px; padding: 4px;
-    background: rgba(40, 18, 4, 0.06); border-radius: 12px; margin-bottom: 20px;
+    display: flex; gap: 2px; padding: 5px;
+    background: var(--paper-2); border: 1px solid var(--line);
+    border-radius: 999px;
+    margin-bottom: 20px;
     position: relative;
   }
   .login-tab {
-    flex: 1; padding: 9px 10px; text-align: center; font-size: 13px; font-weight: 600;
-    color: #6b5840; cursor: pointer; border-radius: 9px;
+    flex: 1; padding: 10px 10px; text-align: center;
+    font-size: 13px; font-weight: 500;
+    color: var(--ink-soft); cursor: pointer;
+    border-radius: 999px;
+    background: transparent; border: 0;
+    font-family: var(--font-body);
     transition: color 0.25s var(--ease-out);
     position: relative; z-index: 2;
   }
   .login-tab.active { color: var(--ink); }
   .login-tab-pill {
-    position: absolute; top: 4px; bottom: 4px;
-    background: white; border-radius: 9px;
-    box-shadow: 0 2px 8px rgba(40, 18, 4, 0.12), 0 1px 2px rgba(40, 18, 4, 0.08);
+    position: absolute; top: 5px; bottom: 5px;
+    background: var(--paper);
+    border-radius: 999px;
+    box-shadow: var(--shadow-card);
     transition: left 0.35s var(--ease-spring), width 0.35s var(--ease-spring);
     z-index: 1;
   }
@@ -422,79 +429,49 @@
     letter-spacing: 0.06em; text-transform: uppercase;
   }
 
-  /* Login buttons share the same cursor-tracked glass recipe as .icon-btn,
-     just full-width and slightly larger. */
+  /* Login buttons share the Trail Brew button system — same flat pill
+     mechanic as .icon-btn, just full-width and slightly larger. */
   .login-btn {
-    width: 100%; padding: 13px;
-    border-radius: 12px;
-    font-size: 14.5px; font-weight: 600; cursor: pointer;
-    background-color: rgba(255, 252, 240, 0.18);
-    background-image: radial-gradient(
-      circle 140px at var(--mx, 50%) var(--my, 50%),
-      rgba(255, 255, 255, 0.42) 0%,
-      rgba(255, 255, 255, 0) 65%
-    );
-    -webkit-backdrop-filter: blur(18px) saturate(180%);
-    backdrop-filter: blur(18px) saturate(180%);
-    border: 1px solid rgba(255, 250, 240, 0.55);
+    width: 100%;
+    padding: 13px 22px;
+    font-size: 14.5px;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid var(--line-strong);
     color: var(--ink);
-    font-family: inherit;
+    border-radius: 999px;
+    font-family: var(--font-body);
     display: inline-flex; align-items: center; justify-content: center; gap: 10px;
     margin-bottom: 10px;
-    position: relative;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.85),
-      inset 0 -1px 0 rgba(40, 18, 4, 0.18),
-      0 4px 12px rgba(40, 18, 4, 0.10),
-      0 1px 2px rgba(40, 18, 4, 0.08);
+    transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   }
   .login-btn:hover {
-    border-color: rgba(255, 250, 240, 0.85);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.95),
-      inset 0 -1px 0 rgba(40, 18, 4, 0.24),
-      0 8px 20px rgba(40, 18, 4, 0.16),
-      0 2px 4px rgba(40, 18, 4, 0.10);
+    background: var(--paper-2);
+    border-color: var(--ink-soft);
+    transform: translateY(-1px);
   }
-  .login-btn:active {
-    box-shadow:
-      inset 0 2px 6px rgba(40, 18, 4, 0.22),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.55),
-      0 1px 3px rgba(40, 18, 4, 0.10);
-  }
-
-  /* Primary — espresso glass with a gold cursor highlight */
+  .login-btn:active { transform: translateY(0); }
   .login-btn.primary {
-    background-color: rgba(29, 15, 4, 0.92);
-    background-image: radial-gradient(
-      circle 140px at var(--mx, 50%) var(--my, 50%),
-      rgba(255, 220, 160, 0.45) 0%,
-      rgba(255, 220, 160, 0) 65%
-    );
-    color: #fff8e6;
-    border-color: rgba(255, 225, 170, 0.22);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 225, 170, 0.45),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
-      0 8px 22px rgba(40, 18, 4, 0.32),
-      0 1px 2px rgba(0, 0, 0, 0.20);
+    background: var(--forest-700);
+    color: var(--paper);
+    border-color: var(--forest-700);
+    box-shadow: var(--shadow-card);
   }
   .login-btn.primary:hover {
-    border-color: rgba(255, 225, 170, 0.32);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 225, 170, 0.6),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.55),
-      0 12px 28px rgba(40, 18, 4, 0.4),
-      0 2px 4px rgba(0, 0, 0, 0.22);
+    background: var(--forest-900);
+    border-color: var(--forest-900);
   }
-  .login-btn.primary:active {
-    box-shadow:
-      inset 0 2px 6px rgba(0, 0, 0, 0.45),
-      inset 0 -1px 0 rgba(255, 225, 170, 0.2),
-      0 1px 3px rgba(0, 0, 0, 0.18);
+  [data-theme="dark"] .login-btn.primary {
+    background: var(--forest-700);
+    color: var(--forest-900);
+    border-color: var(--forest-700);
   }
-
-  .login-btn:disabled { opacity: 0.55; cursor: wait; }
+  [data-theme="dark"] .login-btn.primary:hover {
+    background: var(--amber-500);
+    border-color: var(--amber-500);
+  }
+  .login-btn:disabled { opacity: 0.55; cursor: wait; transform: none; }
   .login-btn svg { width: 18px; height: 18px; }
 
   .login-divider {
@@ -576,28 +553,28 @@
     position: fixed;
     bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     left: 50%; transform: translateX(-50%);
-    background: rgba(255, 250, 240, 0.92);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(192, 132, 74, 0.32);
+    background: var(--paper);
+    border: 1px solid var(--line-strong);
     border-radius: 999px;
     padding: 8px 16px;
-    font-size: 12px; font-weight: 600;
-    color: var(--accent-deep);
-    box-shadow: 0 10px 28px rgba(40, 18, 4, 0.24);
+    font-family: var(--font-body);
+    font-size: 12px; font-weight: 500;
+    color: var(--forest-700);
+    box-shadow: var(--shadow-card);
     z-index: 50;
     display: flex; align-items: center; gap: 8px;
     max-width: calc(100vw - 32px);
     white-space: nowrap;
   }
   .demo-banner button {
-    background: transparent; border: 0; padding: 0 0 0 6px;
-    cursor: pointer; color: var(--accent-deep);
-    font: inherit; font-weight: 700;
-    border-left: 1px solid rgba(192, 132, 74, 0.3);
+    background: transparent; border: 0; padding: 0 0 0 10px;
+    cursor: pointer;
+    color: var(--forest-700);
+    font: inherit; font-weight: 600;
+    border-left: 1px solid var(--line-strong);
     margin-left: 4px;
   }
-  .demo-banner button:hover { color: var(--ink); }
+  .demo-banner button:hover { color: var(--amber-700); }
   .demo-banner.hidden { display: none; }
   /* Two label flavours: long for desktop, short for mobile. */
   .demo-banner-short { display: none; }
@@ -655,14 +632,28 @@
     letter-spacing: 0.04em; text-transform: uppercase;
   }
   .tip-cached-badge::before { content: "♻"; font-size: 11px; }
+  /* "Continue as guest" — soft amber tint for distinction, but the same
+     pill shape as the rest of the .login-btn family. */
   .login-demo-btn {
-    background: linear-gradient(135deg, rgba(255, 240, 210, 0.7), rgba(255, 222, 170, 0.6));
-    border-color: rgba(192, 132, 74, 0.36);
-    color: var(--accent-deep);
+    background: var(--amber-100);
+    border-color: var(--amber-300);
+    color: var(--amber-700);
   }
   .login-demo-btn:hover {
-    background: linear-gradient(135deg, rgba(255, 245, 220, 0.85), rgba(255, 230, 184, 0.75));
+    background: var(--amber-300);
     color: var(--ink);
+    border-color: var(--amber-500);
+  }
+  [data-theme="dark"] .login-demo-btn {
+    /* In dusk, --amber-100 is a dark olive gold and --amber-700 is bright
+       gold-amber — gives a warm tint with high-contrast text. */
+    background: var(--amber-100);
+    border-color: var(--amber-300);
+    color: var(--amber-700);
+  }
+  [data-theme="dark"] .login-demo-btn:hover {
+    background: var(--amber-300);
+    color: var(--paper);
   }
 
   /* Trail Brew hero — personalized greeting with date + 3 stats */
@@ -741,24 +732,27 @@
   .header-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .search-box { position: relative; }
   .search-box input {
-    font-family: inherit; font-size: 13px;
+    font-family: var(--font-body);
+    font-size: 13px;
     padding: 9px 14px 9px 34px;
-    border: 1px solid rgba(40, 18, 4, 0.14);
-    border-radius: 10px;
-    background: rgba(255, 250, 240, 0.7);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
-    width: 220px; outline: none;
-    transition: border-color 0.2s var(--ease-out), width 0.25s var(--ease-out), box-shadow 0.2s var(--ease-out), background 0.2s var(--ease-out);
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--ink);
+    width: 220px;
+    outline: none;
+    transition: border-color 0.2s var(--ease-out), width 0.25s var(--ease-out), box-shadow 0.2s var(--ease-out);
   }
+  .search-box input::placeholder { color: var(--ink-mute); }
   .search-box input:focus {
-    border-color: var(--accent); width: 280px;
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 0 0 3px rgba(192, 132, 74, 0.15);
+    border-color: var(--amber-500);
+    width: 280px;
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--amber-500) 22%, transparent);
   }
   .search-box svg {
-    position: absolute; left: 11px; top: 50%;
-    transform: translateY(-50%); width: 14px; height: 14px; color: #aa8a60;
+    position: absolute; left: 12px; top: 50%;
+    transform: translateY(-50%); width: 14px; height: 14px;
+    color: var(--ink-mute);
   }
 
   /* ============================================================
@@ -780,97 +774,67 @@
      so the page is fully idle the moment you stop moving.
      ============================================================ */
 
+  /* === Trail Brew button system ===
+     Three pill-shaped variants, no glass, no cursor-tracking:
+       .icon-btn               → ghost (line border, paper background)
+       .icon-btn.primary       → forest fill, paper text (light) / amber text (dark)
+       .icon-btn.danger        → muted red text on ghost
+     Hover lifts 1px and darkens; active sinks back. */
   .icon-btn {
-    /* Flat translucent tint — minimal pigmentation, the colour comes from
-       what's behind via backdrop-filter. */
-    background-color: rgba(255, 252, 240, 0.18);
-    /* Cursor-tracked highlight: a soft white spot at (--mx, --my). When the
-       variables aren't set, defaults to dead-centre (ambient). */
-    background-image: radial-gradient(
-      circle 90px at var(--mx, 50%) var(--my, 50%),
-      rgba(255, 255, 255, 0.42) 0%,
-      rgba(255, 255, 255, 0) 65%
-    );
-    -webkit-backdrop-filter: blur(18px) saturate(180%);
-    backdrop-filter: blur(18px) saturate(180%);
-    border: 1px solid rgba(255, 250, 240, 0.55);
-    border-radius: 12px;
-    padding: 9px 14px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--line-strong);
+    background: transparent;
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 9px 16px;
     cursor: pointer;
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12.5px; font-weight: 600; color: #2a1a0a;
-    font-family: inherit;
-    position: relative;
-    /* Specular top edge + softly shaded bottom edge — the curvature illusion.
-       Plus a quiet drop shadow to float the tile off the surface. */
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.85),
-      inset 0 -1px 0 rgba(40, 18, 4, 0.18),
-      0 4px 12px rgba(40, 18, 4, 0.10),
-      0 1px 2px rgba(40, 18, 4, 0.08);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   }
   .icon-btn svg { width: 14px; height: 14px; }
-
   .icon-btn:hover {
-    /* Subtle: the bottom shadow deepens, the rim brightens. No transform,
-       no transition — the cursor moving the highlight IS the interaction. */
-    border-color: rgba(255, 250, 240, 0.85);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.95),
-      inset 0 -1px 0 rgba(40, 18, 4, 0.24),
-      0 8px 20px rgba(40, 18, 4, 0.16),
-      0 2px 4px rgba(40, 18, 4, 0.10);
+    background: var(--paper-2);
+    border-color: var(--ink-soft);
+    transform: translateY(-1px);
   }
-  .icon-btn:active {
-    /* Press depresses the glass — top edge dims, bottom edge brightens
-       (light flips from "incoming" to "trapped inside the glass"). */
-    box-shadow:
-      inset 0 2px 6px rgba(40, 18, 4, 0.22),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.55),
-      0 1px 3px rgba(40, 18, 4, 0.10);
-  }
+  .icon-btn:active { transform: translateY(0); }
+  .icon-btn:focus-visible { outline: 2px solid var(--amber-500); outline-offset: 2px; }
 
-  /* Primary — same mechanic on dark espresso glass with a gold rim */
   .icon-btn.primary {
-    background-color: rgba(29, 15, 4, 0.88);
-    background-image: radial-gradient(
-      circle 90px at var(--mx, 50%) var(--my, 50%),
-      rgba(255, 220, 160, 0.45) 0%,
-      rgba(255, 220, 160, 0) 65%
-    );
-    color: #fff8e6;
-    border-color: rgba(255, 225, 170, 0.22);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 225, 170, 0.45),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
-      0 8px 22px rgba(40, 18, 4, 0.32),
-      0 1px 2px rgba(0, 0, 0, 0.20);
+    background: var(--forest-700);
+    color: var(--paper);
+    border-color: var(--forest-700);
+    box-shadow: var(--shadow-card);
   }
   .icon-btn.primary:hover {
-    border-color: rgba(255, 225, 170, 0.32);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 225, 170, 0.6),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.55),
-      0 12px 28px rgba(40, 18, 4, 0.4),
-      0 2px 4px rgba(0, 0, 0, 0.22);
+    background: var(--forest-900);
+    border-color: var(--forest-900);
   }
-  .icon-btn.primary:active {
-    box-shadow:
-      inset 0 2px 6px rgba(0, 0, 0, 0.45),
-      inset 0 -1px 0 rgba(255, 225, 170, 0.20),
-      0 1px 3px rgba(0, 0, 0, 0.18);
+  [data-theme="dark"] .icon-btn.primary {
+    /* In dusk, --forest-700 is gold-amber. Use it as the fill, with deep ink
+       text for legibility. */
+    background: var(--forest-700);
+    color: var(--forest-900);
+    border-color: var(--forest-700);
+  }
+  [data-theme="dark"] .icon-btn.primary:hover {
+    background: var(--amber-500);
+    border-color: var(--amber-500);
   }
 
-  .icon-btn.danger { color: #b54040; }
+  .icon-btn.danger { color: oklch(0.55 0.18 25); border-color: var(--line-strong); }
+  .icon-btn.danger:hover { background: oklch(0.55 0.18 25 / 0.08); border-color: oklch(0.55 0.18 25 / 0.55); color: oklch(0.45 0.2 25); }
 
-  /* Theme toggle — same glass treatment as the rest, but icon-only with
-     the active icon swapped per theme. */
-  .theme-toggle { padding: 9px 11px; }
+  /* Theme toggle — same flat ghost shape, just icon-only. */
+  .theme-toggle { padding: 9px 12px; }
   .theme-toggle svg { width: 16px; height: 16px; }
   .theme-toggle .theme-icon-moon { display: none; }
   [data-theme="dark"] .theme-toggle .theme-icon-sun  { display: none; }
   [data-theme="dark"] .theme-toggle .theme-icon-moon { display: inline-block; }
-  .icon-btn.danger:hover { border-color: #b54040; color: #b54040; }
 
   .user-menu { position: relative; }
   .user-avatar-btn {
@@ -919,42 +883,38 @@
   .user-dropdown #signout-btn { color: #b54040; }
   .user-dropdown #signout-btn:hover { background: rgba(181,64,64,0.1); }
 
+  /* Brew-method tabs — Trail Brew nav-link style: text + amber underline
+     accent on the active item, no glass pill. */
   .tabs {
-    display: flex; gap: 0; margin-bottom: 18px;
-    background: rgba(255, 250, 240, 0.78);
-    -webkit-backdrop-filter: blur(16px) saturate(140%);
-    backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid rgba(255, 250, 240, 0.55);
-    border-radius: 14px;
-    padding: 5px;
-    box-shadow: 0 6px 20px rgba(40, 18, 4, 0.14);
-    position: relative;
+    display: flex;
+    gap: 28px;
+    margin-bottom: 24px;
+    padding: 0 4px 12px;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
   }
   .tab {
-    flex: 1; padding: 11px 16px; text-align: center;
-    font-size: 13.5px; font-weight: 600; color: #6b4f2c; cursor: pointer;
-    border-radius: 10px;
-    transition: color 0.22s var(--ease-out), background 0.22s var(--ease-out);
-    position: relative; z-index: 1;
-    /* Cursor-tracked highlight on hover (matches the rest of the glass tiles). */
-    background-image: radial-gradient(
-      circle 90px at var(--mx, 50%) var(--my, 50%),
-      rgba(255, 255, 255, 0.30) 0%,
-      rgba(255, 255, 255, 0) 65%);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    padding: 6px 0 8px;
+    position: relative;
+    transition: color 0.18s ease;
   }
-  .tab:hover { color: #1d0f04; }
-  .tab.active {
-    color: #1a0a02;                        /* deeper contrast on active */
-    background-color: rgba(255, 255, 255, 0.55);
-    background-image: radial-gradient(
-      circle 90px at var(--mx, 50%) var(--my, 50%),
-      rgba(255, 255, 255, 0.50) 0%,
-      rgba(255, 255, 255, 0) 65%);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.95),
-      inset 0 -1px 0 rgba(40, 18, 4, 0.18);
+  .tab:hover { color: var(--ink); }
+  .tab.active { color: var(--ink); }
+  .tab.active::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: -13px;
+    height: 2px;
+    background: var(--amber-500);
+    border-radius: 2px;
   }
-  /* No more underline accent — contrast is carried by colour + background. */
 
   .grid {
     display: grid;
@@ -1185,33 +1145,45 @@
   }
 
   .compare-bar {
-    background: rgba(255, 252, 245, 0.88);
-    -webkit-backdrop-filter: blur(14px) saturate(120%);
-    backdrop-filter: blur(14px) saturate(120%);
-    border: 1px solid rgba(255, 250, 240, 0.5);
-    border-radius: 14px;
-    padding: 16px 20px;
-    margin-bottom: 18px;
-    box-shadow: 0 6px 22px rgba(40, 18, 4, 0.14);
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 18px 22px;
+    margin-bottom: 22px;
     overflow-x: auto;
   }
   .compare-title {
-    font-size: 11px; font-weight: 700; color: #5e4630;
-    margin-bottom: 12px;
-    text-transform: uppercase; letter-spacing: 0.16em;
+    font-family: var(--font-body);
+    font-size: 11px; font-weight: 500; color: var(--ink-mute);
+    margin-bottom: 14px;
+    text-transform: uppercase; letter-spacing: 0.18em;
   }
-  .compare-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  .compare-table th { text-align: left; color: #99826a; font-weight: 600; padding: 4px 10px 8px 0; border-bottom: 1px solid rgba(40, 18, 4, 0.08); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.06em; font-size: 10.5px; }
-  .compare-table td { padding: 9px 10px 9px 0; border-bottom: 1px solid rgba(40, 18, 4, 0.05); color: #2a1a0a; vertical-align: top; }
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .compare-table th {
+    text-align: left;
+    color: var(--ink-mute);
+    font-weight: 500;
+    padding: 4px 12px 10px 0;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 10.5px;
+  }
+  .compare-table td {
+    padding: 10px 12px 10px 0;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+    vertical-align: top;
+  }
   .compare-table tr:last-child td { border-bottom: none; }
-  .compare-table tr:hover td { background: rgba(192, 132, 74, 0.06); }
-  .compare-link { cursor: pointer; transition: color 0.2s; }
-  .compare-link:hover { color: var(--accent-deep); }
-  .compare-link strong { text-decoration: underline; text-decoration-color: rgba(40, 18, 4, 0.18); text-underline-offset: 3px; transition: text-decoration-color 0.2s; }
-  .compare-link:hover strong { text-decoration-color: var(--accent); }
+  .compare-table tr:hover td { background: var(--paper-3); }
+  .compare-link { cursor: pointer; transition: color 0.18s; }
+  .compare-link:hover { color: var(--forest-700); }
+  .compare-link strong { font-family: var(--font-display); font-size: 16px; font-weight: 400; }
 
-  .no-results { text-align: center; padding: 40px 20px; color: #8a7560; font-size: 14px; font-weight: 500; }
-  .no-results-hint { display: block; font-size: 12px; font-weight: 500; color: #aa8a60; margin-top: 4px; }
+  .no-results { text-align: center; padding: 40px 20px; color: var(--ink-mute); font-size: 14px; font-weight: 500; }
+  .no-results-hint { display: block; font-size: 12px; font-weight: 500; color: var(--ink-mute); margin-top: 6px; }
   .no-results-hint kbd {
     display: inline-block; padding: 1px 6px;
     background: rgba(40,18,4,0.08); border: 1px solid rgba(40,18,4,0.18);
@@ -1347,70 +1319,93 @@
   .empty-state p { font-size: 14.5px !important; color: #4a3625 !important; }
   .empty-state .ai-actions { justify-content: center; margin-top: 16px; }
 
-  /* Modal — Apple-style frosted backdrop + spring entrance */
+  /* Modal — Trail Brew design language: paper card, line border, no glass blur. */
   .modal-backdrop {
     position: fixed; inset: 0;
-    background: rgba(40, 25, 12, 0.42);
-    -webkit-backdrop-filter: blur(8px) saturate(140%);
-    backdrop-filter: blur(8px) saturate(140%);
+    background: oklch(0.18 0.04 155 / 0.5);
     display: flex; align-items: flex-start; justify-content: center;
-    padding: 60px 20px 40px; z-index: 100; overflow-y: auto;
+    padding: 60px 20px 40px;
+    z-index: 100;
+    overflow-y: auto;
     animation: backdropIn 0.22s var(--ease-out);
   }
   .modal-backdrop.hidden { display: none; }
   @keyframes backdropIn {
     from { opacity: 0; }
-    to { opacity: 1; }
+    to   { opacity: 1; }
   }
   .modal {
-    background: rgba(255, 252, 245, 0.97);
-    -webkit-backdrop-filter: blur(20px) saturate(140%);
-    backdrop-filter: blur(20px) saturate(140%);
-    border-radius: 18px;
-    border: 1px solid rgba(255, 250, 240, 0.6);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
     width: 100%; max-width: 600px;
-    box-shadow:
-      0 30px 80px rgba(40,18,4,0.42),
-      0 4px 16px rgba(40,18,4,0.18),
-      0 0 0 1px rgba(120,80,40,0.06),
-      inset 0 1px 0 rgba(255,255,255,0.55);
+    color: var(--ink);
+    box-shadow: var(--shadow-pop);
     overflow: hidden;
-    animation: modalIn 0.4s var(--ease-out) both;
+    animation: modalIn 0.32s var(--ease-out) both;
   }
   @keyframes modalIn {
-    from { opacity: 0; transform: scale(0.94) translateY(10px); }
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
     to   { opacity: 1; transform: scale(1) translateY(0); }
   }
   .modal-head {
-    padding: 18px 22px; border-bottom: 1px solid var(--line);
+    padding: 22px 24px 14px;
+    border-bottom: 1px solid var(--line);
     display: flex; justify-content: space-between; align-items: center;
   }
-  .modal-head h2 { font-size: 15px; font-weight: 700; }
+  .modal-head h2 {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
   .modal-close {
     background: transparent; border: 0; cursor: pointer;
-    width: 30px; height: 30px; border-radius: 6px; color: #888;
+    width: 32px; height: 32px;
+    border-radius: 999px;
+    color: var(--ink-mute);
     display: inline-flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
   }
-  .modal-close:hover { background: #f5f5f5; color: #333; }
-  .modal-body { padding: 20px 22px; max-height: 70vh; overflow-y: auto; }
+  .modal-close:hover { background: var(--paper-2); color: var(--ink); }
+  .modal-body { padding: 20px 24px; max-height: 70vh; overflow-y: auto; }
   .modal-foot {
-    padding: 14px 22px; border-top: 1px solid var(--line);
-    display: flex; justify-content: flex-end; gap: 8px; background: #fafafa;
+    padding: 16px 24px;
+    border-top: 1px solid var(--line);
+    display: flex; justify-content: flex-end; gap: 10px;
+    background: var(--paper-2);
   }
 
   .field { margin-bottom: 14px; }
   .field label {
-    display: block; font-size: 11px; font-weight: 600;
-    color: #555; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px;
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 6px;
   }
   .field input, .field textarea, .field select {
-    width: 100%; padding: 9px 11px; border: 1px solid #ddd; border-radius: 7px;
-    font-family: inherit; font-size: 13px; outline: none;
-    transition: border-color 0.15s; background: white;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    outline: none;
+    background: var(--paper);
+    color: var(--ink);
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
-  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
-  .field textarea { min-height: 70px; resize: vertical; }
-  .field-help { font-size: 11px; color: #999; margin-top: 4px; line-height: 1.4; }
+  .field input::placeholder, .field textarea::placeholder { color: var(--ink-mute); opacity: 0.7; }
+  .field input:focus, .field textarea:focus, .field select:focus {
+    border-color: var(--amber-500);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--amber-500) 22%, transparent);
+  }
+  .field textarea { min-height: 80px; resize: vertical; }
+  .field-help { font-size: 12px; color: var(--ink-mute); margin-top: 6px; line-height: 1.4; }
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
   /* "Also tracking" chip strip — extra brew methods the user has registered */
@@ -2541,30 +2536,8 @@ if (typeof structuredClone === "undefined") {
   window.structuredClone = (o) => JSON.parse(JSON.stringify(o));
 }
 
-// =====================================================================
-// Cursor-tracked glass highlight. A single document-level pointermove
-// handler writes --mx / --my CSS variables on the hovered glass element so
-// its background-image radial-gradient (the specular highlight) sits where
-// the cursor is. Mimics how light hits real polished glass: the brightest
-// reflection follows the angle between viewer and source.
-//
-// Cheap by design: we only walk to the closest matching ancestor (no per-
-// element listener, no rAF loop), and when the cursor leaves we let the
-// last position decay naturally (the next hovered element resets it).
-// =====================================================================
-(function setupGlassCursor() {
-  const sel = ".icon-btn, .login-btn, .tab, .tip-chip, .login-tab";
-  document.addEventListener("pointermove", (e) => {
-    const el = e.target.closest && e.target.closest(sel);
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    if (r.width === 0 || r.height === 0) return;
-    const x = ((e.clientX - r.left) / r.width) * 100;
-    const y = ((e.clientY - r.top) / r.height) * 100;
-    el.style.setProperty("--mx", x + "%");
-    el.style.setProperty("--my", y + "%");
-  }, { passive: true });
-})();
+// (Cursor-tracked glass highlight removed when rebranding to the Trail
+// Brew design language — buttons there are flat pill fills, not glass.)
 
 // =====================================================================
 // SPLASH ANIMATION — paste any Lottie URL from https://lottiefiles.com
