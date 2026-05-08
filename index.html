@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://udzsveyedwbmygvpvxpx.supabase.co wss://udzsveyedwbmygvpvxpx.supabase.co https://api.anthropic.com https://api.openai.com https://lottie.host https://*.lottiefiles.com; img-src 'self' data: https://lottie.host https://*.lottiefiles.com; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://udzsveyedwbmygvpvxpx.supabase.co wss://udzsveyedwbmygvpvxpx.supabase.co https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://lottie.host https://*.lottiefiles.com; img-src 'self' data: https://lottie.host https://*.lottiefiles.com; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests;">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Coffee Brew Tracker</title>
@@ -12,168 +12,460 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #ece2cc;
-    --card-bg: #fefcf7;
-    --ink: #2a1a0a;
-    --muted: #8a7860;
-    --line: #ece0c8;
-    --accent: #b88450;
-    --accent-soft: rgba(184, 132, 80, 0.18);
-    --accent-glow: rgba(184, 132, 80, 0.55);
-    /* Crema palette — pale foam → deep amber */
-    --crema-1: #faf0d8;
-    --crema-2: #f0dcb0;
-    --crema-3: #e0c088;
-    --crema-4: #c89858;
-    --crema-5: #a06830;
+    --bg: #f7ecd1;
+    --card-bg: #fffaf2;
+    --ink: #1d0f04;
+    --muted: #8a7560;
+    --line: #ecdfc5;
+    --accent: #c0844a;
+    --accent-deep: #8a4f1c;
+    --accent-soft: rgba(192, 132, 74, 0.14);
+    --accent-glow: rgba(192, 132, 74, 0.55);
+    /* Espresso crema palette — pale foam → deep espresso */
+    --crema-foam: #fff1cf;
+    --crema-pale: #f3d9a3;
+    --crema-amber: #d9a464;
+    --crema-deep: #a96b2e;
+    --crema-shadow: #5b3210;
+    --espresso-vein: #2a1305;
+    --espresso-bottom: #170803;
     /* Apple-style easings — emphatic decel + smooth */
     --ease-out: cubic-bezier(.16, 1, .3, 1);
     --ease-in-out: cubic-bezier(.32, .72, 0, 1);
     --ease-spring: cubic-bezier(.34, 1.4, .64, 1);
   }
+  html, body { height: 100%; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    /* Pale washi-paper feel beneath the suminagashi ink */
-    background: linear-gradient(170deg, #f6ecd2 0%, #ede0bf 60%, #e3d3a8 100%);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Deep crema with a warm radial bloom — the surface of a freshly-pulled shot */
+    background:
+      radial-gradient(ellipse 110% 70% at 22% 18%, #ffe6b8 0%, transparent 55%),
+      radial-gradient(ellipse 90% 80% at 88% 110%, #5a2e0f 0%, transparent 60%),
+      linear-gradient(165deg, #f3cf8e 0%, #d99a52 35%, #a86426 70%, #5e3210 100%);
     background-attachment: fixed;
     min-height: 100vh;
     padding: 24px 16px 80px;
     color: var(--ink);
-    position: relative;
+    letter-spacing: -0.005em;
+    /* No position/z-index set so we don't create a stacking context;
+       crema layers below use z-index: -1 to sit between body background and content. */
   }
 
-  /* Suminagashi ink layer — drifting concentric rings, single SVG, single transform animation */
-  .sumi-bg {
-    position: fixed; inset: 0;
-    width: 100%; height: 100%;
+  /* Crema layers: the actual marbled "tiger striped" espresso surface.
+     They sit at z-index:-1 so the rest of the page (which uses default stacking)
+     can render above without needing explicit positioning rules. */
+  .crema-bg {
+    position: fixed; inset: -8%;
+    width: 116%; height: 116%;
     pointer-events: none;
-    z-index: 0;
-    opacity: 0.32;
+    z-index: -3;
+    opacity: 0.92;
     will-change: transform;
+    animation: cremaDrift 60s ease-in-out infinite alternate;
   }
-  /* Crema canvas — espresso particles broiling/rising on water */
+  .crema-speckle {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: -2;
+    opacity: 0.32;
+    mix-blend-mode: screen;
+  }
+  .crema-glow {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background:
+      radial-gradient(ellipse 70% 55% at 50% 38%, rgba(255, 220, 160, 0.32) 0%, rgba(255,220,160,0) 65%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, transparent 55%, rgba(20, 8, 2, 0.35) 100%);
+  }
   .crema-canvas {
     position: fixed; inset: 0;
     width: 100vw; height: 100vh;
     pointer-events: none;
-    z-index: 0;
-    mix-blend-mode: multiply;
+    z-index: -1;
+    mix-blend-mode: screen;
+    opacity: 0.85;
   }
-  .sumi-bg .sumi-ink {
-    fill: none;
-    stroke: #2a1a08;
-    stroke-width: 0.8;
-    vector-effect: non-scaling-stroke;
-    transform-origin: center;
-    animation: sumiFloat 90s ease-in-out infinite alternate;
+  @keyframes cremaDrift {
+    0%   { transform: translate3d(0, 0, 0) rotate(0deg); }
+    50%  { transform: translate3d(-8px, 4px, 0) rotate(0.4deg); }
+    100% { transform: translate3d(6px, -6px, 0) rotate(-0.3deg); }
   }
-  @keyframes sumiFloat {
-    0%   { transform: rotate(0deg)    translate(0,    0); }
-    100% { transform: rotate(0.8deg) translate(-14px, 6px); }
-  }
-  body > * { position: relative; z-index: 1; }
   body.loading { overflow: hidden; padding: 0; }
-  body.show-login { padding: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f5ebd8, #ede2d0); }
+  body.show-login {
+    padding: 0; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
 
-  /* Loading splash */
+  /* Loading splash — same crema look as the rest of the site */
   .splash {
     position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-    background: var(--bg); z-index: 1000; transition: opacity 0.3s;
+    background:
+      radial-gradient(ellipse 110% 70% at 22% 18%, #ffe6b8 0%, transparent 55%),
+      radial-gradient(ellipse 90% 80% at 88% 110%, #5a2e0f 0%, transparent 60%),
+      linear-gradient(165deg, #f3cf8e 0%, #d99a52 35%, #a86426 70%, #5e3210 100%);
+    z-index: 1000; transition: opacity 0.45s var(--ease-out);
   }
   .splash.hidden { opacity: 0; pointer-events: none; visibility: hidden; }
   .splash-spin {
     width: 36px; height: 36px;
-    border: 3px solid #e0d0b0; border-top-color: var(--accent);
+    border: 3px solid rgba(255, 240, 210, 0.4); border-top-color: #fff1cf;
     border-radius: 50%; animation: spin 0.9s linear infinite;
   }
 
-  /* Login screen */
+  /* Login screen — frosted glass card on the crema. Apple-tier breathing room. */
   #login-screen {
-    width: 100%; max-width: 420px;
-    background: white; border-radius: 16px;
-    padding: 36px 32px;
-    box-shadow: 0 12px 48px rgba(0,0,0,0.12);
+    width: 100%; max-width: 440px;
+    background: rgba(255, 250, 240, 0.78);
+    -webkit-backdrop-filter: blur(28px) saturate(140%);
+    backdrop-filter: blur(28px) saturate(140%);
+    border: 1px solid rgba(255, 250, 240, 0.55);
+    border-radius: 22px;
+    padding: 40px 36px 32px;
+    box-shadow:
+      0 30px 80px rgba(40, 18, 4, 0.42),
+      0 4px 16px rgba(40, 18, 4, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    animation: loginIn 0.8s var(--ease-out) both;
+    position: relative; overflow: hidden;
   }
   #login-screen.hidden { display: none; }
-  .login-title { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 6px; }
-  .login-sub { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 24px; }
+  @keyframes loginIn {
+    from { opacity: 0; transform: translateY(14px) scale(0.985); filter: blur(4px); }
+    to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  }
+  /* Tiny golden glow that pulses behind the card to draw the eye in */
+  #login-screen::before {
+    content: ""; position: absolute; inset: -40%;
+    background: radial-gradient(circle at 50% 0%, rgba(255, 220, 160, 0.5), transparent 50%);
+    pointer-events: none;
+    animation: loginGlow 6s ease-in-out infinite alternate;
+  }
+  @keyframes loginGlow {
+    0%   { opacity: 0.55; transform: translateY(0); }
+    100% { opacity: 0.85; transform: translateY(-6px); }
+  }
+  .login-mark {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-bottom: 18px;
+  }
+  .login-mark svg { width: 30px; height: 30px; filter: drop-shadow(0 2px 6px rgba(120, 60, 20, 0.35)); }
+  .login-wordmark {
+    font-size: 13px; font-weight: 600; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--accent-deep);
+  }
+  .login-title {
+    font-size: 28px; font-weight: 700; text-align: center;
+    letter-spacing: -0.02em; margin-bottom: 8px;
+    background: linear-gradient(180deg, #2d160a, #5e3210);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .login-sub { font-size: 14px; color: #6b5840; text-align: center; margin-bottom: 26px; line-height: 1.5; }
 
-  .login-tabs { display: flex; gap: 4px; padding: 3px; background: #f5f3ef; border-radius: 8px; margin-bottom: 18px; }
+  .login-tabs {
+    display: flex; gap: 2px; padding: 4px;
+    background: rgba(40, 18, 4, 0.06); border-radius: 12px; margin-bottom: 20px;
+    position: relative;
+  }
   .login-tab {
-    flex: 1; padding: 8px; text-align: center; font-size: 13px; font-weight: 600;
-    color: #888; cursor: pointer; border-radius: 6px; transition: all 0.15s;
+    flex: 1; padding: 9px 10px; text-align: center; font-size: 13px; font-weight: 600;
+    color: #6b5840; cursor: pointer; border-radius: 9px;
+    transition: color 0.25s var(--ease-out);
+    position: relative; z-index: 2;
   }
-  .login-tab.active { background: white; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .login-tab.active { color: var(--ink); }
+  .login-tab-pill {
+    position: absolute; top: 4px; bottom: 4px;
+    background: white; border-radius: 9px;
+    box-shadow: 0 2px 8px rgba(40, 18, 4, 0.12), 0 1px 2px rgba(40, 18, 4, 0.08);
+    transition: left 0.35s var(--ease-spring), width 0.35s var(--ease-spring);
+    z-index: 1;
+  }
 
-  .login-input {
-    width: 100%; padding: 11px 13px; border: 1px solid #ddd; border-radius: 8px;
-    font-size: 14px; font-family: inherit; outline: none; margin-bottom: 10px;
-    transition: border-color 0.15s;
+  .login-field {
+    position: relative; margin-bottom: 12px;
   }
-  .login-input:focus { border-color: var(--accent); }
+  .login-input {
+    width: 100%; padding: 16px 14px 6px;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(40, 18, 4, 0.12);
+    border-radius: 11px;
+    font-size: 15px; font-family: inherit; color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out), background 0.2s var(--ease-out);
+  }
+  .login-input::placeholder { color: transparent; }
+  .login-input:focus {
+    border-color: var(--accent);
+    background: white;
+    box-shadow: 0 0 0 4px rgba(192, 132, 74, 0.18);
+  }
+  .login-field-label {
+    position: absolute;
+    left: 14px; top: 16px;
+    font-size: 14px; color: #8a7560;
+    pointer-events: none;
+    transition: transform 0.22s var(--ease-out), font-size 0.22s var(--ease-out), color 0.22s var(--ease-out);
+    background: transparent;
+  }
+  .login-input:focus + .login-field-label,
+  .login-input:not(:placeholder-shown) + .login-field-label {
+    transform: translateY(-9px); font-size: 10.5px;
+    color: var(--accent-deep); font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
 
   .login-btn {
-    width: 100%; padding: 11px; border-radius: 8px;
-    font-size: 14px; font-weight: 600; cursor: pointer;
-    border: 1px solid #ddd; background: white; color: var(--ink);
+    width: 100%; padding: 13px; border-radius: 12px;
+    font-size: 14.5px; font-weight: 600; cursor: pointer;
+    border: 1px solid rgba(40, 18, 4, 0.12);
+    background: rgba(255, 255, 255, 0.88);
+    color: var(--ink);
     font-family: inherit;
-    transition: all 0.15s; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    transition: transform 0.18s var(--ease-out), border-color 0.2s var(--ease-out), box-shadow 0.25s var(--ease-out), background 0.2s var(--ease-out);
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
     margin-bottom: 10px;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
   }
-  .login-btn:hover { border-color: var(--accent); }
-  .login-btn.primary { background: var(--ink); color: white; border-color: var(--ink); }
-  .login-btn.primary:hover { background: var(--accent); border-color: var(--accent); }
-  .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .login-btn:hover {
+    transform: translateY(-1px);
+    border-color: rgba(192, 132, 74, 0.5);
+    box-shadow: 0 8px 24px rgba(120, 60, 20, 0.18);
+  }
+  .login-btn.primary {
+    background: linear-gradient(180deg, #1d0f04 0%, #3a1c08 100%);
+    color: #fff8e6; border-color: transparent;
+    box-shadow:
+      0 1px 0 rgba(255,225,170,0.28) inset,
+      0 -1px 0 rgba(0,0,0,0.4) inset,
+      0 8px 22px rgba(40, 18, 4, 0.32);
+    position: relative; overflow: hidden;
+  }
+  .login-btn.primary::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(110deg, transparent 30%, rgba(255, 220, 160, 0.32) 50%, transparent 70%);
+    transform: translateX(-110%);
+    transition: transform 0.9s var(--ease-out);
+    pointer-events: none;
+  }
+  .login-btn.primary:hover::after { transform: translateX(110%); }
+  .login-btn.primary:hover { background: linear-gradient(180deg, #2a1408 0%, #4a2a12 100%); }
+  .login-btn:disabled { opacity: 0.55; cursor: wait; transform: none; }
   .login-btn svg { width: 18px; height: 18px; }
 
   .login-divider {
-    display: flex; align-items: center; gap: 12px;
-    color: #aaa; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    display: flex; align-items: center; gap: 14px;
+    color: #b09780; font-size: 10.5px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.18em;
     margin: 18px 0;
   }
   .login-divider::before, .login-divider::after {
-    content: ""; flex: 1; height: 1px; background: #e8e3da;
+    content: ""; flex: 1; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(40,18,4,0.18), transparent);
   }
   .login-msg {
-    font-size: 12px; padding: 10px 12px; border-radius: 7px;
-    margin-bottom: 12px; line-height: 1.45;
-    display: none;
+    font-size: 12.5px; padding: 11px 14px; border-radius: 10px;
+    margin-bottom: 14px; line-height: 1.5;
+    display: none; backdrop-filter: blur(8px);
   }
-  .login-msg.show { display: block; }
-  .login-msg.error { background: #fdecea; color: #b54040; border: 1px solid #f5c4c0; }
-  .login-msg.info { background: #f0f7ff; color: #1d5a99; border: 1px solid #cfe1f5; }
-  .login-msg.success { background: #e8f5ec; color: #2d7a3d; border: 1px solid #b8dec5; }
+  .login-msg.show { display: block; animation: loginMsgIn 0.3s var(--ease-out); }
+  @keyframes loginMsgIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .login-msg.error   { background: rgba(255,228,225,0.85); color: #8e2929; border: 1px solid rgba(181,64,64,0.35); }
+  .login-msg.info    { background: rgba(225,238,255,0.85); color: #1d4a8e; border: 1px solid rgba(64,120,200,0.35); }
+  .login-msg.success { background: rgba(225,245,229,0.85); color: #1f6a36; border: 1px solid rgba(64,160,80,0.35); }
 
-  .login-foot { text-align: center; font-size: 12px; color: var(--muted); margin-top: 18px; }
-  .login-foot a { color: var(--accent); cursor: pointer; }
+  .login-foot { text-align: center; font-size: 11.5px; color: #8a7560; margin-top: 18px; line-height: 1.5; }
+  .login-foot a { color: var(--accent-deep); cursor: pointer; }
 
-  /* App header */
+  /* Forgot password link — small, right-aligned, only visible in sign-in mode */
+  .login-forgot-row {
+    display: flex; justify-content: flex-end;
+    margin: -4px 0 12px;
+  }
+  body.login-mode-signup .login-forgot-row { display: none; }
+  .login-forgot {
+    font-size: 12px; font-weight: 600;
+    color: var(--accent-deep);
+    cursor: pointer;
+    padding: 4px 6px; border-radius: 6px;
+    transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out);
+    user-select: none;
+  }
+  .login-forgot:hover { background: rgba(192, 132, 74, 0.12); color: #1d0f04; }
+  .login-forgot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Substep visibility: by default the "main" sign-in/create-account form is shown.
+     Adding .login-mode-reset or .login-mode-recovery to <body> swaps to the matching one. */
+  .login-substep--reset, .login-substep--recovery { display: none; }
+  body.login-mode-reset  .login-substep--main     { display: none; }
+  body.login-mode-reset  .login-substep--reset    { display: block; }
+  body.login-mode-recovery .login-substep--main   { display: none; }
+  body.login-mode-recovery .login-substep--recovery { display: block; }
+  .login-back {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; color: #6b5840;
+    cursor: pointer; padding: 6px 8px; border-radius: 6px;
+    margin-bottom: 4px;
+    transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out);
+    user-select: none;
+  }
+  .login-back:hover { background: rgba(40, 18, 4, 0.06); color: var(--ink); }
+  .login-back svg { width: 12px; height: 12px; }
+
+  .login-substep-title {
+    font-size: 20px; font-weight: 700;
+    letter-spacing: -0.01em; color: var(--ink);
+    margin-bottom: 6px;
+  }
+  .login-substep-sub {
+    font-size: 13.5px; color: #6b5840;
+    line-height: 1.5; margin-bottom: 18px;
+  }
+
+  /* Demo mode banner — pinned to the bottom so it never fights with the header.
+     Body gets a small bottom padding so it doesn't cover the last card. */
+  body.demo-mode { padding-bottom: 110px; }
+  .demo-banner {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    background: rgba(255, 250, 240, 0.92);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(192, 132, 74, 0.32);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 12px; font-weight: 600;
+    color: var(--accent-deep);
+    box-shadow: 0 10px 28px rgba(40, 18, 4, 0.24);
+    z-index: 50;
+    display: flex; align-items: center; gap: 8px;
+    max-width: calc(100vw - 32px);
+  }
+  .demo-banner button {
+    background: transparent; border: 0; padding: 0 0 0 6px;
+    cursor: pointer; color: var(--accent-deep);
+    font: inherit; font-weight: 700;
+    border-left: 1px solid rgba(192, 132, 74, 0.3);
+    margin-left: 4px;
+  }
+  .demo-banner button:hover { color: var(--ink); }
+  .demo-banner.hidden { display: none; }
+
+  /* Brewing tip modal: pill chips, soft card with cached badge */
+  .tip-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+  .tip-chip {
+    border: 1px solid rgba(40, 18, 4, 0.14);
+    background: rgba(255, 250, 240, 0.7);
+    color: #4a3625;
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.18s var(--ease-out), border-color 0.18s var(--ease-out), background 0.18s var(--ease-out);
+  }
+  .tip-chip:hover {
+    border-color: rgba(192, 132, 74, 0.5);
+    background: rgba(255, 245, 220, 0.95);
+    transform: translateY(-1px);
+  }
+  .tip-card-wrap:empty { display: none; }
+  .tip-card {
+    margin-top: 14px;
+    padding: 16px 18px;
+    background: linear-gradient(135deg, #fff9ed, #fff0d8);
+    border: 1px solid #f0d8a8;
+    border-radius: 12px;
+    font-size: 13.5px; line-height: 1.6; color: #2a1a0a;
+    white-space: pre-wrap;
+    position: relative;
+    animation: tipIn 0.45s var(--ease-out);
+  }
+  @keyframes tipIn {
+    from { opacity: 0; transform: translateY(6px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .tip-card-meta {
+    display: flex; gap: 8px; align-items: center;
+    margin-top: 12px; padding-top: 10px;
+    border-top: 1px solid rgba(40, 18, 4, 0.08);
+    font-size: 11px; color: #8a7560;
+  }
+  .tip-cached-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(45, 122, 61, 0.14);
+    color: #1f6a36;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .tip-cached-badge::before { content: "♻"; font-size: 11px; }
+  .login-demo-btn {
+    background: linear-gradient(135deg, rgba(255, 240, 210, 0.7), rgba(255, 222, 170, 0.6));
+    border-color: rgba(192, 132, 74, 0.36);
+    color: var(--accent-deep);
+  }
+  .login-demo-btn:hover {
+    background: linear-gradient(135deg, rgba(255, 245, 220, 0.85), rgba(255, 230, 184, 0.75));
+    color: var(--ink);
+  }
+
+  /* App header — refined typography and spacing */
+  #app-root {
+    max-width: 1280px; margin: 0 auto;
+  }
   .header-row {
     display: flex; justify-content: space-between; align-items: flex-start;
-    gap: 12px; margin-bottom: 4px; flex-wrap: wrap;
+    gap: 16px; margin-bottom: 6px; flex-wrap: wrap;
+    padding: 4px 2px 0;
   }
-  h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
-  .subtitle { font-size: 12px; color: #999; margin-bottom: 20px; }
+  h1 {
+    font-size: 24px; font-weight: 700; letter-spacing: -0.025em;
+    color: #1d0f04;
+    background: linear-gradient(180deg, #1d0f04 0%, #4a2710 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle { font-size: 12.5px; color: #6b5840; margin-bottom: 22px; letter-spacing: 0.01em; }
 
   .header-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .search-box { position: relative; }
   .search-box input {
     font-family: inherit; font-size: 13px;
-    padding: 8px 12px 8px 32px;
-    border: 1px solid #ddd; border-radius: 8px;
-    background: white; width: 220px; outline: none;
-    transition: border-color 0.2s, width 0.2s;
+    padding: 9px 14px 9px 34px;
+    border: 1px solid rgba(40, 18, 4, 0.14);
+    border-radius: 10px;
+    background: rgba(255, 250, 240, 0.7);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    width: 220px; outline: none;
+    transition: border-color 0.2s var(--ease-out), width 0.25s var(--ease-out), box-shadow 0.2s var(--ease-out), background 0.2s var(--ease-out);
   }
-  .search-box input:focus { border-color: var(--accent); width: 260px; }
+  .search-box input:focus {
+    border-color: var(--accent); width: 280px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 0 0 3px rgba(192, 132, 74, 0.15);
+  }
   .search-box svg {
-    position: absolute; left: 10px; top: 50%;
-    transform: translateY(-50%); width: 14px; height: 14px; color: #aaa;
+    position: absolute; left: 11px; top: 50%;
+    transform: translateY(-50%); width: 14px; height: 14px; color: #aa8a60;
   }
 
   .icon-btn {
-    background: white; border: 1px solid #ddd; border-radius: 8px;
-    padding: 7px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; font-weight: 600; color: #444; transition: all 0.15s;
+    background: rgba(255, 250, 240, 0.85);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(40, 18, 4, 0.14);
+    border-radius: 10px;
+    padding: 8px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12.5px; font-weight: 600; color: #2a1a0a;
+    transition: transform 0.15s var(--ease-out), border-color 0.18s var(--ease-out), box-shadow 0.2s var(--ease-out), color 0.15s var(--ease-out);
     font-family: inherit;
   }
   .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
@@ -251,28 +543,56 @@
   .user-dropdown #signout-btn:hover { background: rgba(181,64,64,0.1); }
 
   .tabs {
-    display: flex; gap: 0; margin-bottom: 16px;
-    background: white; border-radius: 10px; overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    display: flex; gap: 0; margin-bottom: 18px;
+    background: rgba(255, 250, 240, 0.78);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid rgba(255, 250, 240, 0.55);
+    border-radius: 14px;
+    padding: 5px;
+    box-shadow: 0 6px 20px rgba(40, 18, 4, 0.14);
+    position: relative;
   }
   .tab {
-    flex: 1; padding: 12px 16px; text-align: center;
-    font-size: 13px; font-weight: 600; color: #999; cursor: pointer;
-    border-bottom: 3px solid transparent; transition: all 0.2s;
+    flex: 1; padding: 10px 16px; text-align: center;
+    font-size: 13px; font-weight: 600; color: #6b5840; cursor: pointer;
+    border-radius: 10px;
+    transition: color 0.22s var(--ease-out), background 0.22s var(--ease-out), transform 0.18s var(--ease-out);
+    position: relative; z-index: 1;
   }
-  .tab:hover { color: #555; }
-  .tab.active { color: var(--ink); border-bottom-color: var(--accent); background: #fafaf8; }
+  .tab:hover { color: #2a1a0a; }
+  .tab.active {
+    color: var(--ink);
+    background: linear-gradient(180deg, #ffffff 0%, #fff5e0 100%);
+    box-shadow:
+      0 1px 0 rgba(255, 240, 210, 0.8) inset,
+      0 -1px 0 rgba(140, 90, 40, 0.08) inset,
+      0 4px 12px rgba(40, 18, 4, 0.12);
+  }
+  .tab.active::after {
+    content: ""; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
+    width: 24px; height: 2px; border-radius: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.7;
+  }
 
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
+    gap: 18px;
   }
   .card {
-    background: var(--card-bg); border-radius: 12px; overflow: hidden;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    background: rgba(255, 252, 245, 0.92);
+    -webkit-backdrop-filter: blur(14px) saturate(115%);
+    backdrop-filter: blur(14px) saturate(115%);
+    border: 1px solid rgba(255, 250, 240, 0.5);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow:
+      0 6px 22px rgba(40, 18, 4, 0.18),
+      0 1px 2px rgba(40, 18, 4, 0.10);
     scroll-margin-top: 16px; position: relative;
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    transition: transform 0.35s cubic-bezier(.2,.7,.3,1), box-shadow 0.35s ease;
   }
   @keyframes cardBounce {
     0% { transform: scale(1); }
@@ -341,27 +661,43 @@
   }
 
   .compare-bar {
-    background: white; border-radius: 12px; padding: 16px 20px;
-    margin-bottom: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    background: rgba(255, 252, 245, 0.88);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+    backdrop-filter: blur(14px) saturate(120%);
+    border: 1px solid rgba(255, 250, 240, 0.5);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 18px;
+    box-shadow: 0 6px 22px rgba(40, 18, 4, 0.14);
     overflow-x: auto;
   }
-  .compare-title { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
-  .compare-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .compare-table th { text-align: left; color: #aaa; font-weight: 500; padding: 4px 8px 8px 0; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
-  .compare-table td { padding: 7px 8px 7px 0; border-bottom: 1px solid #f8f8f8; color: #333; vertical-align: top; }
+  .compare-title {
+    font-size: 11px; font-weight: 700; color: #5e4630;
+    margin-bottom: 12px;
+    text-transform: uppercase; letter-spacing: 0.16em;
+  }
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .compare-table th { text-align: left; color: #99826a; font-weight: 600; padding: 4px 10px 8px 0; border-bottom: 1px solid rgba(40, 18, 4, 0.08); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.06em; font-size: 10.5px; }
+  .compare-table td { padding: 9px 10px 9px 0; border-bottom: 1px solid rgba(40, 18, 4, 0.05); color: #2a1a0a; vertical-align: top; }
   .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table tr:hover td { background: rgba(192, 132, 74, 0.06); }
   .compare-link { cursor: pointer; transition: color 0.2s; }
-  .compare-link:hover { color: var(--accent); }
-  .compare-link strong { text-decoration: underline; text-decoration-color: #ccc; text-underline-offset: 3px; transition: text-decoration-color 0.2s; }
+  .compare-link:hover { color: var(--accent-deep); }
+  .compare-link strong { text-decoration: underline; text-decoration-color: rgba(40, 18, 4, 0.18); text-underline-offset: 3px; transition: text-decoration-color 0.2s; }
   .compare-link:hover strong { text-decoration-color: var(--accent); }
 
-  .no-results { text-align: center; padding: 40px 20px; color: #aaa; font-size: 14px; }
+  .no-results { text-align: center; padding: 40px 20px; color: #8a7560; font-size: 14px; font-weight: 500; }
   .empty-state {
-    text-align: center; padding: 60px 20px; color: #aaa;
-    background: white; border-radius: 12px; margin-top: 20px;
-    border: 2px dashed #e5e0d8;
+    text-align: center; padding: 64px 24px;
+    background: rgba(255, 252, 245, 0.85);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border-radius: 16px; margin-top: 20px;
+    border: 1px dashed rgba(40, 18, 4, 0.18);
+    color: #2a1a0a;
   }
-  .empty-state .ai-actions { justify-content: center; margin-top: 14px; }
+  .empty-state p { font-size: 14.5px !important; color: #4a3625 !important; }
+  .empty-state .ai-actions { justify-content: center; margin-top: 16px; }
 
   /* Modal — Apple-style frosted backdrop + spring entrance */
   .modal-backdrop {
@@ -379,11 +715,19 @@
     to { opacity: 1; }
   }
   .modal {
-    background: white; border-radius: 16px;
+    background: rgba(255, 252, 245, 0.97);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    backdrop-filter: blur(20px) saturate(140%);
+    border-radius: 18px;
+    border: 1px solid rgba(255, 250, 240, 0.6);
     width: 100%; max-width: 600px;
-    box-shadow: 0 24px 64px rgba(40,20,10,0.32), 0 0 0 1px rgba(120,80,40,0.06);
+    box-shadow:
+      0 30px 80px rgba(40,18,4,0.42),
+      0 4px 16px rgba(40,18,4,0.18),
+      0 0 0 1px rgba(120,80,40,0.06),
+      inset 0 1px 0 rgba(255,255,255,0.55);
     overflow: hidden;
-    animation: modalIn 0.32s var(--ease-out) both;
+    animation: modalIn 0.4s var(--ease-out) both;
   }
   @keyframes modalIn {
     from { opacity: 0; transform: scale(0.94) translateY(10px); }
@@ -487,6 +831,71 @@
     font-size: 16px; line-height: 1; transition: all 0.15s;
   }
   .setting-del-btn:hover { background: #f8d8d8; border-color: #b54040; }
+
+  /* AI status card — shows whether server-side AI is configured */
+  .ai-status-card {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 12px;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #fff7e8, #fdecd0);
+    border: 1px solid #f0d8a8;
+    transition: background 0.3s var(--ease-out), border-color 0.3s var(--ease-out);
+  }
+  .ai-status-card--ready {
+    background: linear-gradient(135deg, #ecf7ee, #d8eee0);
+    border-color: #b5dec5;
+  }
+  .ai-status-card--byok {
+    background: linear-gradient(135deg, #fff7e8, #ffe9c8);
+    border-color: #f0c889;
+  }
+  .ai-status-card--missing {
+    background: linear-gradient(135deg, #fdf0ec, #f9e0d6);
+    border-color: #f1bda6;
+  }
+  .ai-status-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #e0a05a;
+    box-shadow: 0 0 0 4px rgba(224, 160, 90, 0.18);
+    flex-shrink: 0;
+    animation: aiDotPulse 2.4s ease-in-out infinite;
+  }
+  .ai-status-card--ready .ai-status-dot { background: #2d7a3d; box-shadow: 0 0 0 4px rgba(45, 122, 61, 0.18); }
+  .ai-status-card--byok .ai-status-dot  { background: #c08a4e; box-shadow: 0 0 0 4px rgba(192, 138, 78, 0.22); }
+  .ai-status-card--missing .ai-status-dot { background: #b54040; box-shadow: 0 0 0 4px rgba(181, 64, 64, 0.18); }
+  @keyframes aiDotPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%      { transform: scale(1.18); opacity: 0.85; }
+  }
+  .ai-status-text { line-height: 1.4; }
+  .ai-status-title { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .ai-status-sub { font-size: 12px; color: #6b5840; margin-top: 2px; }
+
+  /* BYOK collapsible */
+  .ai-byok-details {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    background: #fdfaf3;
+    transition: background 0.2s var(--ease-out);
+  }
+  .ai-byok-details[open] { background: #fcf5e6; }
+  .ai-byok-details > summary {
+    cursor: pointer;
+    font-size: 12px; font-weight: 600;
+    color: #6b5840;
+    list-style: none;
+    user-select: none;
+  }
+  .ai-byok-details > summary::-webkit-details-marker { display: none; }
+  .ai-byok-details > summary::before {
+    content: "▸"; display: inline-block;
+    margin-right: 8px;
+    transition: transform 0.18s var(--ease-out);
+    color: var(--accent);
+  }
+  .ai-byok-details[open] > summary::before { transform: rotate(90deg); }
 
   .ai-panel {
     background: linear-gradient(135deg, #fff9f0, #fff5e6);
@@ -748,60 +1157,110 @@
   /* Splash spinner upgraded to coffee drip too */
   .splash-spin { animation: none !important; border: none !important; width: auto !important; height: auto !important; }
 
-  /* Performance: disable expensive layered effects on small screens */
+  /* Performance: lighten layered effects on small screens */
   @media (max-width: 600px) {
     .steam-stack { display: none; }
     .glitter-overlay { display: none; }
-    .sumi-bg { opacity: 0.28; }   /* keep but lighter on mobile */
+    .crema-bg { opacity: 0.78; }
+    .crema-speckle { opacity: 0.18; }
+    .crema-canvas { opacity: 0.6; }
     body { background-attachment: scroll; }
     .modal-backdrop { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+    .header-controls { width: 100%; }
+    .search-box input { width: 100%; }
+    .search-box { flex: 1; }
   }
 
-  /* Reduced motion: disable all decorative animation */
+  /* Reduced motion: disable decorative animation */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.001ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.001ms !important;
     }
-    .ai-panel::after, .steam-stack, .glitter-overlay { display: none !important; }
-    .sumi-bg .sumi-ink { animation: none !important; }
+    .ai-panel::after, .steam-stack, .glitter-overlay, .crema-canvas { display: none !important; }
+    .crema-bg { animation: none !important; }
   }
 </style>
 </head>
 <body class="loading">
 
-<!-- Crema canvas: espresso particles broiling on the surface (drawn each frame on canvas) -->
-<canvas class="crema-canvas" id="crema-canvas" aria-hidden="true"></canvas>
-
-<!-- Suminagashi background: floating ink rings on paper. Single SVG, single transform anim. -->
-<svg class="sumi-bg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+<!-- Espresso crema layer: turbulence-derived tiger striping (the real marbled streaks of a fresh shot).
+     Single SVG, GPU-friendly, slowly drifts via CSS transform. -->
+<svg class="crema-bg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
   <defs>
-    <g id="sumi-cluster">
-      <ellipse cx="0"  cy="0"  rx="280" ry="180"/>
-      <ellipse cx="3"  cy="-2" rx="252" ry="162"/>
-      <ellipse cx="-2" cy="3"  rx="226" ry="146"/>
-      <ellipse cx="4"  cy="-3" rx="200" ry="130"/>
-      <ellipse cx="-3" cy="4"  rx="176" ry="116"/>
-      <ellipse cx="5"  cy="-4" rx="152" ry="102"/>
-      <ellipse cx="-4" cy="5"  rx="130" ry="88"/>
-      <ellipse cx="6"  cy="-5" rx="108" ry="76"/>
-      <ellipse cx="-5" cy="6"  rx="88"  ry="64"/>
-      <ellipse cx="7"  cy="-6" rx="68"  ry="52"/>
-      <ellipse cx="-6" cy="7"  rx="50"  ry="40"/>
-      <ellipse cx="4"  cy="-4" rx="32"  ry="28"/>
-      <ellipse cx="-3" cy="3"  rx="18"  ry="18"/>
-    </g>
+    <!-- Crema base gradient: light foam at top-left, deep espresso at bottom-right -->
+    <radialGradient id="crema-grad" cx="28%" cy="22%" r="120%">
+      <stop offset="0%"  stop-color="#ffe5b3" stop-opacity="0"/>
+      <stop offset="40%" stop-color="#dba461" stop-opacity="0.1"/>
+      <stop offset="80%" stop-color="#783d12" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#2a1305" stop-opacity="0.32"/>
+    </radialGradient>
+
+    <!-- Tiger stripes: low-frequency horizontal turbulence pushed into stark organic streaks
+         of dark espresso through the crema. This is the actual "tiger striping" pattern. -->
+    <filter id="tiger-stripes" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.0055 0.034" numOctaves="3" seed="11" stitchTiles="stitch" result="noise"/>
+      <!-- Threshold + colorize into deep espresso veins -->
+      <feColorMatrix in="noise" type="matrix" values="
+        0 0 0 0 0.16
+        0 0 0 0 0.07
+        0 0 0 0 0.02
+        0 0 0 2.4 -0.85" result="veins"/>
+      <feGaussianBlur in="veins" stdDeviation="0.7" result="softVeins"/>
+      <feComposite in="softVeins" in2="softVeins" operator="over"/>
+    </filter>
+
+    <!-- Marbled crema highlights: lighter golden swirls that catch the light -->
+    <filter id="crema-highlight" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.011 0.018" numOctaves="2" seed="5" stitchTiles="stitch" result="n2"/>
+      <feColorMatrix in="n2" type="matrix" values="
+        0 0 0 0 1
+        0 0 0 0 0.86
+        0 0 0 0 0.58
+        0 0 0 1.1 -0.55"/>
+      <feGaussianBlur stdDeviation="2"/>
+    </filter>
+
+    <!-- Fine micro-foam: tiny crema bubbles pressed into the surface -->
+    <filter id="crema-foam" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="3.2" numOctaves="1" seed="7" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix" values="
+        0 0 0 0 1
+        0 0 0 0 0.94
+        0 0 0 0 0.78
+        0 0 0 0.55 -0.18"/>
+    </filter>
   </defs>
-  <g class="sumi-ink">
-    <use href="#sumi-cluster" transform="translate(280, 200)  rotate(15)  scale(1.0)"/>
-    <use href="#sumi-cluster" transform="translate(1200, 300) rotate(-22) scale(0.85)"/>
-    <use href="#sumi-cluster" transform="translate(700, 620)  rotate(35)  scale(0.95)"/>
-    <use href="#sumi-cluster" transform="translate(150, 800)  rotate(-10) scale(0.7)"/>
-    <use href="#sumi-cluster" transform="translate(1450, 750) rotate(40)  scale(0.6)"/>
-    <use href="#sumi-cluster" transform="translate(900, 80)   rotate(60)  scale(0.55)"/>
-  </g>
+
+  <!-- Layer 1: golden crema gradient base -->
+  <rect width="100%" height="100%" fill="url(#crema-grad)"/>
+  <!-- Layer 2: marbled lighter highlights — the "ghosts" of crema swirls -->
+  <rect width="100%" height="100%" filter="url(#crema-highlight)" opacity="0.42" style="mix-blend-mode: screen;"/>
+  <!-- Layer 3: dark tiger striping — the marquee feature -->
+  <rect width="100%" height="100%" filter="url(#tiger-stripes)" opacity="0.78" style="mix-blend-mode: multiply;"/>
 </svg>
+
+<!-- Foam micro-speckle, separate so it doesn't drift with the tiger stripes -->
+<svg class="crema-speckle" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <defs>
+    <filter id="speckle-fine" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="2.4" numOctaves="1" seed="13" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix" values="
+        0 0 0 0 1
+        0 0 0 0 0.96
+        0 0 0 0 0.86
+        0 0 0 0.42 -0.12"/>
+    </filter>
+  </defs>
+  <rect width="100%" height="100%" filter="url(#speckle-fine)"/>
+</svg>
+
+<!-- Soft warm vignette over everything -->
+<div class="crema-glow" aria-hidden="true"></div>
+
+<!-- Live foam bubble canvas — small bubbles slowly rising and popping -->
+<canvas class="crema-canvas" id="crema-canvas" aria-hidden="true"></canvas>
 
 <!-- Loading splash: Lottie player with CSS drip as fallback -->
 <div class="splash" id="splash">
@@ -843,34 +1302,102 @@
 </div>
 
 <!-- Login screen (shown when no session) -->
-<div id="login-screen" class="hidden">
-  <div class="login-title">☕ Coffee Brew Tracker</div>
-  <div class="login-sub">Dial in espresso, V60, AeroPress with AI assist.</div>
+<div id="login-screen" class="hidden" role="dialog" aria-labelledby="login-title">
+  <div class="login-mark">
+    <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <linearGradient id="cup-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#5e3210"/>
+          <stop offset="100%" stop-color="#1d0f04"/>
+        </linearGradient>
+        <radialGradient id="cup-foam" cx="50%" cy="35%" r="50%">
+          <stop offset="0%" stop-color="#fff1cf"/>
+          <stop offset="60%" stop-color="#d9a464"/>
+          <stop offset="100%" stop-color="#a96b2e"/>
+        </radialGradient>
+      </defs>
+      <path d="M5 10 C 5 8.5 6 7.5 7.5 7.5 L 22.5 7.5 C 24 7.5 25 8.5 25 10 L 25 18 C 25 22.5 21.5 26 17 26 L 13 26 C 8.5 26 5 22.5 5 18 Z" fill="url(#cup-grad)"/>
+      <ellipse cx="15" cy="11.5" rx="9" ry="3.4" fill="url(#cup-foam)"/>
+      <path d="M25 12 C 28.5 12 30.5 13.5 30.5 16 C 30.5 18.5 28.5 20 25 20" fill="none" stroke="url(#cup-grad)" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+    <span class="login-wordmark">Crema</span>
+  </div>
+  <div class="login-title" id="login-title">Dial in your daily ritual.</div>
+  <div class="login-sub">Track espresso, V60, and AeroPress recipes — with AI dial-in built in.</div>
 
   <div class="login-msg" id="login-msg"></div>
 
-  <div class="login-tabs">
-    <div class="login-tab active" data-mode="signin">Sign in</div>
-    <div class="login-tab" data-mode="signup">Sign up</div>
+  <!-- Main substep: sign in / create account -->
+  <div class="login-substep login-substep--main">
+    <div class="login-tabs" role="tablist">
+      <span class="login-tab-pill" id="login-tab-pill" aria-hidden="true"></span>
+      <div class="login-tab active" data-mode="signin" role="tab" tabindex="0">Sign in</div>
+      <div class="login-tab" data-mode="signup" role="tab" tabindex="0">Create account</div>
+    </div>
+
+    <div class="login-field">
+      <input type="email" class="login-input" id="login-email" placeholder="Email" autocomplete="email" maxlength="254" />
+      <label class="login-field-label" for="login-email">Email</label>
+    </div>
+    <div class="login-field">
+      <input type="password" class="login-input" id="login-password" placeholder="Password" autocomplete="current-password" maxlength="128" />
+      <label class="login-field-label" for="login-password">Password</label>
+    </div>
+
+    <div class="login-forgot-row" id="login-forgot-row">
+      <a class="login-forgot" id="login-forgot" tabindex="0" role="button">Forgot password?</a>
+    </div>
+
+    <button class="login-btn primary" id="login-submit">Sign in</button>
+    <button class="login-btn" id="login-magic">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      Send me a magic link
+    </button>
+
+    <div class="login-divider">or</div>
+
+    <button class="login-btn" id="login-google">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.84 2.09-1.79 2.73v2.27h2.9c1.7-1.56 2.69-3.87 2.69-6.64z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.9-2.27c-.8.54-1.83.86-3.06.86-2.36 0-4.36-1.6-5.07-3.74H.96v2.34A8.99 8.99 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.93 10.67A5.41 5.41 0 0 1 3.65 9c0-.58.1-1.14.28-1.67V4.99H.96A8.99 8.99 0 0 0 0 9c0 1.45.35 2.83.96 4.01l2.97-2.34z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58A8.99 8.99 0 0 0 9 0 8.99 8.99 0 0 0 .96 4.99L3.93 7.33C4.64 5.18 6.64 3.58 9 3.58z"/></svg>
+      Continue with Google
+    </button>
+
+    <button class="login-btn login-demo-btn" id="login-demo" title="Sign in without an email — uses Supabase anonymous auth">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 13 C 9 15, 15 15, 16 13" /><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/></svg>
+      Continue as guest
+    </button>
   </div>
 
-  <input type="email" class="login-input" id="login-email" placeholder="Email" autocomplete="email" maxlength="254" />
-  <input type="password" class="login-input" id="login-password" placeholder="Password (8+ chars)" autocomplete="current-password" maxlength="128" />
+  <!-- Reset password substep: user clicked "Forgot password?" -->
+  <div class="login-substep login-substep--reset">
+    <span class="login-back" id="login-reset-back" tabindex="0" role="button">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back to sign in
+    </span>
+    <div class="login-substep-title">Reset your password</div>
+    <p class="login-substep-sub">Enter the email on your account. We'll send a secure link to set a new password.</p>
+    <div class="login-field">
+      <input type="email" class="login-input" id="login-reset-email" placeholder="Email" autocomplete="email" maxlength="254" />
+      <label class="login-field-label" for="login-reset-email">Email</label>
+    </div>
+    <button class="login-btn primary" id="login-reset-submit">Send reset link</button>
+  </div>
 
-  <button class="login-btn primary" id="login-submit">Sign in</button>
-  <button class="login-btn" id="login-magic">Email me a magic link instead</button>
+  <!-- Recovery substep: user has clicked their reset email and is back here -->
+  <div class="login-substep login-substep--recovery">
+    <div class="login-substep-title">Set a new password</div>
+    <p class="login-substep-sub">Welcome back. Choose a strong password — at least 8 characters.</p>
+    <div class="login-field">
+      <input type="password" class="login-input" id="login-recovery-password" placeholder="New password" autocomplete="new-password" maxlength="128" />
+      <label class="login-field-label" for="login-recovery-password">New password</label>
+    </div>
+    <div class="login-field">
+      <input type="password" class="login-input" id="login-recovery-password2" placeholder="Confirm password" autocomplete="new-password" maxlength="128" />
+      <label class="login-field-label" for="login-recovery-password2">Confirm password</label>
+    </div>
+    <button class="login-btn primary" id="login-recovery-submit">Update password</button>
+  </div>
 
-  <div class="login-divider">or</div>
-
-  <button class="login-btn" id="login-google">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.84 2.09-1.79 2.73v2.27h2.9c1.7-1.56 2.69-3.87 2.69-6.64z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.81 5.96-2.18l-2.9-2.27c-.8.54-1.83.86-3.06.86-2.36 0-4.36-1.6-5.07-3.74H.96v2.34A8.99 8.99 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.93 10.67A5.41 5.41 0 0 1 3.65 9c0-.58.1-1.14.28-1.67V4.99H.96A8.99 8.99 0 0 0 0 9c0 1.45.35 2.83.96 4.01l2.97-2.34z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58A8.99 8.99 0 0 0 9 0 8.99 8.99 0 0 0 .96 4.99L3.93 7.33C4.64 5.18 6.64 3.58 9 3.58z"/></svg>
-    Continue with Google
-  </button>
-  <button class="login-btn" id="login-apple" disabled title="Apple Sign-In coming soon — needs Apple Developer account">
-     Continue with Apple <span style="font-size:10px;color:#aaa;font-weight:500">(soon)</span>
-  </button>
-
-  <div class="login-foot">By continuing, your data is stored privately in your account. Only you can see your coffees.</div>
+  <div class="login-foot">Your coffees stay yours — encrypted in your private vault, never sold, never seen by us.</div>
 </div>
 
 <!-- App (shown when authenticated) -->
@@ -886,6 +1413,10 @@
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="text" id="search-input" placeholder="Search coffees, tags, notes…" />
     </div>
+    <button class="icon-btn" id="tip-btn" title="Ask a brewing question (cached, no waste)">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.6c.6.4 1 1.1 1 1.9V18h6v-1.5c0-.8.4-1.5 1-1.9A7 7 0 0 0 12 2z"/></svg>
+      Tip
+    </button>
     <button class="icon-btn primary" id="add-btn" title="Add new coffee">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Add
@@ -1021,18 +1552,33 @@
 
       <div class="settings-section">
         <h3>AI provider</h3>
+
+        <div id="ai-status-card" class="ai-status-card ai-status-card--checking">
+          <div class="ai-status-dot" aria-hidden="true"></div>
+          <div class="ai-status-text">
+            <div class="ai-status-title" id="ai-status-title">Checking AI connection…</div>
+            <div class="ai-status-sub" id="ai-status-sub">One moment.</div>
+          </div>
+        </div>
+
         <div class="field">
           <label>Provider</label>
           <select id="ai-provider">
+            <option value="google">Google (Gemini) — free tier, supports web search</option>
             <option value="anthropic">Anthropic (Claude) — supports web search</option>
             <option value="openai">OpenAI (GPT)</option>
           </select>
         </div>
-        <div class="field">
-          <label>API key (browser-only — never sent to our server)</label>
-          <input type="password" id="ai-key" placeholder="sk-ant-… or sk-…" autocomplete="off" />
-          <p class="field-help">Stored in your browser's localStorage. Used only to call the AI provider directly. Get an Anthropic key at <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer">console.anthropic.com</a> or OpenAI at <a href="https://platform.openai.com" target="_blank" rel="noopener noreferrer">platform.openai.com</a>.</p>
-        </div>
+
+        <details class="ai-byok-details" id="ai-byok-details">
+          <summary>Advanced — bring your own API key</summary>
+          <div class="field" style="margin-top: 12px;">
+            <label>Personal API key (browser-only — never sent to our server)</label>
+            <input type="password" id="ai-key" placeholder="sk-ant-… or sk-…" autocomplete="off" />
+            <p class="field-help">Optional. If the deployment already has a server-side key (above), you can leave this blank. Get an Anthropic key at <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer">console.anthropic.com</a> or OpenAI at <a href="https://platform.openai.com" target="_blank" rel="noopener noreferrer">platform.openai.com</a>.</p>
+          </div>
+        </details>
+
         <div class="field">
           <label>Your taste preferences (synced to your account)</label>
           <textarea id="taste-prefs" placeholder="e.g. I prefer bright washed light roasts. Espresso target 1:2.7 in 35s. Like fruit-forward over chocolatey."></textarea>
@@ -1091,6 +1637,7 @@
         <div class="ai-actions">
           <button class="icon-btn primary" id="ai-create-btn" onclick="aiGenerateNew()">Generate recipe</button>
           <button class="icon-btn" id="ai-lookup-btn" onclick="aiLookupOnline()">Search online + generate</button>
+          <button class="icon-btn" id="ai-quickfill-btn" onclick="aiQuickFill()" title="Heuristic — no AI required, instant">Quick fill</button>
         </div>
         <div class="ai-output empty" id="ai-create-output"></div>
       </div>
@@ -1147,6 +1694,38 @@
   </div>
 </div>
 
+<!-- Brewing tip modal — ephemeral AI tip cards with shared cache. -->
+<div class="modal-backdrop hidden" id="tip-modal">
+  <div class="modal" style="max-width: 560px;">
+    <div class="modal-head">
+      <h2>☕ Brewing tip</h2>
+      <button class="modal-close" onclick="closeModal('tip-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="field-help" style="margin-bottom:12px;">Ask a brewing question. Answers are cached across users — if someone asked the same thing recently, you'll get the cached tip instantly (no AI call, free).</p>
+      <div class="tip-presets" id="tip-presets">
+        <button class="tip-chip" data-q="How do I dial in a light-roast washed Ethiopian espresso?">Light Ethiopian espresso</button>
+        <button class="tip-chip" data-q="My espresso is sour and channeling — what should I change first?">Fix sour & channeling</button>
+        <button class="tip-chip" data-q="V60 recipe for a natural process Brazilian medium roast?">V60 for natural Brazil</button>
+        <button class="tip-chip" data-q="AeroPress for a chocolatey medium-dark blend, what method?">AeroPress for chocolatey blend</button>
+        <button class="tip-chip" data-q="How do I taste-test if my espresso is over-extracted vs under-extracted?">Over vs under extraction</button>
+        <button class="tip-chip" data-q="Why does my V60 stall mid-pour and what fixes it?">V60 stalling</button>
+      </div>
+      <div class="field" style="margin-top: 14px;">
+        <label>Or ask anything</label>
+        <textarea id="tip-input" placeholder="e.g. how should I adjust grind size for an anaerobic natural espresso?" rows="2"></textarea>
+      </div>
+      <div class="ai-actions" style="margin-top: 6px;">
+        <button class="icon-btn primary" id="tip-ask-btn" onclick="askBrewingTip()">Ask</button>
+      </div>
+      <div class="tip-card-wrap" id="tip-output"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="icon-btn" onclick="closeModal('tip-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Styled confirm dialog (replaces native confirm/prompt) -->
 <div class="modal-backdrop hidden" id="confirm-modal">
   <div class="modal" style="max-width: 440px;">
@@ -1164,6 +1743,12 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Demo-mode banner — only visible when user is in local-only demo mode -->
+<div class="demo-banner hidden" id="demo-banner" role="status">
+  <span>☕ Demo mode — your data stays in this browser only</span>
+  <button type="button" id="demo-exit" title="Exit demo and sign up properly">Sign up to keep it</button>
+</div>
 
 <!-- Supabase JS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.3/dist/umd/supabase.min.js"></script>
@@ -1210,19 +1795,40 @@ const SPLASH_LOTTIE_URL = ""; // ← paste a coffee Lottie URL here
 // ============================================================
 const SUPABASE_URL = "https://udzsveyedwbmygvpvxpx.supabase.co";
 const SUPABASE_KEY = "sb_publishable_-mBzL95B_KjuBYpEjmHJiQ_oy63JplW";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-});
+let sb = null;
+if (typeof supabase !== "undefined") {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+  });
+} else {
+  // The Supabase CDN script couldn't load (offline, blocked, CSP, etc.).
+  // Surface this immediately rather than getting stuck on the splash screen.
+  console.error("Supabase JS SDK failed to load. Check your network or refresh the page.");
+  window.addEventListener("DOMContentLoaded", () => {
+    const splash = document.getElementById("splash");
+    const screen = document.getElementById("login-screen");
+    const msg = document.getElementById("login-msg");
+    if (splash) splash.classList.add("hidden");
+    if (screen) screen.classList.remove("hidden");
+    document.body.classList.remove("loading");
+    document.body.classList.add("show-login");
+    if (msg) {
+      msg.className = "login-msg show error";
+      msg.textContent = "Couldn't reach Supabase — check your network and refresh.";
+    }
+  });
+}
 
 // =====================================================================
-// Crema particle canvas — multi-tonal espresso bubbles rising and swirling
-// 55 particles on desktop, 28 on mobile, ~60fps via single rAF loop
+// Crema foam bubbles — tiny iridescent bubbles that slowly rise and pop,
+// like the foam on a fresh espresso shot. Far smaller and more numerous
+// than the old "blobs"; reads as actual foam, not as floating circles.
 // =====================================================================
-class CremaAnim {
+class CremaFoam {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d", { alpha: true });
-    this.particles = [];
+    this.bubbles = [];
     this.running = false;
     this.lastT = 0;
     this.handleResize = this.handleResize.bind(this);
@@ -1241,61 +1847,68 @@ class CremaAnim {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   spawn() {
-    const count = this.w < 700 ? 28 : 55;
-    // Multi-tonal espresso crema palette
-    const colors = [
-      [245, 215, 165],  // pale crema
-      [225, 175, 110],  // light tan
-      [195, 130, 70],   // amber
-      [155, 90, 45],    // bronze
-      [120, 60, 25],    // dark espresso
-      [255, 230, 195],  // foam highlight
-      [205, 155, 95],   // tiger stripe
-      [170, 105, 55]    // medium crema
-    ];
-    this.particles = [];
+    const density = this.w < 700 ? 0.00012 : 0.00018;
+    const count = Math.round(this.w * this.h * density);
+    this.bubbles = [];
     for (let i = 0; i < count; i++) {
-      this.particles.push({
-        x: Math.random() * this.w,
-        y: Math.random() * this.h,
-        r: 4 + Math.random() * 18,
-        vy: -0.12 - Math.random() * 0.42,
-        vx: (Math.random() - 0.5) * 0.14,
-        opacity: 0.18 + Math.random() * 0.36,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        phase: Math.random() * Math.PI * 2,
-        period: 6 + Math.random() * 8,
-        wobble: 0.4 + Math.random() * 1.6
-      });
+      this.bubbles.push(this.makeBubble(true));
     }
+  }
+  makeBubble(initial) {
+    return {
+      x: Math.random() * this.w,
+      y: initial ? Math.random() * this.h : this.h + Math.random() * 60,
+      r: 0.6 + Math.random() * 2.4,           // tiny — actual foam scale
+      vy: -0.05 - Math.random() * 0.18,       // gentle rise
+      vx: (Math.random() - 0.5) * 0.05,
+      life: 0,
+      maxLife: 8 + Math.random() * 12,        // seconds
+      opacity: 0.28 + Math.random() * 0.42,
+      tone: Math.random() < 0.7 ? "pale" : "gold", // mostly pale foam, occasional gold highlight
+      phase: Math.random() * Math.PI * 2,
+      period: 5 + Math.random() * 5
+    };
   }
   step(t) {
     if (!this.running) return;
-    const dt = this.lastT ? (t - this.lastT) / 16.67 : 1; // normalize against 60fps
+    const dt = this.lastT ? Math.min((t - this.lastT) / 16.67, 3) : 1;
     this.lastT = t;
     const ctx = this.ctx;
-    const w = this.w, h = this.h;
-    ctx.clearRect(0, 0, w, h);
+    ctx.clearRect(0, 0, this.w, this.h);
     const tSec = t / 1000;
-    for (const p of this.particles) {
-      p.y += p.vy * dt;
-      p.x += (p.vx + Math.sin(tSec / p.period + p.phase) * 0.18 * p.wobble) * dt;
-      if (p.y < -p.r * 2) { p.y = h + p.r; p.x = Math.random() * w; }
-      if (p.x < -p.r * 2) p.x = w + p.r;
-      if (p.x > w + p.r * 2) p.x = -p.r;
-      const [r, g, b] = p.color;
-      const grd = ctx.createRadialGradient(p.x - p.r * 0.3, p.y - p.r * 0.3, 0, p.x, p.y, p.r);
-      grd.addColorStop(0,    `rgba(${r},${g},${b},${p.opacity})`);
-      grd.addColorStop(0.55, `rgba(${r},${g},${b},${p.opacity * 0.45})`);
-      grd.addColorStop(1,    `rgba(${r},${g},${b},0)`);
+    for (let i = 0; i < this.bubbles.length; i++) {
+      const b = this.bubbles[i];
+      b.life += dt / 60;
+      b.y += b.vy * dt;
+      b.x += (b.vx + Math.sin(tSec / b.period + b.phase) * 0.04) * dt;
+      // Lifecycle: appear, drift, pop
+      const pct = b.life / b.maxLife;
+      let alpha = b.opacity;
+      if (pct < 0.15) alpha *= pct / 0.15;
+      else if (pct > 0.8) alpha *= Math.max(0, (1 - pct) / 0.2);
+      if (b.y < -10 || pct >= 1) { this.bubbles[i] = this.makeBubble(false); continue; }
+      // Draw the bubble — soft circle with a tiny highlight
+      const r = b.r;
+      const tone = b.tone === "gold"
+        ? [255, 220, 165]
+        : [255, 248, 232];
+      const grd = ctx.createRadialGradient(b.x - r * 0.3, b.y - r * 0.3, 0, b.x, b.y, r * 1.6);
+      grd.addColorStop(0,    `rgba(${tone[0]},${tone[1]},${tone[2]},${alpha})`);
+      grd.addColorStop(0.55, `rgba(${tone[0]},${tone[1]},${tone[2]},${alpha * 0.4})`);
+      grd.addColorStop(1,    `rgba(${tone[0]},${tone[1]},${tone[2]},0)`);
       ctx.fillStyle = grd;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.arc(b.x, b.y, r * 1.6, 0, Math.PI * 2);
+      ctx.fill();
+      // Bright pinprick highlight
+      ctx.fillStyle = `rgba(255,255,255,${alpha * 0.6})`;
+      ctx.beginPath();
+      ctx.arc(b.x - r * 0.3, b.y - r * 0.3, Math.max(0.3, r * 0.25), 0, Math.PI * 2);
       ctx.fill();
     }
     requestAnimationFrame((tt) => this.step(tt));
   }
-  start() { if (!this.running) { this.running = true; requestAnimationFrame((t) => this.step(t)); } }
+  start() { if (!this.running) { this.running = true; this.lastT = 0; requestAnimationFrame((t) => this.step(t)); } }
   stop() { this.running = false; }
 }
 
@@ -1303,7 +1916,7 @@ class CremaAnim {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const c = document.getElementById("crema-canvas");
   if (!c) return;
-  const anim = new CremaAnim(c);
+  const anim = new CremaFoam(c);
   anim.start();
   // Pause when tab hidden to save battery
   document.addEventListener("visibilitychange", () => {
@@ -1326,7 +1939,7 @@ let state = {
     units: "metric",
     onboardingComplete: false
   },
-  settings: { aiProvider: "anthropic", aiKey: "" },  // browser-only
+  settings: { aiProvider: "google", aiKey: "" },  // browser-only — Google Gemini default (free tier)
   activeMethod: "espresso",
   searchTerm: "",
   editingId: null,
@@ -1384,6 +1997,18 @@ async function init() {
   // Bind events FIRST so buttons are always responsive even if auth/db fails
   bindEvents();
 
+  // Discover whether the deployment has a server-side AI key (no UI key needed)
+  probeAiProxy();
+
+  // If Supabase failed to load, the fallback above already showed the login screen
+  if (!sb) return;
+
+  // Demo mode reboot — user previously chose "Try the demo"
+  if (isDemoMode()) {
+    enterDemoMode();
+    return;
+  }
+
   // Global error visibility
   window.addEventListener("error", e => {
     console.error("Global error:", e.error || e.message);
@@ -1397,8 +2022,23 @@ async function init() {
   // Watch session changes
   sb.auth.onAuthStateChange(async (event, session) => {
     try {
+      // PASSWORD_RECOVERY: user clicked the reset email and now has a recovery
+      // token in the URL hash. Show the "set new password" substep instead of
+      // signing them straight into the app.
+      if (event === "PASSWORD_RECOVERY") {
+        state.user = session?.user || null;
+        document.getElementById("splash").classList.add("hidden");
+        document.body.classList.remove("loading");
+        document.body.classList.add("show-login");
+        document.getElementById("login-screen").classList.remove("hidden");
+        document.getElementById("app-root").style.display = "none";
+        setLoginSubstep("recovery");
+        return;
+      }
       if (session?.user) {
         state.user = session.user;
+        // If we were in recovery mode, drop back to main once the user finishes
+        document.body.classList.remove("login-mode-recovery", "login-mode-reset");
         await onSignedIn();
       } else {
         state.user = null;
@@ -1427,8 +2067,22 @@ async function onSignedIn() {
   document.getElementById("login-screen").classList.add("hidden");
   document.getElementById("app-root").style.display = "block";
 
+  // Guest banner (cloud-backed anonymous user) — different copy from local demo
+  const banner = document.getElementById("demo-banner");
+  if (isGuestUser()) {
+    document.body.classList.add("demo-mode");
+    if (banner) {
+      banner.classList.remove("hidden");
+      banner.querySelector("span").textContent = "☕ Guest account — your data syncs but isn't tied to an email yet";
+      banner.querySelector("button").textContent = "Add an email to save it";
+    }
+  } else {
+    document.body.classList.remove("demo-mode");
+    if (banner) banner.classList.add("hidden");
+  }
+
   // Update user chip
-  const email = state.user.email || "";
+  const email = state.user.email || (isGuestUser() ? "Guest" : "");
   document.getElementById("user-email").textContent = email;
   document.getElementById("user-avatar").textContent = (email[0] || "?").toUpperCase();
 
@@ -1450,10 +2104,13 @@ function onSignedOut() {
   document.getElementById("login-screen").classList.remove("hidden");
   document.getElementById("app-root").style.display = "none";
   unsubscribeFromChanges();
+  // Position the tab pill once the card is in the layout
+  requestAnimationFrame(() => positionLoginPill());
 }
 
 async function signOut() {
   closeUserDropdown();
+  if (isDemoMode()) { exitDemoMode(); return; }
   const btn = document.getElementById("signout-btn");
   if (btn) { btn.disabled = true; btn.textContent = "Signing out…"; }
   // Race signOut against a 3s timeout — Supabase sometimes hangs
@@ -1491,9 +2148,20 @@ function closeUserDropdown() {
 // Login form
 function setLoginMode(mode) {
   document.querySelectorAll(".login-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === mode));
-  document.getElementById("login-submit").textContent = mode === "signup" ? "Sign up" : "Sign in";
+  document.getElementById("login-submit").textContent = mode === "signup" ? "Create account" : "Sign in";
   document.getElementById("login-password").autocomplete = mode === "signup" ? "new-password" : "current-password";
+  document.getElementById("login-password").placeholder = mode === "signup" ? "Password (8+ characters)" : "Password";
+  positionLoginPill();
   hideLoginMsg();
+}
+function positionLoginPill() {
+  const tabs = Array.from(document.querySelectorAll(".login-tab"));
+  const active = tabs.find(t => t.classList.contains("active")) || tabs[0];
+  const pill = document.getElementById("login-tab-pill");
+  if (!active || !pill) return;
+  const parent = active.parentElement;
+  pill.style.left = (active.offsetLeft) + "px";
+  pill.style.width = (active.offsetWidth) + "px";
 }
 function loginMsg(kind, text) {
   const el = document.getElementById("login-msg");
@@ -1552,6 +2220,7 @@ async function handleMagicLink() {
 
 async function handleGoogleLogin() {
   hideLoginMsg();
+  if (!sb) return loginMsg("error", "Couldn't reach Supabase — refresh and try again.");
   try {
     const { error } = await sb.auth.signInWithOAuth({
       provider: "google",
@@ -1561,6 +2230,277 @@ async function handleGoogleLogin() {
   } catch (e) {
     loginMsg("error", "Google login isn't configured yet. Use email signup for now. — " + (e.message || ""));
   }
+}
+
+// ---- Forgot password / recovery flows ----
+function setLoginSubstep(step /* "main" | "reset" | "recovery" */) {
+  document.body.classList.remove("login-mode-reset", "login-mode-recovery");
+  if (step === "reset") document.body.classList.add("login-mode-reset");
+  else if (step === "recovery") document.body.classList.add("login-mode-recovery");
+  hideLoginMsg();
+  // After visibility flips, re-anchor the tab pill
+  requestAnimationFrame(() => positionLoginPill());
+}
+
+function showForgotPassword() {
+  // Pre-fill from sign-in email if user already typed it
+  const carry = document.getElementById("login-email").value.trim();
+  if (carry) document.getElementById("login-reset-email").value = carry;
+  setLoginSubstep("reset");
+  setTimeout(() => document.getElementById("login-reset-email").focus(), 80);
+}
+
+async function handlePasswordReset() {
+  if (!sb) return loginMsg("error", "Couldn't reach Supabase — refresh and try again.");
+  const email = document.getElementById("login-reset-email").value.trim();
+  const btn = document.getElementById("login-reset-submit");
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    loginMsg("error", "Please enter a valid email address.");
+    return;
+  }
+  btn.disabled = true; const orig = btn.textContent; btn.textContent = "Sending…";
+  hideLoginMsg();
+  try {
+    // Redirect lands users back here with a recovery hash; auth state change
+    // will switch us into the "recovery" substep automatically.
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname
+    });
+    if (error) throw error;
+    loginMsg("success", `Check your inbox at ${email} for the reset link. It'll expire in 1 hour.`);
+  } catch (e) {
+    loginMsg("error", humanizeAuthError(e, "reset"));
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+
+async function handleSetNewPassword() {
+  if (!sb) return loginMsg("error", "Couldn't reach Supabase — refresh and try again.");
+  const p1 = document.getElementById("login-recovery-password").value;
+  const p2 = document.getElementById("login-recovery-password2").value;
+  const btn = document.getElementById("login-recovery-submit");
+  if (p1.length < 8) { loginMsg("error", "Password must be at least 8 characters."); return; }
+  if (p1 !== p2) { loginMsg("error", "Passwords don't match."); return; }
+  btn.disabled = true; const orig = btn.textContent; btn.textContent = "Updating…";
+  hideLoginMsg();
+  try {
+    const { error } = await sb.auth.updateUser({ password: p1 });
+    if (error) throw error;
+    loginMsg("success", "Password updated. Signing you in…");
+    // The user's session is already valid via the recovery token, so the
+    // existing onAuthStateChange handler will route them into the app shortly.
+    setTimeout(() => setLoginSubstep("main"), 300);
+  } catch (e) {
+    loginMsg("error", humanizeAuthError(e, "recovery"));
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+
+// ---- Guest / demo mode ----
+// Two flavors:
+//   1) Real guest:   sb.auth.signInAnonymously() — a real Supabase user with
+//      is_anonymous: true. Data syncs to the cloud, AI proxy works, and the
+//      account can later be converted to a full email account without losing
+//      data (sb.auth.updateUser({ email, password })).
+//   2) Local demo:   localStorage-only fallback for when anonymous sign-ins
+//      are disabled in the Supabase project (or Supabase is unreachable).
+const DEMO_DATA_KEY = "coffee-tracker-demo-v1";
+const DEMO_FLAG_KEY = "coffee-tracker-demo-mode-v1";
+
+function isDemoMode() {
+  return localStorage.getItem(DEMO_FLAG_KEY) === "1";
+}
+
+function isGuestUser() {
+  return !!state.user?.is_anonymous;
+}
+
+async function continueAsGuest() {
+  hideLoginMsg();
+  // No Supabase available at all -> local-only demo
+  if (!sb) { enterDemoMode(); return; }
+  const btn = document.getElementById("login-demo");
+  if (btn) { btn.disabled = true; btn.textContent = "Setting up your guest account…"; }
+  try {
+    const { data, error } = await sb.auth.signInAnonymously();
+    if (error) throw error;
+    if (!data?.user) throw new Error("No user returned from anonymous sign-in.");
+    // The onAuthStateChange listener routes us into onSignedIn() automatically.
+  } catch (e) {
+    const msg = (e?.message || "").toLowerCase();
+    if (msg.includes("anonymous") && (msg.includes("disabled") || msg.includes("not enabled"))) {
+      // Project hasn't enabled anonymous auth — fall back to local demo so the
+      // user isn't blocked. We surface a soft note about the upgrade path.
+      console.warn("[guest] anonymous sign-ins disabled in Supabase — falling back to local demo");
+      toast("Cloud guest disabled — using local-only demo mode.", "");
+      enterDemoMode();
+      return;
+    }
+    if (msg.includes("captcha")) {
+      loginMsg("error", "Captcha is required for guest sign-in. Disable captcha in Supabase or use email signup.");
+    } else {
+      loginMsg("error", humanizeAuthError(e, "guest"));
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Continue as guest"; }
+  }
+}
+
+function enterDemoMode() {
+  localStorage.setItem(DEMO_FLAG_KEY, "1");
+  // Synthesize a fake user object so the rest of the app keeps working
+  state.user = { id: "demo-local", email: "demo@local" };
+  document.getElementById("splash").classList.add("hidden");
+  document.body.classList.remove("loading", "show-login");
+  document.body.classList.add("demo-mode");
+  document.getElementById("login-screen").classList.add("hidden");
+  document.getElementById("app-root").style.display = "block";
+  document.getElementById("user-email").textContent = "Demo (local only)";
+  document.getElementById("user-avatar").textContent = "D";
+  document.getElementById("demo-banner").classList.remove("hidden");
+  loadDemoData();
+  render(state.activeMethod);
+  if (!state.data.onboardingComplete) setTimeout(() => openOnboarding(), 250);
+}
+
+function exitDemoMode() {
+  // Cloud guest: open a save-account flow that links an email/password to the
+  // existing anonymous user — keeps data attached.
+  if (isGuestUser()) {
+    return saveGuestAccountPrompt();
+  }
+  // Local demo: keep the data in localStorage; just drop the flag and route back.
+  localStorage.removeItem(DEMO_FLAG_KEY);
+  state.user = null;
+  document.body.classList.remove("demo-mode");
+  document.getElementById("demo-banner").classList.add("hidden");
+  onSignedOut();
+}
+
+async function saveGuestAccountPrompt() {
+  // Lightweight inline flow using the confirm-dialog scaffolding: we ask for
+  // email + password and then call sb.auth.updateUser to link them. No new modal.
+  const email = await promptText({
+    title: "Save your guest account",
+    message: "Add an email and password and we'll keep all your data attached. The same coffees, equipment, and preferences carry over.",
+    placeholder: "you@example.com",
+    confirmLabel: "Next"
+  });
+  if (!email) return;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast("Invalid email.", "error"); return; }
+  const password = await promptText({
+    title: "Set a password",
+    message: "At least 8 characters. You'll use this to sign back in.",
+    placeholder: "••••••••",
+    inputType: "password",
+    confirmLabel: "Save account"
+  });
+  if (!password) return;
+  if (password.length < 8) { toast("Password must be at least 8 characters.", "error"); return; }
+  try {
+    const { error } = await sb.auth.updateUser({ email, password });
+    if (error) throw error;
+    toast("Account saved. Check your inbox to confirm the email.", "success");
+    // is_anonymous flips to false once email is confirmed; banner will hide on
+    // the next sign-in. For now keep it visible so the user knows confirm is pending.
+  } catch (e) {
+    toast("Couldn't save account: " + humanizeAuthError(e, "signup"), "error");
+  }
+}
+
+// Tiny styled prompt built on the existing confirm-dialog modal so we don't
+// have to add another piece of UI. Returns the typed string, or null on cancel.
+function promptText({ title = "", message = "", placeholder = "", inputType = "text", confirmLabel = "OK" } = {}) {
+  return new Promise(resolve => {
+    const modal = document.getElementById("confirm-modal");
+    const titleEl = document.getElementById("confirm-title");
+    const msgEl = document.getElementById("confirm-message");
+    const okBtn = document.getElementById("confirm-ok");
+    const cancelBtn = document.getElementById("confirm-cancel");
+    titleEl.textContent = title;
+    msgEl.innerHTML = "";
+    const p = document.createElement("p");
+    p.textContent = message;
+    p.style.cssText = "font-size:14px;line-height:1.55;color:#444;margin-bottom:12px;";
+    msgEl.appendChild(p);
+    const input = document.createElement("input");
+    input.type = inputType;
+    input.placeholder = placeholder;
+    input.maxLength = 254;
+    input.style.cssText = "width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font:inherit;font-size:14px;outline:none;";
+    msgEl.appendChild(input);
+    okBtn.textContent = confirmLabel;
+    cancelBtn.style.display = "";
+    okBtn.className = "icon-btn primary";
+    setTimeout(() => input.focus(), 50);
+    const cleanup = (val) => {
+      modal.classList.add("hidden");
+      okBtn.removeEventListener("click", onOk);
+      cancelBtn.removeEventListener("click", onCancel);
+      document.removeEventListener("keydown", onKey);
+      msgEl.innerHTML = "";
+      resolve(val);
+    };
+    const onOk = () => cleanup(input.value);
+    const onCancel = () => cleanup(null);
+    const onKey = (e) => {
+      if (e.key === "Enter") { e.preventDefault(); onOk(); }
+      else if (e.key === "Escape") { onCancel(); }
+    };
+    okBtn.addEventListener("click", onOk);
+    cancelBtn.addEventListener("click", onCancel);
+    document.addEventListener("keydown", onKey);
+    modal.classList.remove("hidden");
+  });
+}
+
+function loadDemoData() {
+  try {
+    const raw = localStorage.getItem(DEMO_DATA_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    state.data = {
+      preferences: parsed.preferences || "",
+      coffees: parsed.coffees || [],
+      equipment: parsed.equipment || { grinder: "", burrs: "", machine: "", portafilter: "", scale: "", kettle: "", influencers: [] },
+      units: parsed.units || "metric",
+      onboardingComplete: !!parsed.onboardingComplete
+    };
+  } catch (e) { console.warn("[demo] load failed:", e); }
+}
+
+function saveDemoData() {
+  try {
+    localStorage.setItem(DEMO_DATA_KEY, JSON.stringify({
+      preferences: state.data.preferences,
+      coffees: state.data.coffees,
+      equipment: state.data.equipment,
+      units: state.data.units,
+      onboardingComplete: state.data.onboardingComplete
+    }));
+  } catch (e) { console.warn("[demo] save failed:", e); }
+}
+
+function humanizeAuthError(e, ctx) {
+  const m = (e?.message || String(e)).toLowerCase();
+  if (m.includes("rate") || m.includes("over_email_send_rate")) {
+    return "Too many attempts on this account — please wait an hour, or use the demo mode below to keep exploring.";
+  }
+  if (m.includes("invalid login") || m.includes("invalid email") && ctx === "signin") {
+    return "Wrong email or password.";
+  }
+  if (m.includes("user already registered")) {
+    return "An account with that email already exists. Try signing in instead.";
+  }
+  if (m.includes("token has expired") || m.includes("invalid token")) {
+    return "That reset link expired. Request a fresh one.";
+  }
+  if (m.includes("password should be")) {
+    return "Password must be at least 8 characters.";
+  }
+  return e?.message || "Something went wrong.";
 }
 
 // ============================================================
@@ -1620,6 +2560,7 @@ async function sbFetch(path, { method = "GET", body = null, headers = {} } = {})
 
 async function loadFromDb() {
   if (!state.user) return;
+  if (isDemoMode()) { loadDemoData(); return; }
   try {
     const profiles = await sbFetch(`/user_profiles?user_id=eq.${state.user.id}&select=*`);
     const profile = (profiles || [])[0];
@@ -1680,6 +2621,13 @@ function coffeeToRow(c) {
 }
 
 async function upsertCoffee(c) {
+  if (isDemoMode()) {
+    // Local-only persistence
+    const id = c.id || ("demo-" + Math.random().toString(36).slice(2, 10));
+    const saved = { ...c, id, position: c.position ?? state.data.coffees.length };
+    saveDemoData();
+    return saved;
+  }
   const row = coffeeToRow(c);
   console.log("[upsertCoffee] sending:", row, "isUpdate=", !!c.id);
   let data;
@@ -1695,10 +2643,12 @@ async function upsertCoffee(c) {
 }
 
 async function deleteCoffeeRow(id) {
+  if (isDemoMode()) { saveDemoData(); return; }
   await sbFetch(`/coffees?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 async function saveProfile(patch) {
+  if (isDemoMode()) { saveDemoData(); return; }
   console.log("[saveProfile] patch:", patch);
   let updated;
   try {
@@ -1909,6 +2859,14 @@ function openSettingsModal() {
   document.getElementById("ai-provider").value = state.settings.aiProvider;
   document.getElementById("ai-key").value = state.settings.aiKey;
   document.getElementById("taste-prefs").value = state.data.preferences || "";
+  refreshAiStatusCard();
+  // If server isn't ready yet, refresh once it resolves
+  if (!aiProxy.ready) {
+    Promise.resolve().then(async () => {
+      await probeAiProxy();
+      refreshAiStatusCard();
+    });
+  }
   // Equipment
   const eq = state.data.equipment || {};
   document.getElementById("eq-grinder").value = eq.grinder || "";
@@ -1925,6 +2883,48 @@ function openSettingsModal() {
   upgradeSelect(document.getElementById("ai-provider"));
   upgradeSelect(document.getElementById("units-pref"));
 }
+function refreshAiStatusCard() {
+  const card = document.getElementById("ai-status-card");
+  const titleEl = document.getElementById("ai-status-title");
+  const subEl = document.getElementById("ai-status-sub");
+  const byok = document.getElementById("ai-byok-details");
+  if (!card || !titleEl || !subEl) return;
+
+  const provider = document.getElementById("ai-provider")?.value || state.settings.aiProvider || "anthropic";
+  const providerLabel = provider === "openai" ? "OpenAI" : provider === "google" ? "Google Gemini" : "Anthropic Claude";
+
+  card.classList.remove("ai-status-card--ready", "ai-status-card--byok", "ai-status-card--missing", "ai-status-card--checking");
+
+  if (!aiProxy.ready) {
+    card.classList.add("ai-status-card--checking");
+    titleEl.textContent = "Checking AI connection…";
+    subEl.textContent = "Looking for a server-side key.";
+    return;
+  }
+
+  if (aiHasServerSupport(provider)) {
+    card.classList.add("ai-status-card--ready");
+    titleEl.textContent = `Connected — ${providerLabel} via this site`;
+    subEl.innerHTML = "No personal key needed. AI features are powered by the deployer's account.";
+    if (byok && !state.settings.aiKey) byok.removeAttribute("open");
+    return;
+  }
+
+  if (state.settings.aiKey) {
+    card.classList.add("ai-status-card--byok");
+    titleEl.textContent = `${providerLabel} — using your personal key`;
+    subEl.textContent = "Stored only in this browser. The site has no server-side key configured.";
+    if (byok) byok.setAttribute("open", "");
+    return;
+  }
+
+  card.classList.add("ai-status-card--missing");
+  titleEl.textContent = "AI not connected";
+  const envVar = provider === "openai" ? "OPENAI_API_KEY" : provider === "google" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY";
+  subEl.innerHTML = `Set <code>${envVar}</code> in Vercel for site-wide AI, or paste a personal key below.`;
+  if (byok) byok.setAttribute("open", "");
+}
+
 async function saveSettings() {
   state.settings.aiProvider = document.getElementById("ai-provider").value;
   state.settings.aiKey = document.getElementById("ai-key").value.trim();
@@ -2295,14 +3295,16 @@ async function saveCoffee() {
   if (!name) { setFieldError("field-name", "Coffee name is required."); return; }
   if (!state.user) { showFormBanner("You appear to be signed out. Refresh and sign in again."); return; }
 
-  // Force session check before saving — surfaces stale-token issues fast
-  try {
-    const { data: { session }, error: sErr } = await withTimeout(sb.auth.getSession(), 5000, "Session check");
-    if (sErr || !session) { showFormBanner("Your session has expired. Please sign out and back in."); return; }
-    state.user = session.user;
-  } catch (e) {
-    showFormBanner("Couldn't verify your session: " + e.message + ". Please sign out and back in.");
-    return;
+  // Force session check before saving — surfaces stale-token issues fast (skip in demo)
+  if (!isDemoMode()) {
+    try {
+      const { data: { session }, error: sErr } = await withTimeout(sb.auth.getSession(), 5000, "Session check");
+      if (sErr || !session) { showFormBanner("Your session has expired. Please sign out and back in."); return; }
+      state.user = session.user;
+    } catch (e) {
+      showFormBanner("Couldn't verify your session: " + e.message + ". Please sign out and back in.");
+      return;
+    }
   }
 
   const isEdit = !!state.editingId;
@@ -2387,23 +3389,45 @@ async function seedExamples() {
   });
   if (!ok) return;
 
-  // Verify session is fresh (this is what keeps biting us — Supabase tokens go stale)
-  try {
-    const { data: { session }, error: sErr } = await withTimeout(sb.auth.getSession(), 5000, "Session check");
-    if (sErr || !session) {
-      await alertDialog({ title: "Session expired", message: "Sign out and back in to refresh, then try again." });
+  // Verify session (skipped in demo — no Supabase auth involved)
+  if (!isDemoMode()) {
+    let session;
+    try {
+      const r = await withTimeout(sb.auth.getSession(), 5000, "Session check");
+      session = r.data?.session;
+      if (!session) {
+        const refresh = await withTimeout(sb.auth.refreshSession(), 5000, "Session refresh").catch(() => ({}));
+        session = refresh.data?.session || null;
+      }
+      if (!session) {
+        await alertDialog({ title: "Session expired", message: "Sign out and back in to refresh, then try again." });
+        return;
+      }
+      state.user = session.user;
+    } catch (e) {
+      await alertDialog({ title: "Couldn't verify session", message: e.message || String(e) });
       return;
     }
-    state.user = session.user;
-  } catch (e) {
-    await alertDialog({ title: "Couldn't verify session", message: e.message || String(e) });
-    return;
   }
 
   console.log("[seedExamples] starting, user:", state.user.id);
   let pos = state.data.coffees.length;
   let succeeded = 0;
   const failures = [];
+
+  // Helper to retry once on transient errors (timeouts, 5xx, network)
+  async function tryInsert(seedCopy) {
+    try {
+      return await upsertCoffee(seedCopy);
+    } catch (e) {
+      const msg = (e.message || "").toLowerCase();
+      const transient = msg.includes("timed out") || msg.includes("failed to fetch") || msg.includes("network") || /http 5\d\d/.test(msg);
+      if (!transient) throw e;
+      console.warn("[seedExamples] retrying after transient error:", e.message);
+      await new Promise(r => setTimeout(r, 600));
+      return await upsertCoffee(seedCopy);
+    }
+  }
 
   for (let i = 0; i < SEED_COFFEES.length; i++) {
     const seed = SEED_COFFEES[i];
@@ -2416,34 +3440,43 @@ async function seedExamples() {
     };
     console.log(`[seedExamples] inserting ${i + 1}/4: ${seed.name} (slug=${seedCopy.slug})`);
     try {
-      const saved = await upsertCoffee(seedCopy);
+      const saved = await tryInsert(seedCopy);
       state.data.coffees.push(saved);
       succeeded++;
       console.log(`[seedExamples] ✓ ${i + 1}/4 saved as id=${saved.id}`);
       toast(`Loading examples… ${succeeded}/4`, "");
     } catch (e) {
       console.error(`[seedExamples] ✗ ${i + 1}/4 failed:`, e);
-      failures.push({ name: seed.name, error: e.message || String(e) });
-      // Keep trying the rest — partial success is better than nothing
+      failures.push({ name: seed.name, error: humanizeDbError(e) });
     }
   }
 
   render(state.activeMethod);
 
   if (succeeded > 0 && failures.length === 0) {
-    toast("Examples loaded", "success");
+    toast("Examples loaded ✓", "success");
   } else if (succeeded > 0 && failures.length > 0) {
     await alertDialog({
       title: `Loaded ${succeeded} of 4`,
-      message: `Couldn't load: ${failures.map(f => `${f.name} (${f.error})`).join("; ")}`
+      message: `Couldn't load:\n\n${failures.map(f => `• ${f.name}: ${f.error}`).join("\n")}`
     });
   } else {
-    // All failed — surface the first error in detail
     await alertDialog({
       title: "Couldn't load examples",
-      message: failures[0]?.error || "Unknown error. Open Web Inspector → Console for details."
+      message: (failures[0]?.error || "Unknown error.") + "\n\nOpen the browser console for full details."
     });
   }
+}
+
+function humanizeDbError(e) {
+  const raw = e?.message || String(e);
+  if (/duplicate|23505/i.test(raw)) return "A coffee with that slug already exists.";
+  if (/rls|policy|permission/i.test(raw)) return "Permission denied — your session may have expired.";
+  if (/timed out/i.test(raw)) return "Server didn't respond in time.";
+  if (/failed to fetch|network/i.test(raw)) return "Network error — check your connection.";
+  if (/http 4\d\d/i.test(raw)) return "Bad request — " + raw.replace(/HTTP \d+ \w+ \S+ — /, "");
+  if (/http 5\d\d/i.test(raw)) return "Server error — try again in a moment.";
+  return raw.slice(0, 200);
 }
 
 // ============================================================
@@ -2468,14 +3501,112 @@ function userContextBlock() {
 let _lastAiCall = 0;
 const AI_RATE_LIMIT_MS = 2000;
 
+// Server proxy capabilities — populated on boot via GET /api/ai.
+// When a provider is "true" here, we route AI calls through our own server
+// so users don't have to paste an API key. Falls back to BYOK if 503.
+const aiProxy = {
+  ready: false,            // true once we've checked the server
+  anthropic: false,
+  openai: false,
+  google: false,
+  lastError: null
+};
+
+async function probeAiProxy() {
+  try {
+    const res = await fetch("/api/ai", { method: "GET", headers: { "Accept": "application/json" } });
+    if (!res.ok) { aiProxy.ready = true; return; }
+    const json = await res.json();
+    aiProxy.anthropic = !!json.anthropic;
+    aiProxy.openai = !!json.openai;
+    aiProxy.google = !!json.google;
+    aiProxy.ready = true;
+  } catch (e) {
+    // Most likely running outside Vercel (e.g. plain static host) — silent fallback
+    aiProxy.ready = true;
+    aiProxy.lastError = e?.message || String(e);
+  }
+}
+
+function aiHasServerSupport(provider) {
+  if (!aiProxy.ready) return false;
+  if (provider === "openai") return aiProxy.openai;
+  if (provider === "google") return aiProxy.google;
+  return aiProxy.anthropic;
+}
+function aiAnyServerSupport() {
+  return aiProxy.ready && (aiProxy.anthropic || aiProxy.openai || aiProxy.google);
+}
+
 async function callAI(systemPrompt, userPrompt, opts = {}) {
-  if (!state.settings.aiKey) throw new Error("Set your API key in Settings first.");
   const now = Date.now();
   if (now - _lastAiCall < AI_RATE_LIMIT_MS) throw new Error("Please wait a moment before making another AI request.");
   _lastAiCall = now;
+  const provider = state.settings.aiProvider || "anthropic";
   const sys = systemPrompt + userContextBlock();
-  if (state.settings.aiProvider === "anthropic") return callAnthropic(sys, userPrompt, opts);
+
+  // 1) Prefer server proxy if available (no client key needed — uses Claude Max-grade quota of the deployer)
+  if (aiHasServerSupport(provider)) {
+    try {
+      return await callServerAI(provider, sys, userPrompt, opts);
+    } catch (e) {
+      // If the server proxy is misconfigured (503) or auth fails, surface a clear error
+      if (e.code === "PROXY_UNAVAILABLE" && state.settings.aiKey) {
+        // Fall through to BYOK
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  // 2) BYOK fallback
+  if (!state.settings.aiKey) {
+    const hint = aiProxy.ready
+      ? "AI isn't connected. Either set an API key in Settings, or ask the deployer to add a server-side key to Vercel."
+      : "Set your API key in Settings first.";
+    throw new Error(hint);
+  }
+  if (provider === "anthropic") return callAnthropic(sys, userPrompt, opts);
+  if (provider === "google")    return callGemini(sys, userPrompt, opts);
   return callOpenAI(sys, userPrompt, opts);
+}
+
+async function callServerAI(provider, systemPrompt, userPrompt, { useWebSearch = false, jsonMode = false, model } = {}) {
+  // Get a fresh access token to authenticate against /api/ai
+  let token = "";
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    token = session?.access_token || "";
+  } catch {}
+  if (!token) {
+    const err = new Error("Sign in expired — refresh and sign in again.");
+    err.code = "PROXY_UNAVAILABLE";
+    throw err;
+  }
+  const res = await fetch("/api/ai", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token,
+      "Accept": "application/json"
+    },
+    body: JSON.stringify({
+      provider, model, system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+      useWebSearch, jsonMode, max_tokens: 2048
+    })
+  });
+  if (res.status === 503) {
+    const err = new Error("Server AI isn't configured.");
+    err.code = "PROXY_UNAVAILABLE";
+    throw err;
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`AI server (${res.status}): ${text.slice(0, 240)}`);
+  }
+  const json = await res.json();
+  return json.text || "";
 }
 
 async function callAnthropic(systemPrompt, userPrompt, { useWebSearch = false, model = "claude-sonnet-4-6" } = {}) {
@@ -2507,6 +3638,26 @@ async function callOpenAI(systemPrompt, userPrompt, { jsonMode = false, model = 
   return (json.choices?.[0]?.message?.content || "").trim();
 }
 
+async function callGemini(systemPrompt, userPrompt, { useWebSearch = false, jsonMode = false, model = "gemini-2.5-flash" } = {}) {
+  const body = {
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+    generationConfig: { maxOutputTokens: 2048, temperature: 0.7 }
+  };
+  if (jsonMode) body.generationConfig.responseMimeType = "application/json";
+  if (useWebSearch) body.tools = [{ google_search: {} }];
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(state.settings.aiKey)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error("Gemini API: " + res.status + " " + (await res.text()).slice(0, 300));
+  const json = await res.json();
+  const parts = json.candidates?.[0]?.content?.parts || [];
+  return parts.map(p => p.text || "").join("\n").trim();
+}
+
 function extractJsonBlock(text) {
   let m = text.match(/```json\s*([\s\S]*?)```/i) || text.match(/```\s*([\s\S]*?)```/i);
   if (m) { try { return JSON.parse(m[1]); } catch (e) {} }
@@ -2515,9 +3666,333 @@ function extractJsonBlock(text) {
   return null;
 }
 
+// ============================================================
+// Heuristic recipe generator — works with no API key.
+// Parses a free-text coffee description ("Onyx Geometry, Ethiopia Hambela,
+// washed, light roast") and produces a sensible starting recipe by looking
+// up origin / process / roast in small knowledge tables. No network calls.
+// Used as a fallback when AI isn't configured, and as a "Quick fill" button.
+// ============================================================
+const ORIGIN_TABLE = [
+  { match: /\b(ethiopia|yirgacheffe|sidama|guji|hambela|gedeb|kochere|aricha|wenago)\b/i, origin: "Ethiopia",
+    impliedRoast: "Light", color: "#3a4f6b", typical: "fruity, florally" },
+  { match: /\b(kenya|nyeri|kiambu|kirinyaga|murang'?a)\b/i, origin: "Kenya",
+    impliedRoast: "Light", color: "#5a3030", typical: "blackcurrant, tomato, juicy" },
+  { match: /\b(colombia|huila|narino|narin~|tolima|antioquia|caldas|chiroso)\b/i, origin: "Colombia",
+    impliedRoast: "Light", color: "#2e5e3e", typical: "balanced, sugary, stone fruit" },
+  { match: /\b(panama|geisha|gesha|boquete|volcan|finca momoto)\b/i, origin: "Panama",
+    impliedRoast: "Light", color: "#1e4d6b", typical: "tropical, jasmine, syrupy" },
+  { match: /\b(costa rica|tarrazu|tarraz)\b/i, origin: "Costa Rica",
+    impliedRoast: "Light", color: "#4a6028", typical: "honey, tropical, clean" },
+  { match: /\b(guatemala|huehuetenango|antigua)\b/i, origin: "Guatemala",
+    impliedRoast: "Medium", color: "#5c4030", typical: "chocolate, caramel, balanced" },
+  { match: /\b(brazil|cerrado|sul de minas|santos|mogiana)\b/i, origin: "Brazil",
+    impliedRoast: "Medium", color: "#4a2a16", typical: "nutty, chocolate, low acid" },
+  { match: /\b(honduras|copan|santa barbara|opalaca)\b/i, origin: "Honduras",
+    impliedRoast: "Medium", color: "#4a2a18", typical: "caramel, soft acidity" },
+  { match: /\b(mexico|chiapas|oaxaca|veracruz|huatusco)\b/i, origin: "Mexico",
+    impliedRoast: "Medium", color: "#5c4a3a", typical: "nutty, mild" },
+  { match: /\b(rwanda|burundi)\b/i, origin: "Rwanda/Burundi",
+    impliedRoast: "Light", color: "#4a3050", typical: "berry, jammy" },
+  { match: /\b(yemen|mocha)\b/i, origin: "Yemen",
+    impliedRoast: "Medium", color: "#4a2820", typical: "wine, dried fruit" },
+  { match: /\b(indonesia|sumatra|java|bali|sulawesi)\b/i, origin: "Indonesia",
+    impliedRoast: "Medium", color: "#3a2818", typical: "earthy, herbal, low acid" }
+];
+
+const PROCESS_TABLE = [
+  { match: /\b(natural(?:ly)?\s*processed?|natural|dry[\s-]?processed)\b/i, process: "Natural",
+    grindAdj: 0.2, tempAdj: -2, ratioAdj: 0.0, notes: "Naturals extract easily — coarser, slightly cooler." },
+  { match: /\b(honey|pulped natural|red honey|yellow honey|black honey|white honey)\b/i, process: "Honey",
+    grindAdj: 0.1, tempAdj: -1, ratioAdj: 0.0, notes: "Honey process sits between washed and natural — start medium." },
+  { match: /\b(washed|fully washed|wet[\s-]?processed)\b/i, process: "Washed",
+    grindAdj: -0.1, tempAdj: 1, ratioAdj: 0.0, notes: "Washed coffees benefit from finer grind and slightly higher temp." },
+  { match: /\b(anaerobic|carbonic|co-?ferment(ed)?|lactic|thermal shock)\b/i, process: "Anaerobic",
+    grindAdj: 0.15, tempAdj: -1, ratioAdj: 0.1, notes: "Funky and intense — coarser, slower extraction shows the ferment best." },
+  { match: /\b(decaf(feinated)?|swiss water|ethyl acetate|ea[\s-]?process|sugarcane decaf)\b/i, process: "Decaf",
+    grindAdj: -0.1, tempAdj: 2, ratioAdj: -0.05, notes: "Decaf beans extract less — finer grind, higher temp, shorter yield." }
+];
+
+const ROAST_TABLE = [
+  { match: /\b(light|filter|omni|light\s*roast|light[\s-]?medium|cinnamon)\b/i, roast: "Light",
+    espressoGrind: 1.3, espressoTemp: 205, ratio: 2.7, totalShot: "38–45s" },
+  { match: /\b(medium\s*roast|city|full city|medium[\s-]?dark)\b/i, roast: "Medium",
+    espressoGrind: 1.6, espressoTemp: 202, ratio: 2.4, totalShot: "30–35s" },
+  { match: /\b(dark|french|italian|espresso\s*roast|dark\s*roast|vienna)\b/i, roast: "Dark",
+    espressoGrind: 1.9, espressoTemp: 198, ratio: 2.0, totalShot: "25–30s" }
+];
+
+function heuristicAnalyze(desc) {
+  const out = {
+    roaster: "",
+    name: "",
+    origin: "",
+    process: "",
+    roast: "",
+    tags: [],
+    color: "#5c4a3a",
+    grindAdj: 0,
+    tempAdj: 0,
+    ratioAdj: 0,
+    processNote: "",
+    confidence: 0
+  };
+  if (!desc) return out;
+
+  // Origin
+  for (const r of ORIGIN_TABLE) {
+    if (r.match.test(desc)) {
+      out.origin = r.origin;
+      out.roast = out.roast || r.impliedRoast;
+      out.color = r.color;
+      out.confidence += 1;
+      break;
+    }
+  }
+  // Process
+  for (const r of PROCESS_TABLE) {
+    if (r.match.test(desc)) {
+      out.process = r.process;
+      out.grindAdj += r.grindAdj;
+      out.tempAdj += r.tempAdj;
+      out.ratioAdj += r.ratioAdj;
+      out.processNote = r.notes;
+      out.confidence += 1;
+      break;
+    }
+  }
+  // Roast (explicit roast wins over implied)
+  for (const r of ROAST_TABLE) {
+    if (r.match.test(desc)) { out.roast = r.roast; out.confidence += 1; break; }
+  }
+  if (!out.roast) out.roast = "Medium";
+
+  // Tags
+  if (out.origin) out.tags.push(out.origin);
+  if (out.process) out.tags.push(out.process);
+  if (out.roast) out.tags.push(`${out.roast} Roast`);
+
+  // Roaster + name guess: split on first comma; treat "Roaster, Coffee Name, ..." pattern
+  const parts = desc.split(/[,—–]/).map(s => s.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    out.roaster = parts[0];
+    out.name = parts[1];
+  } else {
+    out.name = desc.trim().slice(0, 60);
+  }
+  return out;
+}
+
+function heuristicRecipe(desc) {
+  const a = heuristicAnalyze(desc);
+  const roastRow = ROAST_TABLE.find(r => r.roast === a.roast) || ROAST_TABLE[1];
+
+  // Espresso
+  const grind = (roastRow.espressoGrind + a.grindAdj).toFixed(1);
+  const temp = roastRow.espressoTemp + a.tempAdj;
+  const ratio = +(roastRow.ratio + a.ratioAdj).toFixed(2);
+  const yield_ = Math.round(18 * ratio);
+  const espresso = {
+    settings: {
+      "Grind (Acaia Orbit SSP V3)": String(grind),
+      "Brew Temp": `${temp}°F`,
+      "Dose": "18g",
+      "Yield": `${yield_ - 2}–${yield_ + 2}g`,
+      "Pressure": "8 bar",
+      "Preinfusion": "10s @ 2–3 bar",
+      "Total Shot Time": roastRow.totalShot,
+      "Basket": "IMS 18g Precision High-Flow"
+    },
+    notes: [
+      a.origin && `${a.origin}${a.process ? ` (${a.process})` : ""} starting recipe.`,
+      a.processNote
+    ].filter(Boolean).join(" ").trim(),
+    status: "next",
+    statusLabel: "Not Yet Tried"
+  };
+
+  // V60 — finer for darker, coarser for lighter (inverse of espresso convention)
+  const v60Grind = a.roast === "Light" ? "7.0–7.2" : a.roast === "Dark" ? "7.6–7.8" : "7.2–7.4";
+  const v60Temp = a.roast === "Light" ? "95–96°C / 203–205°F" : a.roast === "Dark" ? "92–93°C / 198–199°F" : "94°C / 201°F";
+  const v60 = {
+    settings: {
+      "Grind (Acaia Orbit SSP V3)": v60Grind,
+      "Water Temp": v60Temp,
+      "Dose": "24g",
+      "Water": "400g",
+      "Ratio": "1:16.7 (Hoffmann 60g/L)",
+      "Bloom": "48g / 45s",
+      "Target Drawdown": "3:00–3:45"
+    },
+    notes: a.processNote || "",
+    status: "next",
+    statusLabel: "Not Yet Tried"
+  };
+
+  // AeroPress (inverted)
+  const apGrind = a.roast === "Light" ? "5.5–6.0" : a.roast === "Dark" ? "6.5–7.0" : "6.0–6.5";
+  const apTemp = a.roast === "Light" ? "95°C / 203°F" : a.roast === "Dark" ? "90°C / 194°F" : "92°C / 198°F";
+  const aeropress = {
+    settings: {
+      "Grind (Acaia Orbit SSP V3)": apGrind,
+      "Water Temp": apTemp,
+      "Dose": "18g",
+      "Water": "200g",
+      "Method": "Inverted",
+      "Steep Time": a.process === "Natural" ? "1:30–2:00" : "2:00",
+      "Press Time": "0:30"
+    },
+    notes: a.processNote || "",
+    status: "next",
+    statusLabel: "Not Yet Tried"
+  };
+
+  return {
+    roaster: a.roaster,
+    name: a.name,
+    meta: [a.origin, a.process, `${a.roast} Roast`].filter(Boolean).join(" · "),
+    color: a.color,
+    tags: a.tags,
+    espresso, v60, aeropress,
+    _heuristic: true,
+    _analysis: a
+  };
+}
+
+function applyRecipeToEditor(parsed, opts = {}) {
+  if (parsed.roaster) document.getElementById("ed-roaster").value = parsed.roaster;
+  if (parsed.name)    document.getElementById("ed-name").value = parsed.name;
+  if (parsed.meta)    document.getElementById("ed-meta").value = parsed.meta;
+  if (parsed.color)   document.getElementById("ed-color").value = parsed.color;
+  if (Array.isArray(parsed.tags)) document.getElementById("ed-tags").value = parsed.tags.join(", ");
+  ["espresso", "v60", "aeropress"].forEach(m => {
+    if (parsed[m]) {
+      const cur = state.scratchMethods[m];
+      if (parsed[m].settings) cur.settings = { ...cur.settings, ...parsed[m].settings };
+      if (parsed[m].notes) cur.notes = parsed[m].notes;
+    }
+  });
+  setEditorMethod(state.editorMethod);
+}
+
+// Brewing-tip cards: ephemeral AI tips with a shared server-side cache.
+// Same prompt by another user → served from cache (free, instant).
+function openTipModal() {
+  document.getElementById("tip-input").value = "";
+  document.getElementById("tip-output").innerHTML = "";
+  showModal("tip-modal");
+  setTimeout(() => document.getElementById("tip-input").focus(), 80);
+}
+
+async function askBrewingTip(question) {
+  const input = document.getElementById("tip-input");
+  const out = document.getElementById("tip-output");
+  const q = (question || input.value || "").trim();
+  if (!q) { toast("Type a question, or pick a preset.", "error"); return; }
+  if (q.length > 600) { toast("Keep tip questions under 600 chars.", "error"); return; }
+
+  const askBtn = document.getElementById("tip-ask-btn");
+  if (askBtn) { askBtn.disabled = true; askBtn.textContent = "Thinking…"; }
+  out.innerHTML = `<div class="tip-card">${COFFEE_SPINNER}Brewing your tip…</div>`;
+
+  // System prompt is intentionally generic so cache hits can be shared across users.
+  const systemPrompt = "You are a friendly home-barista expert. Answer the user's brewing question in 80–140 words. Plain prose, no lists unless the question demands one. No user-specific assumptions — keep advice generally applicable. Mention the specific lever to change first if there is one.";
+
+  // Provider preference: anthropic if available, else google, else openai. Match the
+  // current AI provider setting by default though.
+  const provider = state.settings.aiProvider || "anthropic";
+
+  try {
+    let result;
+    if (aiHasServerSupport(provider)) {
+      // Server proxy with caching enabled (mode: "tip")
+      result = await callServerTipAI(provider, systemPrompt, q);
+    } else if (state.settings.aiKey) {
+      // BYOK fallback — no shared cache (each user pays for their own call)
+      let text;
+      if (provider === "anthropic") text = await callAnthropic(systemPrompt, q);
+      else if (provider === "google") text = await callGemini(systemPrompt, q);
+      else text = await callOpenAI(systemPrompt, q);
+      result = { text, cached: false, provider };
+    } else {
+      out.innerHTML = `<div class="tip-card">AI isn't connected yet. Set <code>GEMINI_API_KEY</code> in Vercel (free tier) or paste a personal key in Settings to start asking tips.</div>`;
+      return;
+    }
+    renderTipCard(out, q, result);
+  } catch (e) {
+    out.innerHTML = `<div class="tip-card"><strong>Couldn't fetch a tip:</strong> ${escapeHtml(e.message || String(e))}</div>`;
+  } finally {
+    if (askBtn) { askBtn.disabled = false; askBtn.textContent = "Ask"; }
+  }
+}
+
+async function callServerTipAI(provider, systemPrompt, userPrompt) {
+  let token = "";
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    token = session?.access_token || "";
+  } catch {}
+  if (!token) throw new Error("Sign in expired — refresh and sign in again.");
+  const res = await fetch("/api/ai", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token,
+      "Accept": "application/json"
+    },
+    body: JSON.stringify({
+      provider, system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+      mode: "tip", max_tokens: 600
+    })
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`AI server (${res.status}): ${text.slice(0, 200)}`);
+  }
+  return await res.json();
+}
+
+function renderTipCard(container, question, result) {
+  const safe = escapeHtml(result.text || "(no answer)");
+  const cachedBadge = result.cached
+    ? `<span class="tip-cached-badge">cached</span><span>Served from cache — saved an AI call.</span>`
+    : `<span>Fresh from ${escapeHtml(result.provider || "AI")} · cached now for next person who asks.</span>`;
+  container.innerHTML = `
+    <div class="tip-card">${safe}<div class="tip-card-meta">${cachedBadge}</div></div>
+  `;
+}
+
+async function aiQuickFill() {
+  const desc = document.getElementById("ai-create-input").value.trim();
+  const out = document.getElementById("ai-create-output");
+  if (!desc) { toast("Tell me about the coffee first.", "error"); return; }
+  out.classList.remove("empty");
+  const recipe = heuristicRecipe(desc);
+  applyRecipeToEditor(recipe);
+  const detected = [
+    recipe._analysis.origin && `<strong>${escapeHtml(recipe._analysis.origin)}</strong>`,
+    recipe._analysis.process && `<strong>${escapeHtml(recipe._analysis.process)}</strong>`,
+    recipe._analysis.roast && `<strong>${escapeHtml(recipe._analysis.roast + " roast")}</strong>`
+  ].filter(Boolean).join(" · ");
+  out.innerHTML = detected
+    ? `<strong>Quick fill (no AI):</strong> detected ${detected}. Adjust below.`
+    : "<strong>Quick fill (no AI):</strong> couldn't parse origin/process/roast — generic medium-roast starter applied. Edit below.";
+}
+
 async function aiGenerateNew() { await aiCreate(false); }
 async function aiLookupOnline() {
-  if (state.settings.aiProvider !== "anthropic") { toast("Online lookup needs Anthropic.", "error"); return; }
+  // Web search is supported by Anthropic (web_search tool) and Google (google_search grounding) — not OpenAI.
+  const provider = state.settings.aiProvider;
+  if (provider !== "anthropic" && provider !== "google") {
+    toast("Online lookup needs Anthropic or Google. Switch provider in Settings.", "error");
+    return;
+  }
+  if (!aiHasServerSupport(provider) && !state.settings.aiKey) {
+    const which = provider === "google" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY";
+    toast(`Online lookup needs an API key. Add yours in Settings, or set ${which} in Vercel.`, "error");
+    return;
+  }
   await aiCreate(true);
 }
 
@@ -2526,6 +4001,13 @@ async function aiCreate(useWebSearch) {
   if (!desc) { toast("Tell me about the coffee first.", "error"); return; }
   const out = document.getElementById("ai-create-output");
   out.classList.remove("empty");
+  // If no AI is connected at all, fall straight back to the heuristic.
+  const provider = state.settings.aiProvider || "anthropic";
+  if (!aiHasServerSupport(provider) && !state.settings.aiKey) {
+    aiQuickFill();
+    out.innerHTML = (out.innerHTML || "") + `<br /><span style="color:#8a7560">Connect AI in Settings for tailored recipes (Gemini's free tier covers it).</span>`;
+    return;
+  }
   out.innerHTML = `${COFFEE_SPINNER}${useWebSearch ? "Searching the web..." : "Generating recipe..."}`;
   const prefs = state.data.preferences || "(none provided)";
   const sys = `You are a coffee expert. USER PREFERENCES:\n${prefs}\n\nEQUIPMENT:\n- Espresso: Acaia Orbit + SSP Lab Sweet V3 burrs (numeric grind, e.g. 1.3). 18g IMS High-Flow basket.\n- V60: Hoffmann method, 1:16.7 ratio.\n- AeroPress: inverted.\n\nReturn ONLY valid JSON in this exact shape, no prose:\n{\n  "roaster": "...", "name": "...", "meta": "process · origin · altitude", "color": "#hex", "tags": ["..."],\n  "espresso": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Brew Temp": "...°F", "Dose": "18g", "Yield": "...", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "...s", "Basket": "IMS 18g Precision High-Flow"}, "notes": "..."},\n  "v60": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Water Temp": "...", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "..."}, "notes": "..."},\n  "aeropress": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Water Temp": "...", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "...", "Press Time": "0:30"}, "notes": "..."}\n}`;
@@ -2536,21 +4018,16 @@ async function aiCreate(useWebSearch) {
     const text = await callAI(sys, user, { useWebSearch });
     const parsed = extractJsonBlock(text);
     if (!parsed) { out.innerHTML = "<strong>Couldn't parse JSON:</strong>\n\n" + escapeHtml(text); return; }
-    if (parsed.roaster) document.getElementById("ed-roaster").value = parsed.roaster;
-    if (parsed.name) document.getElementById("ed-name").value = parsed.name;
-    if (parsed.meta) document.getElementById("ed-meta").value = parsed.meta;
-    if (parsed.color) document.getElementById("ed-color").value = parsed.color;
-    if (Array.isArray(parsed.tags)) document.getElementById("ed-tags").value = parsed.tags.join(", ");
-    ["espresso","v60","aeropress"].forEach(m => {
-      if (parsed[m]) {
-        const cur = state.scratchMethods[m];
-        if (parsed[m].settings) cur.settings = { ...cur.settings, ...parsed[m].settings };
-        if (parsed[m].notes) cur.notes = parsed[m].notes;
-      }
-    });
-    setEditorMethod(state.editorMethod);
+    applyRecipeToEditor(parsed);
     out.innerHTML = "<strong>Generated.</strong> Review the form below, adjust, and save.";
-  } catch (e) { out.innerHTML = "<strong>Error:</strong> " + escapeHtml(e.message); }
+  } catch (e) {
+    // If AI fails (rate limit, network, missing key), fall back to the heuristic so the user isn't stuck.
+    console.warn("[aiCreate] falling back to heuristic:", e);
+    aiQuickFill();
+    const original = document.getElementById("ai-create-output").innerHTML;
+    document.getElementById("ai-create-output").innerHTML = original +
+      `<br /><span style="color:#8a4f1c">AI call failed (${escapeHtml(e.message)}) — used the heuristic instead.</span>`;
+  }
 }
 
 function openAiModal(id) {
@@ -2748,19 +4225,73 @@ function toast(msg, kind = "") {
 }
 
 function bindEvents() {
-  // Login
-  document.querySelectorAll(".login-tab").forEach(t => t.addEventListener("click", () => setLoginMode(t.dataset.mode)));
+  // Login — main substep
+  document.querySelectorAll(".login-tab").forEach(t => {
+    t.addEventListener("click", () => setLoginMode(t.dataset.mode));
+    t.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLoginMode(t.dataset.mode); }
+    });
+  });
   document.getElementById("login-submit").addEventListener("click", handleLoginSubmit);
   document.getElementById("login-magic").addEventListener("click", handleMagicLink);
   document.getElementById("login-google").addEventListener("click", handleGoogleLogin);
   document.getElementById("login-password").addEventListener("keydown", e => { if (e.key === "Enter") handleLoginSubmit(); });
   document.getElementById("login-email").addEventListener("keydown", e => { if (e.key === "Enter") handleLoginSubmit(); });
 
+  // Forgot-password substep
+  const forgotBtn = document.getElementById("login-forgot");
+  if (forgotBtn) {
+    forgotBtn.addEventListener("click", showForgotPassword);
+    forgotBtn.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); showForgotPassword(); } });
+  }
+  const resetBack = document.getElementById("login-reset-back");
+  if (resetBack) {
+    resetBack.addEventListener("click", () => setLoginSubstep("main"));
+    resetBack.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLoginSubstep("main"); } });
+  }
+  const resetSubmit = document.getElementById("login-reset-submit");
+  if (resetSubmit) resetSubmit.addEventListener("click", handlePasswordReset);
+  const resetEmail = document.getElementById("login-reset-email");
+  if (resetEmail) resetEmail.addEventListener("keydown", e => { if (e.key === "Enter") handlePasswordReset(); });
+
+  // Recovery substep (set new password)
+  const recoverySubmit = document.getElementById("login-recovery-submit");
+  if (recoverySubmit) recoverySubmit.addEventListener("click", handleSetNewPassword);
+  const recovery1 = document.getElementById("login-recovery-password");
+  const recovery2 = document.getElementById("login-recovery-password2");
+  if (recovery1) recovery1.addEventListener("keydown", e => { if (e.key === "Enter") handleSetNewPassword(); });
+  if (recovery2) recovery2.addEventListener("keydown", e => { if (e.key === "Enter") handleSetNewPassword(); });
+
+  // Guest sign-in — Supabase anonymous auth, with local-demo fallback
+  const demoBtn = document.getElementById("login-demo");
+  if (demoBtn) demoBtn.addEventListener("click", continueAsGuest);
+  const demoExit = document.getElementById("demo-exit");
+  if (demoExit) demoExit.addEventListener("click", exitDemoMode);
+
+  window.addEventListener("resize", () => positionLoginPill());
+
   // App
   document.querySelectorAll(".tabs .tab").forEach(tab => tab.addEventListener("click", () => render(tab.dataset.method)));
   document.getElementById("search-input").addEventListener("input", (e) => { state.searchTerm = e.target.value; render(state.activeMethod); });
   document.getElementById("settings-btn").addEventListener("click", openSettingsModal);
   document.getElementById("add-btn").addEventListener("click", openAddModal);
+  const tipBtn = document.getElementById("tip-btn");
+  if (tipBtn) tipBtn.addEventListener("click", openTipModal);
+  document.querySelectorAll(".tip-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const q = chip.dataset.q || chip.textContent.trim();
+      document.getElementById("tip-input").value = q;
+      askBrewingTip(q);
+    });
+  });
+  // Refresh AI status card when provider changes inside settings
+  const aiProviderEl = document.getElementById("ai-provider");
+  if (aiProviderEl) aiProviderEl.addEventListener("change", () => refreshAiStatusCard());
+  const aiKeyEl = document.getElementById("ai-key");
+  if (aiKeyEl) aiKeyEl.addEventListener("input", () => {
+    state.settings.aiKey = aiKeyEl.value.trim();
+    refreshAiStatusCard();
+  });
   document.querySelectorAll(".editor-tab").forEach(t => t.addEventListener("click", () => setEditorMethod(t.dataset.method)));
   document.querySelectorAll(".modal-backdrop").forEach(bd => bd.addEventListener("click", e => { if (e.target === bd) bd.classList.add("hidden"); }));
   document.addEventListener("keydown", e => { if (e.key === "Escape") {
@@ -2791,6 +4322,9 @@ window.runAiExplain = runAiExplain;
 window.applyAiSuggestion = applyAiSuggestion;
 window.aiGenerateNew = aiGenerateNew;
 window.aiLookupOnline = aiLookupOnline;
+window.aiQuickFill = aiQuickFill;
+window.askBrewingTip = askBrewingTip;
+window.openTipModal = openTipModal;
 window.addSettingRow = addSettingRow;
 window.deleteSettingRow = deleteSettingRow;
 window.saveCoffee = saveCoffee;
