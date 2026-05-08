@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, MethodIcon } from "./Icons.jsx";
-import { BREW_METHODS, adjustRecipe, recommend, resolveGrinder, dialWarning, grinderCapability, snapClicks, formatClicks, quantize, ageSummary, ageAdjustment, effectiveAgeDays } from "../lib/data.js";
+import { BREW_METHODS, adjustRecipe, recommend, resolveGrinder, dialWarning, grinderCapability, snapClicks, formatClicks, quantize, ageSummary, ageAdjustment, effectiveAgeDays, methodTempRange } from "../lib/data.js";
 
 function parseStepTime(s) {
   if (!s) return [null, null];
@@ -18,18 +18,34 @@ function parseStepTime(s) {
 }
 function fmtTime(sec) {
   if (sec < 0) sec = 0;
+  // ≥ 1 hour: render H:MM:SS so cold brew's 16:00:00 doesn't collapse to
+  // a confusing "960:00" minutes-and-seconds reading.
+  if (sec >= 3600) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = Math.floor(sec % 60);
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function BrewTimer({ steps: allSteps }) {
+function BrewTimer({ steps: allSteps, beanName, methodName }) {
   const prepSteps = allSteps.filter((s) => s.prep);
   const steps = allSteps.filter((s) => !s.prep);
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [notify, setNotify] = useState(() => {
+    try { return localStorage.getItem("crema-timer-notify") === "1"; } catch { return false; }
+  });
+  const [permState, setPermState] = useState(
+    typeof Notification !== "undefined" ? Notification.permission : "default"
+  );
   const startedAt = useRef(null);
   const accumRef = useRef(0);
+  const firedRef = useRef(false);
+  const audioCtxRef = useRef(null);
 
   useEffect(() => {
     let id;
@@ -42,16 +58,6 @@ function BrewTimer({ steps: allSteps }) {
     return () => clearInterval(id);
   }, [running]);
 
-  const start = () => { if (!running) setRunning(true); };
-  const pause = () => {
-    if (running) {
-      accumRef.current += (Date.now() - startedAt.current) / 1000;
-      setRunning(false);
-      setElapsed(accumRef.current);
-    }
-  };
-  const reset = () => { setRunning(false); accumRef.current = 0; setElapsed(0); };
-
   const ranges = steps.map((s) => parseStepTime(s.time));
   const activeIdx = ranges.findIndex(([a, b], i) => {
     if (a == null) return false;
@@ -60,6 +66,103 @@ function BrewTimer({ steps: allSteps }) {
     return elapsed >= a && elapsed < upper;
   });
   const totalEnd = ranges.reduce((acc, [a, b]) => Math.max(acc, b ?? a ?? 0), 0);
+
+  // Fire the brew-done notification + sound + vibration the moment elapsed
+  // crosses the target end. firedRef prevents repeated firing (effect runs
+  // every interval tick). Reset / pause clears the flag.
+  useEffect(() => {
+    if (!running || firedRef.current || totalEnd <= 0) return;
+    if (elapsed >= totalEnd) {
+      firedRef.current = true;
+      if (notify && typeof Notification !== "undefined" && Notification.permission === "granted") {
+        try {
+          const n = new Notification("Brew done — pull it off", {
+            body: `${methodName || "Your brew"}${beanName ? " · " + beanName : ""} hit the target time.`,
+            icon: "/favicon.ico",
+            tag: "crema-brew-done",
+            silent: false,
+          });
+          n.onclick = () => { window.focus(); n.close(); };
+        } catch {}
+      }
+      // Soft beep — one tone, short. Browsers without WebAudio just skip it.
+      try {
+        if (!audioCtxRef.current) {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          if (Ctx) audioCtxRef.current = new Ctx();
+        }
+        const ctx = audioCtxRef.current;
+        if (ctx) {
+          if (ctx.state === "suspended") ctx.resume();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = 880;
+          osc.connect(gain); gain.connect(ctx.destination);
+          gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.32, ctx.currentTime + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.7);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.75);
+        }
+      } catch {}
+      // Vibration is Android-only (no iOS support).
+      try { if (navigator.vibrate) navigator.vibrate([180, 80, 180]); } catch {}
+    }
+  }, [elapsed, running, totalEnd, notify, methodName, beanName]);
+
+  const start = async () => {
+    if (running) return;
+    firedRef.current = false;
+    // Ask for notification permission lazily — only when the user opts in.
+    if (notify && typeof Notification !== "undefined" && Notification.permission === "default") {
+      try {
+        const next = await Notification.requestPermission();
+        setPermState(next);
+      } catch {}
+    }
+    // Pre-create AudioContext on the same gesture so iOS will allow audio.
+    try {
+      if (!audioCtxRef.current) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) audioCtxRef.current = new Ctx();
+      }
+      if (audioCtxRef.current?.state === "suspended") audioCtxRef.current.resume();
+    } catch {}
+    setRunning(true);
+  };
+  const pause = () => {
+    if (!running) return;
+    accumRef.current += (Date.now() - startedAt.current) / 1000;
+    setRunning(false);
+    setElapsed(accumRef.current);
+  };
+  const reset = () => {
+    setRunning(false);
+    accumRef.current = 0;
+    setElapsed(0);
+    firedRef.current = false;
+  };
+
+  const toggleNotify = async () => {
+    const next = !notify;
+    setNotify(next);
+    try { localStorage.setItem("crema-timer-notify", next ? "1" : "0"); } catch {}
+    if (next && typeof Notification !== "undefined" && Notification.permission === "default") {
+      try {
+        const p = await Notification.requestPermission();
+        setPermState(p);
+      } catch {}
+    }
+  };
+
+  const notifyHint = (() => {
+    if (typeof Notification === "undefined") return "Notifications not supported on this browser.";
+    if (permState === "denied") return "Notifications were blocked — re-enable in site settings.";
+    if (permState === "granted" && notify) return "You'll get a buzz + ping when the timer hits the target.";
+    if (notify) return "Notifications will be requested when you start the timer.";
+    return "Toggle on to get a notification + buzz when the timer ends.";
+  })();
 
   return (
     <div className="timer">
@@ -92,6 +195,10 @@ function BrewTimer({ steps: allSteps }) {
           <button className="btn btn-ghost btn-sm" onClick={pause}>Pause</button>
         )}
         <button className="btn btn-ghost btn-sm" onClick={reset} disabled={elapsed === 0 && !running}>Reset</button>
+        <label className="timer-notify-toggle" title={notifyHint}>
+          <input type="checkbox" checked={notify} onChange={toggleNotify} disabled={typeof Notification === "undefined" || permState === "denied"} />
+          <span>Notify me</span>
+        </label>
       </div>
       <BrewSteps steps={steps} ranges={ranges} activeIdx={running || elapsed > 0 ? activeIdx : -1} elapsed={elapsed} />
     </div>
@@ -131,6 +238,7 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
   // Comandante).
   const grinder = useMemo(() => resolveGrinder(gear), [gear?.grinder, gear?.grinderCustom]);
   const capabilityWarning = grinderCapability(grinder, method);
+  const tempRange = methodTempRange(method);
 
   // Translate the recipe's "22 clicks" baseline (which is on the Comandante
   // 6–36 scale) into this grinder's scale by mapping the relative position.
@@ -240,7 +348,7 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
     }
   };
   const applyAi = () => {
-    if (aiResult?.tempC) setTemp(Math.max(80, Math.min(99, Math.round(aiResult.tempC))));
+    if (aiResult?.tempC) setTemp(Math.max(tempRange.min, Math.min(tempRange.max, Math.round(aiResult.tempC))));
     if (aiResult?.clicks != null) {
       setClicks(snapClicks(grinder, parseFloat(aiResult.clicks)));
     }
@@ -345,17 +453,26 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
               <span className="readout">{temp}<small>°C</small></span>
             </div>
             <div className="slider-wrap">
-              <input type="range" min="80" max="99" step="1" value={temp} onChange={(e) => setTemp(parseInt(e.target.value, 10))} className="slider slider-temp" style={{ "--p": ((temp - 80) / 19) * 100 + "%" }} />
-              {lastTemp != null && lastTemp !== temp && (
+              <input
+                type="range"
+                min={tempRange.min}
+                max={tempRange.max}
+                step={tempRange.step}
+                value={Math.max(tempRange.min, Math.min(tempRange.max, temp))}
+                onChange={(e) => setTemp(parseInt(e.target.value, 10))}
+                className="slider slider-temp"
+                style={{ "--p": (((Math.max(tempRange.min, Math.min(tempRange.max, temp)) - tempRange.min) / (tempRange.max - tempRange.min)) * 100) + "%" }}
+              />
+              {lastTemp != null && lastTemp !== temp && lastTemp >= tempRange.min && lastTemp <= tempRange.max && (
                 <span
                   className="slider-ghost"
-                  style={{ left: `${((lastTemp - 80) / 19) * 100}%` }}
+                  style={{ left: `${((lastTemp - tempRange.min) / (tempRange.max - tempRange.min)) * 100}%` }}
                   title={`Last brew: ${lastTemp}°C — click to restore`}
                   onClick={() => setTemp(lastTemp)}
                 />
               )}
             </div>
-            <div className="dial-scale"><span>80°</span><span>89°</span><span>99°</span></div>
+            <div className="dial-scale"><span>{tempRange.min}°</span><span>{tempRange.mid}°</span><span>{tempRange.max}°</span></div>
             {lastTemp != null && lastTemp !== temp && (
               <button className="last-brew-pill" onClick={() => setTemp(lastTemp)}>
                 Last brew · <strong>{lastTemp}°C</strong> · tap to restore
@@ -398,7 +515,7 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
           {warning && <div className="dial-warn">{warning}</div>}
         </div>
 
-        <BrewTimer steps={method.steps} key={method.id} />
+        <BrewTimer steps={method.steps} beanName={coffee.name} methodName={method.name} key={method.id} />
 
         <div className="brewnote">
           <div className="brewnote-head">

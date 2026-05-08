@@ -423,12 +423,16 @@ export function snapClicks(grinder, value) {
 }
 
 // Format a click value for display using the grinder's precision.
+// Defensive: re-quantize before formatting in case the value sneaked in
+// already-ghosted (e.g. an old saved brew note from before snapClicks
+// landed in localStorage). value.toFixed(n) on a binary-ghost number
+// rounds to the right n decimals, so this is belt-and-suspenders safe.
 export function formatClicks(grinder, value) {
   if (!Number.isFinite(value)) return "—";
   if (grinder.step >= 1) return String(Math.round(value));
   const stepStr = String(grinder.step);
   const decimals = stepStr.includes(".") ? stepStr.split(".")[1].length : 0;
-  return value.toFixed(decimals);
+  return Number(value).toFixed(decimals);
 }
 
 // What range of fineness (0..1, 0=finest) is sane for each method.
@@ -452,6 +456,15 @@ export const METHOD_TEMP_BAND = {
   french:   [88, 96],
   cold:     [4,  25],
 };
+
+// Temperature dial range. Cold brew uses a fridge/room range (0–30°C);
+// everything else uses the standard hot-brew range (80–99°C). The slider
+// uses these to size its scale per method, so users can actually move
+// the dial to where it makes sense for cold brew.
+export function methodTempRange(method) {
+  if (method?.id === "cold") return { min: 0, max: 30, mid: 15, step: 1 };
+  return { min: 80, max: 99, mid: 89, step: 1 };
+}
 
 // Returns null if the dial is sane, otherwise a short human-readable warning
 // explaining the suspected mismatch.
