@@ -687,6 +687,118 @@
   .compare-link:hover strong { text-decoration-color: var(--accent); }
 
   .no-results { text-align: center; padding: 40px 20px; color: #8a7560; font-size: 14px; font-weight: 500; }
+  .no-results-hint { display: block; font-size: 12px; font-weight: 500; color: #aa8a60; margin-top: 4px; }
+  .no-results-hint kbd {
+    display: inline-block; padding: 1px 6px;
+    background: rgba(40,18,4,0.08); border: 1px solid rgba(40,18,4,0.18);
+    border-radius: 4px; font: inherit; font-size: 11px; font-weight: 600;
+    color: var(--ink);
+  }
+
+  /* "Search online" card — appears when user presses Enter and no local coffee matches.
+     Same glass aesthetic as everything else, with status messages that animate as the
+     AI works through web search → parsing → tailoring. */
+  .search-online-card {
+    margin-top: 18px;
+    padding: 28px 26px;
+    background: rgba(255, 252, 245, 0.92);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid rgba(255, 250, 240, 0.55);
+    border-radius: 16px;
+    box-shadow: 0 12px 36px rgba(40, 18, 4, 0.22), 0 1px 2px rgba(40, 18, 4, 0.10);
+    animation: socIn 0.45s var(--ease-out);
+    overflow: hidden;
+    position: relative;
+  }
+  .search-online-card.hidden { display: none; }
+  @keyframes socIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* Top-edge progress shimmer while searching */
+  .search-online-card.is-searching::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    background-size: 30% 100%;
+    animation: socShimmer 1.6s linear infinite;
+  }
+  @keyframes socShimmer {
+    0%   { background-position: -50% 0; }
+    100% { background-position: 150% 0; }
+  }
+
+  .soc-row { display: flex; align-items: center; gap: 18px; }
+  .soc-spinner { flex-shrink: 0; width: 56px; display: flex; justify-content: center; }
+  .soc-spinner .coffee-drip { width: 28px; height: 60px; }
+  .soc-text { flex: 1; min-width: 0; }
+  .soc-title {
+    font-size: 16px; font-weight: 700; letter-spacing: -0.01em;
+    color: var(--ink); margin-bottom: 4px;
+  }
+  .soc-status {
+    font-size: 13px; color: #6b5840; line-height: 1.5;
+    transition: opacity 0.3s var(--ease-out);
+    min-height: 1.4em;
+  }
+  .soc-status.is-fading { opacity: 0; }
+
+  .soc-found-roaster {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.18em;
+    color: var(--accent-deep); font-weight: 700; margin-bottom: 6px;
+  }
+  .soc-found-name {
+    font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink);
+    margin-bottom: 6px; line-height: 1.2;
+  }
+  .soc-found-meta { font-size: 13px; color: #6b5840; }
+
+  .soc-divider {
+    height: 1px; background: rgba(40,18,4,0.08);
+    margin: 16px -26px;
+  }
+
+  .soc-recipe-preview {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    font-size: 12px; color: #4a3625;
+  }
+  .soc-recipe-preview h4 {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--accent-deep); margin-bottom: 6px;
+  }
+  .soc-recipe-preview .soc-rec-row {
+    display: flex; justify-content: space-between; gap: 8px;
+    padding: 4px 0; border-bottom: 1px solid rgba(40,18,4,0.06);
+  }
+  .soc-recipe-preview .soc-rec-row:last-child { border-bottom: 0; }
+  .soc-recipe-preview .soc-rec-key { color: #8a7560; }
+  .soc-recipe-preview .soc-rec-val { color: var(--ink); font-weight: 600; text-align: right; }
+
+  .soc-actions {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;
+    align-items: center;
+  }
+  .soc-actions .soc-spacer { flex: 1; }
+  .soc-error-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(181, 64, 64, 0.12); color: #b54040;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 18px; font-weight: 700;
+  }
+  .soc-success-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(45, 122, 61, 0.16); color: #2d7a3d;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    animation: socCheckIn 0.5s var(--ease-spring);
+  }
+  .soc-success-icon svg { width: 20px; height: 20px; }
+  @keyframes socCheckIn {
+    from { transform: scale(0.4) rotate(-12deg); opacity: 0; }
+    to   { transform: scale(1) rotate(0); opacity: 1; }
+  }
   .empty-state {
     text-align: center; padding: 64px 24px;
     background: rgba(255, 252, 245, 0.85);
@@ -1452,7 +1564,8 @@
 </div>
 
 <div class="grid" id="cards-grid"></div>
-<div class="no-results" id="no-results" style="display:none;">No coffees match your search.</div>
+<div class="search-online-card hidden" id="search-online-card" aria-live="polite"></div>
+<div class="no-results" id="no-results" style="display:none;">No coffees match your search. <span class="no-results-hint">Press <kbd>Enter</kbd> to look online.</span></div>
 <div class="empty-state" id="empty-state" style="display:none;">
   <p style="margin-bottom:14px; font-size: 14px; color:#666;">Welcome! Your tracker is empty.</p>
   <div class="ai-actions">
@@ -3989,6 +4102,288 @@ function renderTipCard(container, question, result) {
   `;
 }
 
+// ============================================================
+// Search-bar online lookup: Enter on a no-match query → AI web-search +
+// recipe preview card with Save/Discard actions.
+// ============================================================
+let _searchOnlineCtrl = null;
+let _searchOnlineCycler = null;
+const SOC_STATUS_CYCLE = [
+  "Hunting roaster profile and origin…",
+  "Reading processing notes and altitude…",
+  "Tailoring espresso, V60, and AeroPress to your taste…",
+  "Almost there…"
+];
+
+async function handleSearchEnter() {
+  const q = (state.searchTerm || "").trim();
+  if (q.length < 2) return;
+  // If local matches exist, just scroll to the first one
+  const matches = state.data.coffees.filter(matchesSearch);
+  if (matches.length > 0) {
+    scrollToCard(matches[0].id);
+    return;
+  }
+  // Otherwise — kick off an online search
+  await aiSearchOnline(q);
+}
+
+async function aiSearchOnline(query) {
+  // Cancel any in-flight search
+  if (_searchOnlineCtrl) _searchOnlineCtrl.abort();
+  if (_searchOnlineCycler) clearInterval(_searchOnlineCycler);
+  _searchOnlineCtrl = new AbortController();
+
+  // Verify a web-search-capable provider is available (server or BYOK)
+  const preferred = state.settings.aiProvider || "google";
+  const serverProvider = pickServerProvider(preferred, { useWebSearch: true });
+  const byokProvider = (preferred === "anthropic" || preferred === "google") && state.settings.aiKey ? preferred : null;
+  if (!serverProvider && !byokProvider) {
+    state.searchOnlineState = {
+      active: true, query, status: "error",
+      error: "Online search needs Anthropic or Gemini AI. Set GEMINI_API_KEY (free) in Vercel, or paste a personal key in Settings."
+    };
+    renderSearchOnlineCard();
+    return;
+  }
+
+  state.searchOnlineState = { active: true, query, status: "searching", recipe: null, error: null, statusIdx: 0 };
+  renderSearchOnlineCard();
+
+  // Cycle through reassuring status messages while we wait
+  _searchOnlineCycler = setInterval(() => {
+    if (!state.searchOnlineState || state.searchOnlineState.status !== "searching") return;
+    state.searchOnlineState.statusIdx = (state.searchOnlineState.statusIdx + 1) % SOC_STATUS_CYCLE.length;
+    const sub = document.getElementById("soc-status");
+    if (sub) {
+      sub.classList.add("is-fading");
+      setTimeout(() => {
+        sub.textContent = SOC_STATUS_CYCLE[state.searchOnlineState.statusIdx];
+        sub.classList.remove("is-fading");
+      }, 250);
+    }
+  }, 2400);
+
+  // Build prompt — reuse the same JSON shape as aiCreate so we get a full recipe back
+  const prefs = state.data.preferences || "(none provided)";
+  const sys = `You are a coffee expert. USER PREFERENCES:\n${prefs}\n\nEQUIPMENT:\n- Espresso: Acaia Orbit + SSP Lab Sweet V3 burrs (numeric grind, e.g. 1.3). 18g IMS High-Flow basket.\n- V60: Hoffmann method, 1:16.7 ratio.\n- AeroPress: inverted.\n\nReturn ONLY valid JSON in this exact shape, no prose:\n{\n  "roaster": "...", "name": "...", "meta": "process · origin · altitude", "color": "#hex", "tags": ["..."],\n  "espresso": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Brew Temp": "...°F", "Dose": "18g", "Yield": "...", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "...s", "Basket": "IMS 18g Precision High-Flow"}, "notes": "..."},\n  "v60": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Water Temp": "...", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "..."}, "notes": "..."},\n  "aeropress": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Water Temp": "...", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "...", "Press Time": "0:30"}, "notes": "..."}\n}`;
+  const user = `Find this coffee online and return a recipe tailored to my preferences:\n\n${query}\n\nUse web_search for the coffee's origin, process, altitude, varietal, roaster recommendations. Then return the JSON.`;
+
+  try {
+    const text = await callAI(sys, user, { useWebSearch: true });
+    if (!state.searchOnlineState || state.searchOnlineState.query !== query) return; // user navigated away / cancelled
+    const parsed = extractJsonBlock(text);
+    if (!parsed) {
+      state.searchOnlineState.status = "error";
+      state.searchOnlineState.error = "Got a reply but couldn't parse it as a recipe. Try adding manually.";
+      renderSearchOnlineCard();
+      return;
+    }
+    // Auto-save — the recipe goes straight into the user's collection. No confirm step.
+    state.searchOnlineState.status = "saving";
+    state.searchOnlineState.recipe = parsed;
+    renderSearchOnlineCard();
+    await autoSaveSearchedCoffee();
+  } catch (e) {
+    if (!state.searchOnlineState) return;
+    state.searchOnlineState.status = "error";
+    state.searchOnlineState.error = e.message || String(e);
+    renderSearchOnlineCard();
+  } finally {
+    if (_searchOnlineCycler) { clearInterval(_searchOnlineCycler); _searchOnlineCycler = null; }
+  }
+}
+
+async function autoSaveSearchedCoffee() {
+  const s = state.searchOnlineState;
+  if (!s?.recipe) return;
+  const r = s.recipe;
+  const name = (r.name || s.query).slice(0, 120);
+  const c = {
+    slug: slugify(name) + "-" + Math.random().toString(36).slice(2, 6),
+    roaster: r.roaster || "",
+    name,
+    meta: r.meta || "",
+    color: sanitizeColor(r.color || "#5c4a3a"),
+    tags: Array.isArray(r.tags) ? r.tags : [],
+    espresso: r.espresso && r.espresso.settings ? { ...r.espresso, status: "next", statusLabel: "Not Yet Tried" } : blankMethod("espresso"),
+    v60: r.v60 && r.v60.settings ? { ...r.v60, status: "next", statusLabel: "Not Yet Tried" } : blankMethod("v60"),
+    aeropress: r.aeropress && r.aeropress.settings ? { ...r.aeropress, status: "next", statusLabel: "Not Yet Tried" } : blankMethod("aeropress"),
+    position: state.data.coffees.length
+  };
+  try {
+    const saved = await upsertCoffee(c);
+    state.data.coffees.push(saved);
+    state._freshCardId = saved.id;
+    state.searchOnlineState.status = "saved";
+    state.searchOnlineState.savedId = saved.id;
+    state.searchOnlineState.savedName = name;
+    renderSearchOnlineCard();
+    // Clear the search and re-render so the new coffee appears in the grid with the fresh-pour animation
+    state.searchTerm = "";
+    document.getElementById("search-input").value = "";
+    render(state.activeMethod);
+    // Re-render the search card on top (render() resets visibility, but our state is preserved)
+    renderSearchOnlineCard();
+    setTimeout(() => scrollToCard(saved.id), 250);
+    // Auto-dismiss the "✓ Added" card after a moment so it doesn't linger
+    setTimeout(() => {
+      if (state.searchOnlineState?.status === "saved") {
+        state.searchOnlineState = null;
+        renderSearchOnlineCard();
+      }
+    }, 4500);
+  } catch (e) {
+    state.searchOnlineState.status = "error";
+    state.searchOnlineState.error = "Couldn't save: " + (e.message || e);
+    renderSearchOnlineCard();
+  }
+}
+
+function renderSearchOnlineCard() {
+  const card = document.getElementById("search-online-card");
+  const noResults = document.getElementById("no-results");
+  const grid = document.getElementById("cards-grid");
+  const s = state.searchOnlineState;
+  if (!card) return;
+  if (!s || !s.active) {
+    card.classList.add("hidden");
+    card.classList.remove("is-searching");
+    card.innerHTML = "";
+    return;
+  }
+  card.classList.remove("hidden");
+  if (noResults) noResults.style.display = "none";
+
+  if (s.status === "searching") {
+    card.classList.add("is-searching");
+    card.innerHTML = `
+      <div class="soc-row">
+        <div class="soc-spinner">${COFFEE_SPINNER}</div>
+        <div class="soc-text">
+          <div class="soc-title">Looking for "${escapeHtml(s.query)}" online…</div>
+          <div class="soc-status" id="soc-status">${escapeHtml(SOC_STATUS_CYCLE[s.statusIdx || 0])}</div>
+        </div>
+      </div>
+      <div class="soc-actions">
+        <div class="soc-spacer"></div>
+        <button class="icon-btn" type="button" onclick="cancelSearchOnline()">Cancel</button>
+      </div>
+    `;
+  } else if (s.status === "saving" && s.recipe) {
+    card.classList.add("is-searching"); // keep the shimmer running
+    const r = s.recipe;
+    card.innerHTML = `
+      <div class="soc-row">
+        <div class="soc-spinner">${COFFEE_SPINNER}</div>
+        <div class="soc-text">
+          <div class="soc-title">Found ${escapeHtml(r.name || s.query)}</div>
+          <div class="soc-status">Adding to your collection…</div>
+        </div>
+      </div>
+    `;
+  } else if (s.status === "saved" && s.savedId) {
+    card.classList.remove("is-searching");
+    card.innerHTML = `
+      <div class="soc-row">
+        <div class="soc-success-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+        </div>
+        <div class="soc-text">
+          <div class="soc-title">Added "${escapeHtml(s.savedName || "the coffee")}" to your collection</div>
+          <div class="soc-status">Tailored to your taste. Scroll down to see the new card — edit anything you want.</div>
+        </div>
+      </div>
+      <div class="soc-actions">
+        <button class="icon-btn" type="button" onclick="openEditModal('${escapeAttr(s.savedId)}'); discardSearchOnline();">Edit it</button>
+        <div class="soc-spacer"></div>
+        <button class="icon-btn" type="button" onclick="discardSearchOnline()">Dismiss</button>
+      </div>
+    `;
+  } else if (s.status === "error") {
+    card.classList.remove("is-searching");
+    card.innerHTML = `
+      <div class="soc-row">
+        <div class="soc-error-icon" aria-hidden="true">!</div>
+        <div class="soc-text">
+          <div class="soc-title">Couldn't find "${escapeHtml(s.query)}" online</div>
+          <div class="soc-status">${escapeHtml(s.error || "Unknown error.")}</div>
+        </div>
+      </div>
+      <div class="soc-actions">
+        <button class="icon-btn primary" type="button" onclick="addSearchedManually()">Add it manually</button>
+        <div class="soc-spacer"></div>
+        <button class="icon-btn" type="button" onclick="discardSearchOnline()">Cancel</button>
+      </div>
+    `;
+  }
+}
+
+function cancelSearchOnline() {
+  if (_searchOnlineCtrl) _searchOnlineCtrl.abort();
+  if (_searchOnlineCycler) { clearInterval(_searchOnlineCycler); _searchOnlineCycler = null; }
+  state.searchOnlineState = null;
+  renderSearchOnlineCard();
+}
+
+function discardSearchOnline() {
+  cancelSearchOnline();
+  // Re-render the grid view so the no-results message reappears if appropriate
+  render(state.activeMethod);
+}
+
+async function saveSearchedCoffee() {
+  const s = state.searchOnlineState;
+  if (!s?.recipe) return;
+  const r = s.recipe;
+  const name = (r.name || s.query).slice(0, 120);
+  const c = {
+    slug: slugify(name) + "-" + Math.random().toString(36).slice(2, 6),
+    roaster: r.roaster || "",
+    name,
+    meta: r.meta || "",
+    color: sanitizeColor(r.color || "#5c4a3a"),
+    tags: Array.isArray(r.tags) ? r.tags : [],
+    espresso: r.espresso && r.espresso.settings ? { ...r.espresso, status: "next", statusLabel: "Not Yet Tried" } : blankMethod("espresso"),
+    v60: r.v60 && r.v60.settings ? { ...r.v60, status: "next", statusLabel: "Not Yet Tried" } : blankMethod("v60"),
+    aeropress: r.aeropress && r.aeropress.settings ? { ...r.aeropress, status: "next", statusLabel: "Not Yet Tried" } : blankMethod("aeropress"),
+    position: state.data.coffees.length
+  };
+  try {
+    const saved = await upsertCoffee(c);
+    state.data.coffees.push(saved);
+    state._freshCardId = saved.id;
+    state.searchOnlineState = null;
+    state.searchTerm = "";
+    document.getElementById("search-input").value = "";
+    render(state.activeMethod);
+    toast(`Added "${name}" to your collection`, "success");
+    // Scroll to the new card
+    setTimeout(() => scrollToCard(saved.id), 200);
+  } catch (e) {
+    toast("Couldn't save: " + (e.message || e), "error");
+  }
+}
+
+function openSearchedInEditor() {
+  const s = state.searchOnlineState;
+  if (!s?.recipe) return;
+  // Open the add-coffee modal with the searched recipe pre-filled
+  openAddModal();
+  applyRecipeToEditor(s.recipe);
+  state.searchOnlineState = null;
+  renderSearchOnlineCard();
+}
+
+function addSearchedManually() {
+  const q = state.searchOnlineState?.query || "";
+  state.searchOnlineState = null;
+  renderSearchOnlineCard();
+  openAddModal();
+  document.getElementById("ai-create-input").value = q;
+  document.getElementById("ed-name").value = q.split(/[,—–]/)[0]?.trim() || q;
+}
+
 async function aiQuickFill() {
   const desc = document.getElementById("ai-create-input").value.trim();
   const out = document.getElementById("ai-create-output");
@@ -4295,7 +4690,21 @@ function bindEvents() {
 
   // App
   document.querySelectorAll(".tabs .tab").forEach(tab => tab.addEventListener("click", () => render(tab.dataset.method)));
-  document.getElementById("search-input").addEventListener("input", (e) => { state.searchTerm = e.target.value; render(state.activeMethod); });
+  document.getElementById("search-input").addEventListener("input", (e) => {
+    state.searchTerm = e.target.value;
+    // If the user keeps typing while a search-online card is open, dismiss it
+    if (state.searchOnlineState && state.searchOnlineState.status !== "searching") {
+      state.searchOnlineState = null;
+      renderSearchOnlineCard();
+    }
+    render(state.activeMethod);
+  });
+  document.getElementById("search-input").addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSearchEnter();
+    }
+  });
   document.getElementById("settings-btn").addEventListener("click", openSettingsModal);
   document.getElementById("add-btn").addEventListener("click", openAddModal);
   const tipBtn = document.getElementById("tip-btn");
@@ -4348,6 +4757,11 @@ window.aiLookupOnline = aiLookupOnline;
 window.aiQuickFill = aiQuickFill;
 window.askBrewingTip = askBrewingTip;
 window.openTipModal = openTipModal;
+window.cancelSearchOnline = cancelSearchOnline;
+window.discardSearchOnline = discardSearchOnline;
+window.addSearchedManually = addSearchedManually;
+window.openSearchedInEditor = openSearchedInEditor;
+window.saveSearchedCoffee = saveSearchedCoffee;
 window.addSettingRow = addSettingRow;
 window.deleteSettingRow = deleteSettingRow;
 window.saveCoffee = saveCoffee;
