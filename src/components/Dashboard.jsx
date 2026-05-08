@@ -198,6 +198,7 @@ function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite }) {
       </div>
       <div className="card-tags">
         <span className="tag tag-forest">{coffee.roast}</span>
+        {coffee.decaf && <span className="tag tag-amber">Decaf</span>}
         {(coffee.notes || []).slice(0, 2).map((n) => <span key={n} className="tag">{n}</span>)}
       </div>
       <div className="card-divider" />

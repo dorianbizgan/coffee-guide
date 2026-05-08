@@ -29,6 +29,7 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
     origin: initial?.origin || "",
     process: initial?.process || "Washed",
     roast: initial?.roast || "medium",
+    decaf: !!initial?.decaf,
     notes: notesAsString(initial?.notes),
     elevation: initial?.elevation || "",
     variety: initial?.variety || "",
@@ -55,6 +56,9 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
 
   // Whitelist Gemini's freeform process strings (e.g. "natural anaerobic")
   // back to one of the form's allowed values so the choice grid lights up.
+  // Decaf is its own dimension; normalizeProcess strips the "decaf" prefix
+  // so e.g. "EA Decaf Washed" → process: "Washed", and detectDecaf() flips
+  // the boolean separately.
   const normalizeProcess = (p) => {
     if (!p) return "Washed";
     const s = String(p).toLowerCase();
@@ -62,7 +66,6 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
     if (s.includes("pulped"))  return "Pulped Natural";
     if (s.includes("honey"))   return "Honey";
     if (s.includes("natural")) return "Natural";
-    if (s.includes("decaf"))   return "Washed"; // store decaf as a tag, not process
     return "Washed";
   };
   const normalizeRoast = (r) => {
@@ -71,6 +74,12 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
     const allowed = ["light", "medium-light", "medium", "medium-dark", "dark"];
     return allowed.find((x) => s.includes(x)) || "medium";
   };
+  // Spot decaf in the bean name or process string. Catches "EA Decaf",
+  // "Swiss Water Decaf", "MC Process Decaffeinated", etc.
+  const detectDecaf = (...sources) => {
+    const blob = sources.filter(Boolean).join(" ").toLowerCase();
+    return /\bdecaf|decaffeinated|swiss\s*water|ea\s*process|mc\s*process|sugarcane\s*ea\b/.test(blob);
+  };
 
   const handleAiLookup = async () => {
     if (!onAiLookup || !data._search?.trim()) return;
@@ -78,6 +87,7 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
     try {
       const result = await onAiLookup(data._search.trim());
       if (result) {
+        const decafFromAi = !!result.decaf || detectDecaf(result.name, result.process, data._search);
         setData((d) => ({
           ...d,
           name:      result.name      || d.name,
@@ -85,6 +95,7 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
           origin:    result.origin    || d.origin,
           process:   normalizeProcess(result.process || d.process),
           roast:     normalizeRoast(result.roast || d.roast),
+          decaf:     decafFromAi || d.decaf,
           variety:   result.variety   || d.variety,
           elevation: result.elevation || d.elevation,
           notes:     notesAsString(result.notes) || d.notes,
@@ -108,6 +119,9 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
     const stamp = initial?.stamp
       || data._stamp
       || ("Logged · " + new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }));
+    // Final-pass decaf detection: if the user (or AI) typed "decaf" anywhere
+    // in name/process/notes but never flipped the toggle, set it for them.
+    const decafFinal = data.decaf || detectDecaf(data.name, data.process, data.notes);
     onSubmit({
       ...(initial || {}),
       id: initial?.id || ("c" + Date.now()),
@@ -116,6 +130,7 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
       origin: data.origin || "Unknown origin",
       process: data.process,
       roast: data.roast,
+      decaf: decafFinal,
       notes: data.notes
         .split(",")
         .map((s) => s.trim())
@@ -275,6 +290,22 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
                 {PROCESS_OPTIONS.map((p) => (
                   <div key={p} className={`choice ${data.process === p ? "active" : ""}`} onClick={() => set("process", p)}>{p}</div>
                 ))}
+              </div>
+            </div>
+            <div className="field">
+              <label>Decaf</label>
+              <div className="choice-grid">
+                <div
+                  className={`choice ${data.decaf ? "active" : ""}`}
+                  onClick={() => set("decaf", !data.decaf)}
+                >
+                  {data.decaf ? "✓ Decaf" : "Mark as decaf"}
+                </div>
+                <div style={{ alignSelf: "center", color: "var(--ink-mute)", fontSize: 12, padding: "0 6px" }}>
+                  {data.decaf
+                    ? "Crema will dial in coarser grind + slightly cooler water for decaf — softer beans extract faster."
+                    : "Decaf beans (Swiss Water, EA, MC) brew differently — coarser & cooler. Toggle on to apply."}
+                </div>
               </div>
             </div>
             <div className="form-row">

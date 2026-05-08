@@ -58,6 +58,7 @@ function rowToCoffee(row) {
     accent: row.accent || ACCENTS[0],
     stamp: row.stamp || "",
     favorite: !!row.favorite,
+    decaf: !!row.decaf,
     brewLog: row.brew_log || [],
   };
 }
@@ -80,6 +81,7 @@ function coffeeToRow(c, userId) {
     accent: c.accent || null,
     stamp: c.stamp || null,
     favorite: !!c.favorite,
+    decaf: !!c.decaf,
   };
 }
 

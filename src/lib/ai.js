@@ -106,7 +106,10 @@ export async function suggestDialTweak({
     ? `${grinderRange.min}–${grinderRange.max} ${grinderRange.unit || "clicks"} (lower = finer)`
     : "6–36 clicks (Comandante C40 scale)";
 
-  const userPrompt = `You are a coffee brewing coach. The user is brewing ${coffee.name} from ${coffee.roaster} (${coffee.origin}, ${coffee.process}, ${coffee.roast} roast) using ${method.name}.
+  const decafLine = coffee.decaf
+    ? "\nThis bean is DECAF. Decaf beans are softer & more porous, so they extract faster than regular beans at the same setting — typically a coarser grind and slightly cooler water than the equivalent caffeinated bean."
+    : "";
+  const userPrompt = `You are a coffee brewing coach. The user is brewing ${coffee.name} from ${coffee.roaster} (${coffee.origin}, ${coffee.process}${coffee.decaf ? " · decaf" : ""}, ${coffee.roast} roast) using ${method.name}.${decafLine}
 Current dial: ${temp}°C water, ${clicks} ${grinderRange?.unit || "clicks"} on a ${grinderLabel}, ${recipe.dose}g dose, 1:${recipe.ratio} ratio, ${recipe.time} total.
 Grinder valid range: ${rangeLabel}.
 Bean's expected notes: ${(coffee.notes || []).join(", ") || "—"}.
@@ -144,8 +147,9 @@ Return ONLY valid JSON in EXACTLY this shape (no prose, no markdown fences). Eve
   "name": "<full coffee name as printed on the bag>",
   "roaster": "<roaster name>",
   "origin": "<region, country — e.g. Yirgacheffe, Ethiopia>",
-  "process": "<one of: Washed | Natural | Honey | Anaerobic Natural | Pulped Natural>",
+  "process": "<one of: Washed | Natural | Honey | Anaerobic Natural | Pulped Natural — for decaf, return the underlying process and set decaf:true below>",
   "roast": "<one of: light | medium-light | medium | medium-dark | dark>",
+  "decaf": <true if this is a decaf coffee (Swiss Water, EA, MC, sugarcane, etc.) — false otherwise>,
   "variety": "<varietals — e.g. Heirloom, SL28, Bourbon>",
   "elevation": "<elevation with units — e.g. 1,950 m or 1,950–2,200 masl>",
   "notes": "<comma-separated tasting notes from the bag — e.g. jasmine, bergamot, white peach>",

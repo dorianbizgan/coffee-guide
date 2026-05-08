@@ -259,7 +259,7 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
             <div className="meta-item"><div className="l">Process</div><div className="v">{coffee.process}</div></div>
             <div className="meta-item"><div className="l">Variety</div><div className="v">{coffee.variety || "—"}</div></div>
             <div className="meta-item"><div className="l">Elevation</div><div className="v">{coffee.elevation || "—"}</div></div>
-            <div className="meta-item"><div className="l">Roast</div><div className="v" style={{ textTransform: "capitalize" }}>{coffee.roast}</div></div>
+            <div className="meta-item"><div className="l">Roast</div><div className="v" style={{ textTransform: "capitalize" }}>{coffee.roast}{coffee.decaf ? " · decaf" : ""}</div></div>
             <div className="meta-item"><div className="l">Roasted</div><div className="v">{coffee.roastDate || "—"}</div></div>
           </div>
 

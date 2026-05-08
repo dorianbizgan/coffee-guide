@@ -131,6 +131,15 @@ export function adjustRecipe(method, coffee) {
     adj.clicks = adj.clicks + 2;
     adj.temp = Math.max(80, adj.temp - 3);
   }
+  // Decaf beans are softer & more porous — they extract faster than regular
+  // beans at the same setting. Compensate with a slightly coarser grind and
+  // a touch cooler water so we don't over-extract bitter / hollow shots.
+  // Cold brew is unaffected (temp irrelevant, time dominates).
+  if (coffee.decaf && method.id !== "cold") {
+    adj.clicks = adj.clicks + 2;
+    adj.temp = Math.max(80, adj.temp - 2);
+    adj.grind = adj.grind + " (decaf — coarser)";
+  }
   return adj;
 }
 
