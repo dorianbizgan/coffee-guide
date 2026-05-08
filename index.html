@@ -40,10 +40,9 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    /* Quiet warm cream background — single static gradient, paints once,
-       does not animate. The "espresso character" now lives in the
-       interactive elements (glass buttons, frosted cards), not the canvas. */
-    background: linear-gradient(170deg, #f7ecd0 0%, #ebd6a8 50%, #d6b075 100%);
+    /* Flat warm honey base — no gradient. Visual identity comes from the
+       glass elements catching light, not from the canvas underneath. */
+    background-color: #ebd5a0;
     background-attachment: fixed;
     min-height: 100vh;
     padding: 24px 16px 80px;
@@ -51,17 +50,9 @@
     letter-spacing: -0.005em;
   }
 
-  /* A single soft warm bloom near the top — paints once on the GPU and
-     never touches the renderer again. Adds a hint of "shaft of light" depth
-     without any particles, SVG filters, or animation. */
-  .bg-accent {
-    position: fixed; inset: 0;
-    pointer-events: none;
-    z-index: -1;
-    background:
-      radial-gradient(ellipse 70% 50% at 50% -10%, rgba(255, 232, 188, 0.55) 0%, rgba(255, 232, 188, 0) 60%),
-      radial-gradient(ellipse 90% 60% at 50% 110%, rgba(94, 50, 16, 0.18) 0%, rgba(94, 50, 16, 0) 60%);
-  }
+  /* The .bg-accent div is rendered as a no-op now; we keep the element so
+     existing markup stays valid but emit zero pixels. */
+  .bg-accent { display: none; }
 
   body.loading { overflow: hidden; padding: 0; }
   body.show-login {
@@ -188,113 +179,79 @@
     letter-spacing: 0.06em; text-transform: uppercase;
   }
 
-  /* Login buttons share the glass-refraction recipe with .icon-btn — same
-     translucent gradient + backdrop blur+saturate for the "looks-like-glass"
-     pass, same dual inset shadows for top-edge specular and bottom-edge
-     shading, same caustic sheen on hover. Only differences: full width and
-     larger padding for the auth form. */
+  /* Login buttons share the same cursor-tracked glass recipe as .icon-btn,
+     just full-width and slightly larger. */
   .login-btn {
     width: 100%; padding: 13px;
     border-radius: 12px;
     font-size: 14.5px; font-weight: 600; cursor: pointer;
-    background:
-      linear-gradient(180deg,
-        rgba(255, 252, 240, 0.62) 0%,
-        rgba(255, 250, 232, 0.32) 55%,
-        rgba(255, 240, 210, 0.20) 100%);
-    -webkit-backdrop-filter: blur(14px) saturate(180%);
-    backdrop-filter: blur(14px) saturate(180%);
+    background-color: rgba(255, 252, 240, 0.18);
+    background-image: radial-gradient(
+      circle 140px at var(--mx, 50%) var(--my, 50%),
+      rgba(255, 255, 255, 0.42) 0%,
+      rgba(255, 255, 255, 0) 65%
+    );
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    backdrop-filter: blur(18px) saturate(180%);
     border: 1px solid rgba(255, 250, 240, 0.55);
     color: var(--ink);
     font-family: inherit;
     display: inline-flex; align-items: center; justify-content: center; gap: 10px;
     margin-bottom: 10px;
     position: relative;
-    overflow: hidden;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.85),
       inset 0 -1px 0 rgba(40, 18, 4, 0.18),
       0 4px 12px rgba(40, 18, 4, 0.10),
       0 1px 2px rgba(40, 18, 4, 0.08);
-    transition:
-      transform 0.18s var(--ease-out),
-      box-shadow 0.25s var(--ease-out),
-      border-color 0.18s var(--ease-out);
-  }
-  .login-btn::after {
-    content: "";
-    position: absolute; inset: 0;
-    background: linear-gradient(
-      110deg,
-      transparent 35%,
-      rgba(255, 250, 220, 0.55) 50%,
-      transparent 65%
-    );
-    transform: translateX(-110%);
-    transition: transform 0.7s cubic-bezier(.2,.8,.2,1);
-    pointer-events: none;
-    border-radius: inherit;
-    mix-blend-mode: screen;
   }
   .login-btn:hover {
-    transform: translateY(-1px);
-    border-color: rgba(255, 250, 240, 0.78);
+    border-color: rgba(255, 250, 240, 0.85);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.95),
-      inset 0 -1px 0 rgba(40, 18, 4, 0.22),
-      0 10px 24px rgba(40, 18, 4, 0.18),
+      inset 0 -1px 0 rgba(40, 18, 4, 0.24),
+      0 8px 20px rgba(40, 18, 4, 0.16),
       0 2px 4px rgba(40, 18, 4, 0.10);
   }
-  .login-btn:hover::after { transform: translateX(110%); }
   .login-btn:active {
-    transform: translateY(0);
     box-shadow:
-      inset 0 2px 5px rgba(40, 18, 4, 0.22),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.45),
+      inset 0 2px 6px rgba(40, 18, 4, 0.22),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.55),
       0 1px 3px rgba(40, 18, 4, 0.10);
   }
 
-  /* Primary — same glass mechanic, deeper espresso tint */
+  /* Primary — espresso glass with a gold cursor highlight */
   .login-btn.primary {
-    background:
-      linear-gradient(180deg,
-        rgba(58, 28, 8, 0.94) 0%,
-        rgba(29, 15, 4, 0.96) 100%);
+    background-color: rgba(29, 15, 4, 0.92);
+    background-image: radial-gradient(
+      circle 140px at var(--mx, 50%) var(--my, 50%),
+      rgba(255, 220, 160, 0.45) 0%,
+      rgba(255, 220, 160, 0) 65%
+    );
     color: #fff8e6;
-    border-color: rgba(255, 225, 170, 0.18);
+    border-color: rgba(255, 225, 170, 0.22);
     box-shadow:
-      inset 0 1px 0 rgba(255, 225, 170, 0.42),
+      inset 0 1px 0 rgba(255, 225, 170, 0.45),
       inset 0 -1px 0 rgba(0, 0, 0, 0.5),
       0 8px 22px rgba(40, 18, 4, 0.32),
       0 1px 2px rgba(0, 0, 0, 0.20);
   }
-  .login-btn.primary::after {
-    background: linear-gradient(
-      110deg,
-      transparent 35%,
-      rgba(255, 220, 160, 0.32) 50%,
-      transparent 65%
-    );
-  }
   .login-btn.primary:hover {
-    background:
-      linear-gradient(180deg,
-        rgba(74, 40, 18, 0.96) 0%,
-        rgba(40, 20, 8, 0.96) 100%);
+    border-color: rgba(255, 225, 170, 0.32);
     box-shadow:
-      inset 0 1px 0 rgba(255, 225, 170, 0.55),
+      inset 0 1px 0 rgba(255, 225, 170, 0.6),
       inset 0 -1px 0 rgba(0, 0, 0, 0.55),
-      0 14px 32px rgba(40, 18, 4, 0.42),
-      0 2px 4px rgba(0, 0, 0, 0.20);
+      0 12px 28px rgba(40, 18, 4, 0.4),
+      0 2px 4px rgba(0, 0, 0, 0.22);
   }
   .login-btn.primary:active {
     box-shadow:
-      inset 0 2px 5px rgba(0, 0, 0, 0.45),
-      inset 0 -1px 0 rgba(255, 225, 170, 0.20),
+      inset 0 2px 6px rgba(0, 0, 0, 0.45),
+      inset 0 -1px 0 rgba(255, 225, 170, 0.2),
       0 1px 3px rgba(0, 0, 0, 0.18);
   }
 
-  .login-btn:disabled { opacity: 0.55; cursor: wait; transform: none; }
+  .login-btn:disabled { opacity: 0.55; cursor: wait; }
   .login-btn svg { width: 18px; height: 18px; }
 
   .login-divider {
@@ -497,34 +454,37 @@
   }
 
   /* ============================================================
-     Glass refraction buttons — efficient "looks like a glass tile" effect
+     Clear-glass tiles with cursor-tracked specular highlight
      ============================================================
-     Recipe (all GPU-accelerated, no SVG filters, no animation cost at rest):
-     1. backdrop-filter: blur + saturation boost. The saturation makes warm
-        tones from behind appear richer through the button — the same way
-        real glass amplifies color. This is the actual "refraction" — light
-        bending through, with chromatic enhancement. Composited on the GPU.
-     2. A linear-gradient background with translucent stops gives the
-        meniscus / curvature feel.
-     3. Two inset box-shadows: a 1px bright top edge (light entering) and
-        a 1px darker bottom edge (light exiting). This is what makes the
-        button read as 3D-curved glass, not flat. A regular drop-shadow
-        below grounds it.
-     4. A ::after layer sweeps a soft caustic across on hover (transform
-        only — no layout/paint, just GPU compositing).
-     5. :active swaps the box-shadow into an inset depression so press
-        physics feel right (light goes from above-glass to inside-glass).
+     What happens with real glass: light from above hits the glass surface,
+     the brightest specular reflection sits at the angle between viewer and
+     light, and that point moves as YOU move. We replicate that with a
+     radial-gradient highlight whose centre tracks the pointer (set via
+     --mx / --my CSS variables, updated from a single document-level
+     pointermove handler). When the cursor is off the button, the highlight
+     stays at 50%/50% — like ambient light bouncing off the centre.
+
+     Backdrop-filter: blur + saturate is what makes the colour behind the
+     button feel like it's actually passing through glass — saturate
+     mimics chromatic enhancement (real glass intensifies hues a touch).
+
+     No animation. No transition. Movement is driven by your cursor only,
+     so the page is fully idle the moment you stop moving.
      ============================================================ */
 
   .icon-btn {
-    /* Translucent base — colour comes from what's behind, just like glass. */
-    background:
-      linear-gradient(180deg,
-        rgba(255, 252, 240, 0.55) 0%,
-        rgba(255, 250, 232, 0.28) 55%,
-        rgba(255, 240, 210, 0.18) 100%);
-    -webkit-backdrop-filter: blur(14px) saturate(180%);
-    backdrop-filter: blur(14px) saturate(180%);
+    /* Flat translucent tint — minimal pigmentation, the colour comes from
+       what's behind via backdrop-filter. */
+    background-color: rgba(255, 252, 240, 0.18);
+    /* Cursor-tracked highlight: a soft white spot at (--mx, --my). When the
+       variables aren't set, defaults to dead-centre (ambient). */
+    background-image: radial-gradient(
+      circle 90px at var(--mx, 50%) var(--my, 50%),
+      rgba(255, 255, 255, 0.42) 0%,
+      rgba(255, 255, 255, 0) 65%
+    );
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    backdrop-filter: blur(18px) saturate(180%);
     border: 1px solid rgba(255, 250, 240, 0.55);
     border-radius: 12px;
     padding: 9px 14px;
@@ -533,92 +493,62 @@
     font-size: 12.5px; font-weight: 600; color: #2a1a0a;
     font-family: inherit;
     position: relative;
-    overflow: hidden;
+    /* Specular top edge + softly shaded bottom edge — the curvature illusion.
+       Plus a quiet drop shadow to float the tile off the surface. */
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.85),     /* top edge specular */
-      inset 0 -1px 0 rgba(40, 18, 4, 0.18),        /* bottom edge shaded */
-      0 4px 12px rgba(40, 18, 4, 0.10),            /* drop shadow */
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      inset 0 -1px 0 rgba(40, 18, 4, 0.18),
+      0 4px 12px rgba(40, 18, 4, 0.10),
       0 1px 2px rgba(40, 18, 4, 0.08);
-    transition:
-      transform 0.18s var(--ease-out),
-      box-shadow 0.25s var(--ease-out),
-      border-color 0.18s var(--ease-out);
   }
   .icon-btn svg { width: 14px; height: 14px; }
 
-  /* Caustic sheen — a single off-axis gradient that slides across on hover.
-     Pure transform animation; the GPU just translates an existing layer. */
-  .icon-btn::after {
-    content: "";
-    position: absolute; inset: 0;
-    background: linear-gradient(
-      110deg,
-      transparent 35%,
-      rgba(255, 250, 220, 0.55) 50%,
-      transparent 65%
-    );
-    transform: translateX(-110%);
-    transition: transform 0.7s cubic-bezier(.2,.8,.2,1);
-    pointer-events: none;
-    border-radius: inherit;
-    mix-blend-mode: screen;
-  }
-
   .icon-btn:hover {
-    transform: translateY(-1px);
-    border-color: rgba(255, 250, 240, 0.78);
+    /* Subtle: the bottom shadow deepens, the rim brightens. No transform,
+       no transition — the cursor moving the highlight IS the interaction. */
+    border-color: rgba(255, 250, 240, 0.85);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.95),
-      inset 0 -1px 0 rgba(40, 18, 4, 0.22),
-      0 10px 24px rgba(40, 18, 4, 0.18),
+      inset 0 -1px 0 rgba(40, 18, 4, 0.24),
+      0 8px 20px rgba(40, 18, 4, 0.16),
       0 2px 4px rgba(40, 18, 4, 0.10);
   }
-  .icon-btn:hover::after { transform: translateX(110%); }
-
   .icon-btn:active {
-    transform: translateY(0);
+    /* Press depresses the glass — top edge dims, bottom edge brightens
+       (light flips from "incoming" to "trapped inside the glass"). */
     box-shadow:
-      inset 0 2px 5px rgba(40, 18, 4, 0.22),       /* depressed inward */
-      inset 0 -1px 0 rgba(255, 255, 255, 0.45),
+      inset 0 2px 6px rgba(40, 18, 4, 0.22),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.55),
       0 1px 3px rgba(40, 18, 4, 0.10);
   }
 
-  /* Primary — same glass mechanic, deeper espresso tint */
+  /* Primary — same mechanic on dark espresso glass with a gold rim */
   .icon-btn.primary {
-    background:
-      linear-gradient(180deg,
-        rgba(58, 28, 8, 0.92) 0%,
-        rgba(29, 15, 4, 0.94) 100%);
+    background-color: rgba(29, 15, 4, 0.88);
+    background-image: radial-gradient(
+      circle 90px at var(--mx, 50%) var(--my, 50%),
+      rgba(255, 220, 160, 0.45) 0%,
+      rgba(255, 220, 160, 0) 65%
+    );
     color: #fff8e6;
-    border-color: rgba(255, 225, 170, 0.18);
+    border-color: rgba(255, 225, 170, 0.22);
     box-shadow:
-      inset 0 1px 0 rgba(255, 225, 170, 0.42),     /* gold rim light */
-      inset 0 -1px 0 rgba(0, 0, 0, 0.5),           /* deep bottom edge */
+      inset 0 1px 0 rgba(255, 225, 170, 0.45),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
       0 8px 22px rgba(40, 18, 4, 0.32),
       0 1px 2px rgba(0, 0, 0, 0.20);
   }
-  .icon-btn.primary::after {
-    background: linear-gradient(
-      110deg,
-      transparent 35%,
-      rgba(255, 220, 160, 0.32) 50%,
-      transparent 65%
-    );
-  }
   .icon-btn.primary:hover {
-    background:
-      linear-gradient(180deg,
-        rgba(74, 40, 18, 0.96) 0%,
-        rgba(40, 20, 8, 0.96) 100%);
+    border-color: rgba(255, 225, 170, 0.32);
     box-shadow:
-      inset 0 1px 0 rgba(255, 225, 170, 0.55),
+      inset 0 1px 0 rgba(255, 225, 170, 0.6),
       inset 0 -1px 0 rgba(0, 0, 0, 0.55),
-      0 14px 32px rgba(40, 18, 4, 0.42),
-      0 2px 4px rgba(0, 0, 0, 0.20);
+      0 12px 28px rgba(40, 18, 4, 0.4),
+      0 2px 4px rgba(0, 0, 0, 0.22);
   }
   .icon-btn.primary:active {
     box-shadow:
-      inset 0 2px 5px rgba(0, 0, 0, 0.45),
+      inset 0 2px 6px rgba(0, 0, 0, 0.45),
       inset 0 -1px 0 rgba(255, 225, 170, 0.20),
       0 1px 3px rgba(0, 0, 0, 0.18);
   }
@@ -912,6 +842,18 @@
     align-items: center;
   }
   .soc-actions .soc-spacer { flex: 1; }
+  .soc-suggestion {
+    margin-top: 8px;
+    font-size: 12.5px;
+    color: var(--accent-deep);
+    background: rgba(192, 132, 74, 0.10);
+    border: 1px solid rgba(192, 132, 74, 0.22);
+    padding: 6px 10px;
+    border-radius: 8px;
+    line-height: 1.45;
+  }
+  .soc-suggestion em { font-style: normal; font-weight: 600; color: var(--ink); }
+
   .soc-error-icon {
     width: 32px; height: 32px; border-radius: 50%;
     background: rgba(181, 64, 64, 0.12); color: #b54040;
@@ -1911,6 +1853,31 @@
 if (typeof structuredClone === "undefined") {
   window.structuredClone = (o) => JSON.parse(JSON.stringify(o));
 }
+
+// =====================================================================
+// Cursor-tracked glass highlight. A single document-level pointermove
+// handler writes --mx / --my CSS variables on the hovered glass element so
+// its background-image radial-gradient (the specular highlight) sits where
+// the cursor is. Mimics how light hits real polished glass: the brightest
+// reflection follows the angle between viewer and source.
+//
+// Cheap by design: we only walk to the closest matching ancestor (no per-
+// element listener, no rAF loop), and when the cursor leaves we let the
+// last position decay naturally (the next hovered element resets it).
+// =====================================================================
+(function setupGlassCursor() {
+  const sel = ".icon-btn, .login-btn, .tab, .tip-chip, .login-tab";
+  document.addEventListener("pointermove", (e) => {
+    const el = e.target.closest && e.target.closest(sel);
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return;
+    const x = ((e.clientX - r.left) / r.width) * 100;
+    const y = ((e.clientY - r.top) / r.height) * 100;
+    el.style.setProperty("--mx", x + "%");
+    el.style.setProperty("--my", y + "%");
+  }, { passive: true });
+})();
 
 // =====================================================================
 // SPLASH ANIMATION — paste any Lottie URL from https://lottiefiles.com
@@ -3583,44 +3550,206 @@ function humanizeDbError(e) {
 // ============================================================
 // AI calls
 // ============================================================
-// Shared system prompt for recipe generation. Schema enforcement happens
-// server-side via Gemini's responseSchema, so we don't need to spell out the
-// JSON shape here — just describe the coffee-expert persona, the equipment
-// constraints, and the bag-color hint.
+// =====================================================================
+// Search-query pre-parser. Pulls structured signal from a free-form query
+// before we hand it to Gemini, so the model has a clear picture of what
+// the user wants. This:
+//   1) lets us pass the user's actual grinder / brew method into the prompt
+//      (no more hardcoded Acaia Orbit defaults when they typed "fellow"),
+//   2) makes the model's job *recognition* not *guessing*, which is the
+//      single biggest reliability win for ambiguous queries,
+//   3) gives us a way to bail out early if the query has zero useful
+//      signal (display a friendly hint instead of burning an AI call).
 //
-// When `grounded` is true (web search active), the AI cannot use responseSchema
-// alongside grounding tools, so we ALSO spell the JSON shape out so the prose
-// response still contains the right keys for extractJsonBlock to pull out.
-function recipeSystemPrompt(prefs, { grounded = false } = {}) {
-  const base = [
-    "You are a deeply experienced home-barista expert producing brewing recipes.",
+// Test cases the user explicitly asked us to handle:
+//   "tropical weather v60 acaia orbit"
+//     → method=v60, grinder=acaia orbit, coffee="tropical weather"
+//        (Tropical Weather is an Onyx Coffee Lab espresso blend)
+//   "proud mary with drip coffee and a fellow grinder"
+//     → roaster=Proud Mary, method=v60 (drip), grinder=fellow
+//   "Onyx Geometry Ethiopia Hambela washed"
+//     → roaster=Onyx, coffee=Geometry, origin=Ethiopia, process=washed
+//   "espresso for a niche zero"
+//     → method=espresso, grinder=niche zero
+// =====================================================================
+const KNOWN_ROASTERS = [
+  "Onyx Coffee Lab", "Onyx",
+  "Proud Mary", "Proud Mary Coffee",
+  "Sey Coffee", "Sey",
+  "Camber Coffee", "Camber",
+  "Heart Coffee", "Heart Roasters",
+  "Verve",
+  "Stumptown",
+  "Intelligentsia",
+  "Counter Culture",
+  "Blue Bottle",
+  "Ritual Coffee",
+  "Sightglass",
+  "George Howell",
+  "Coava",
+  "Tim Wendelboe",
+  "Manhattan Coffee",
+  "Black & White",
+  "Variety Coffee",
+  "Ona Coffee", "Ona",
+  "Square Mile",
+  "Workshop Coffee",
+  "Gardelli",
+  "Cat & Cloud",
+  "Passenger Coffee",
+  "La Cabra",
+  "Coffee Collective",
+  "Drop Coffee",
+  "Five Elephant"
+];
+
+const KNOWN_GRINDERS = [
+  // (regex, canonical name)
+  [/\bacaia\s+orbit\b/i, "Acaia Orbit"],
+  [/\bacacia\s+orbit\b/i, "Acaia Orbit"],     // common misspelling
+  [/\bniche\s+zero\b/i,  "Niche Zero"],
+  [/\bniche\s+duo\b/i,   "Niche Duo"],
+  [/\bfellow\s+(ode|opus)\s*(gen\s*\d+)?\b/i, "Fellow Ode/Opus"],
+  [/\bfellow\b/i,        "Fellow grinder"],
+  [/\bdf64\b/i,          "DF64"],
+  [/\bdf83\b/i,          "DF83"],
+  [/\bbaratza\s+(encore|forte|virtuoso|sette)\b/i, "Baratza"],
+  [/\bcomandante\b/i,    "Comandante"],
+  [/\bkinu\s+m\d+\b/i,   "Kinu"],
+  [/\b1zpresso\s+(j\s?max|j-pro|j-ultra|k-plus|k-max|k-pro|x-pro)?\b/i, "1Zpresso"],
+  [/\btimemore\s+(c2|c3|chestnut)\b/i, "Timemore"],
+  [/\bweber\s+key\b/i,   "Weber Key"],
+  [/\bmonolith\s+(flat|conical|titan)\b/i, "Monolith"],
+  [/\blagom\b/i,         "Lagom"],
+  [/\beg-?1\b/i,         "Weber EG-1"],
+  [/\bek43\b/i,          "Mahlkönig EK43"],
+  [/\bmahlk(o|ö)nig\b/i, "Mahlkönig"]
+];
+
+function parseSearchQuery(query) {
+  const q = (query || "").toLowerCase();
+  const out = { raw: query, method: null, grinder: null, roaster: null, coffeeName: null, hints: [] };
+
+  // Brew method
+  if (/\b(espresso|shot|portafilter|9\s*bar|18g\s*basket)\b/.test(q)) out.method = "espresso";
+  else if (/\b(v60|hoffmann|kalita|chemex|drip|filter|pour-?over|melitta|origami)\b/.test(q)) out.method = "v60";
+  else if (/\baeropress\b|\baero\s*press\b/.test(q)) out.method = "aeropress";
+
+  // Grinder
+  let matchedGrinderRegex = null;
+  for (const [re, name] of KNOWN_GRINDERS) {
+    if (re.test(query)) { out.grinder = name; matchedGrinderRegex = re; break; }
+  }
+
+  // Roaster — sort by length so longer names match first ("Onyx Coffee Lab" before "Onyx")
+  const sortedRoasters = [...KNOWN_ROASTERS].sort((a, b) => b.length - a.length);
+  for (const r of sortedRoasters) {
+    if (q.includes(r.toLowerCase())) { out.roaster = r; break; }
+  }
+
+  // Heuristic coffee-name extraction: strip the recognised tokens, see what
+  // remains. Hint to the model, not authoritative — duplicates in residue
+  // don't hurt because the model also gets the raw query.
+  let residue = " " + query + " ";
+  if (out.roaster) residue = residue.replace(new RegExp("\\b" + out.roaster + "\\b", "ig"), " ");
+  if (matchedGrinderRegex) {
+    // Use the actual match regex so misspellings ("acacia orbit") get cleaned
+    // up too. Need a global flag for replace.
+    const globalRe = new RegExp(matchedGrinderRegex.source, matchedGrinderRegex.flags.includes("g") ? matchedGrinderRegex.flags : matchedGrinderRegex.flags + "g");
+    residue = residue.replace(globalRe, " ");
+  }
+  residue = residue.replace(/\b(v60|hoffmann|kalita|chemex|drip|filter|pour-?over|melitta|aeropress|aero\s*press|espresso|with|for|using|and|my|a|the|coffee|grinder)\b/gi, " ");
+  residue = residue.replace(/\s+/g, " ").trim();
+  if (residue && residue.length >= 3) out.coffeeName = residue;
+
+  // Quick signal check — at least one of these makes the query worth searching
+  const hasUsefulSignal = !!(out.roaster || out.coffeeName || query.trim().length >= 4);
+  out.hasUsefulSignal = hasUsefulSignal;
+  return out;
+}
+
+// =====================================================================
+// Recipe-generation system prompt. Designed for reliability on ambiguous
+// inputs:
+//   - Receives the parsed query context so the model is doing recognition
+//     against a focused candidate set rather than free-form guessing.
+//   - Receives the user's actual equipment so grind values and field labels
+//     match what they own (no more "Grind (Acaia Orbit SSP V3)" when the
+//     user has a Fellow Ode).
+//   - Gives the model an explicit escape hatch — when it can't identify
+//     the coffee with at least moderate confidence, return
+//     {"error":"not_found", "reason":"...", "suggestion":"..."} instead of
+//     hallucinating a recipe for a coffee that doesn't exist.
+// =====================================================================
+function recipeSystemPrompt(prefs, { grounded = false, parsedQuery = null } = {}) {
+  const eq = (state.data && state.data.equipment) || {};
+  const grinderLabel = eq.grinder
+    ? (eq.grinder + (eq.burrs ? " (" + eq.burrs + " burrs)" : ""))
+    : "(grinder not specified — guess by query, or use generic 'fine/medium/coarse')";
+  const grindKey = eq.grinder ? "Grind (" + eq.grinder + (eq.burrs ? " " + eq.burrs : "") + ")" : "Grind";
+
+  const lines = [
+    "You are a deeply experienced home-barista expert. Your job is to identify a specific coffee from the user's query and produce a starting brew recipe for it.",
     "",
-    "USER PREFERENCES:",
-    prefs || "(none provided)",
+    "USER CONTEXT",
+    "- Taste preferences: " + (prefs || "(none provided)"),
+    "- Grinder: " + grinderLabel,
+    eq.machine ? "- Espresso machine: " + eq.machine : "",
+    eq.portafilter ? "- Basket: " + eq.portafilter : "",
+    eq.kettle ? "- Kettle: " + eq.kettle : "",
+    eq.scale ? "- Scale: " + eq.scale : "",
     "",
-    "EQUIPMENT:",
-    "- Espresso: Acaia Orbit grinder + SSP Lab Sweet V3 burrs (use a numeric grind value like 1.3). 18g IMS High-Flow basket. 8 bar pressure, 10s preinfusion @ 2–3 bar.",
-    "- V60: Hoffmann method, 1:16.7 ratio (60g/L). 48g bloom @ 45s.",
-    "- AeroPress: inverted method.",
+    "RECIPE DEFAULTS (only use what makes sense for the user's gear)",
+    "- Espresso: 18g dose, 8 bar peak pressure, 10s preinfusion @ 2–3 bar.",
+    "- V60: Hoffmann method, 1:16.7 ratio (60g/L), 48g bloom for 45s.",
+    "- AeroPress: inverted, 18g dose, 200g water, 0:30 press time.",
     "",
-    "GUIDELINES:",
-    "- Pick numeric espresso grind values appropriate to roast level: light ≈ 1.1–1.4, medium ≈ 1.5–1.7, dark ≈ 1.7–2.0.",
-    "- For `color`, return a hex like #5c4a3a that matches the dominant color of the actual coffee bag from the roaster's site or marketing. If the bag isn't identifiable, pick a color that captures the origin/process character.",
-    "- `meta` should be terse: process · origin · altitude · varietal where known.",
-    "- Each method's `notes` should be one or two short sentences, focused on the next thing to try."
+    "GRIND HINT BY GRINDER (numeric where the grinder uses numeric values):",
+    "- Acaia Orbit + SSP Sweet V3: espresso 1.0–2.0 (lighter roast = finer/lower number)",
+    "- Niche Zero: espresso 10–25 (lower = finer)",
+    "- DF64 / DF83: espresso 1.5–3.5",
+    "- Fellow Ode / Opus: pourover 4–7 setting",
+    "- Comandante: pourover 22–32 clicks",
+    "- 1Zpresso J-max / J-Pro: espresso 0.6–1.4 (clicks)",
+    "- If the grinder is unknown, return descriptive values: 'fine', 'medium-fine', etc.",
+    "",
+    "ON BREW METHOD",
+    "- The user can have an espresso machine OR not. Always produce a recipe for ALL THREE methods (espresso, V60, AeroPress) so the saved card is useful across moods.",
+    "- 'drip', 'filter', 'pour-over', 'pourover', 'V60', 'Kalita', 'Chemex' all map to the V60 entry. AeroPress stays AeroPress. Everything else is espresso.",
+    "",
+    "FAILURE MODE",
+    "If after web search you cannot identify the coffee with at least moderate confidence (e.g. the query mentions a roaster you can't confirm, or a coffee name that doesn't exist in any catalogue), DO NOT hallucinate. Return:",
+    '  {"error":"not_found","reason":"<one short sentence>","suggestion":"<a specific suggestion the user can try, e.g. \\"Try the roaster\'s exact product name like Onyx Geometry\\">"}',
+    "",
+    "BAG COLOR",
+    "- For `color`, find the actual coffee bag's dominant color from the roaster's site/marketing and return it as a hex like #5c4a3a. If the bag is unidentifiable, pick a color that captures the origin/process character (light Ethiopia → blue/purple ~ #3a4f6b, natural Brazil → deep brown ~ #4a2a18, etc.)."
   ];
+
+  if (parsedQuery) {
+    lines.push("", "QUERY ANALYSIS (pre-parsed signal from the user's input)");
+    lines.push("- Raw query: \"" + parsedQuery.raw + "\"");
+    if (parsedQuery.roaster) lines.push("- Likely roaster: " + parsedQuery.roaster);
+    if (parsedQuery.coffeeName) lines.push("- Likely coffee name fragment: \"" + parsedQuery.coffeeName + "\"");
+    if (parsedQuery.method) lines.push("- Brew method emphasis: " + parsedQuery.method.toUpperCase() + " (still produce all three methods, but prioritize this one's notes)");
+    if (parsedQuery.grinder) lines.push("- Grinder mentioned in query: " + parsedQuery.grinder + " — match grind values to this even if user profile says otherwise");
+  }
+
   if (grounded) {
-    base.push(
+    lines.push(
       "",
-      "OUTPUT FORMAT:",
-      "Return only a JSON object inside a ```json fenced block, with this exact shape:",
-      `{"roaster":"...","name":"...","meta":"...","color":"#hex","tags":["..."],`,
-      `"espresso":{"settings":{"Grind (Acaia Orbit SSP V3)":"...","Brew Temp":"...","Dose":"18g","Yield":"...","Pressure":"8 bar","Preinfusion":"10s @ 2–3 bar","Total Shot Time":"...","Basket":"IMS 18g Precision High-Flow"},"notes":"..."},`,
-      `"v60":{"settings":{"Grind (Acaia Orbit SSP V3)":"...","Water Temp":"...","Dose":"24g","Water":"400g","Ratio":"1:16.7 (Hoffmann 60g/L)","Bloom":"48g / 45s","Target Drawdown":"..."},"notes":"..."},`,
-      `"aeropress":{"settings":{"Grind (Acaia Orbit SSP V3)":"...","Water Temp":"...","Dose":"18g","Water":"200g","Method":"Inverted","Steep Time":"...","Press Time":"0:30"},"notes":"..."}}`
+      "OUTPUT FORMAT",
+      "Return ONLY a single JSON object inside a ```json fenced block, no prose around it. Either:",
+      `{"roaster":"...","name":"...","meta":"process · origin · altitude · varietal","color":"#hex","tags":["origin","process","roast level"],`,
+      `"espresso":{"settings":{"${grindKey}":"...","Brew Temp":"...°F","Dose":"18g","Yield":"...g","Pressure":"8 bar","Preinfusion":"10s @ 2–3 bar","Total Shot Time":"...s","Basket":"${eq.portafilter || "18g"}"},"notes":"<one short sentence>"},`,
+      `"v60":{"settings":{"${grindKey}":"...","Water Temp":"...","Dose":"24g","Water":"400g","Ratio":"1:16.7 (Hoffmann 60g/L)","Bloom":"48g / 45s","Target Drawdown":"..."},"notes":"..."},`,
+      `"aeropress":{"settings":{"${grindKey}":"...","Water Temp":"...","Dose":"18g","Water":"200g","Method":"Inverted","Steep Time":"...","Press Time":"0:30"},"notes":"..."}}`,
+      "",
+      "OR (when you cannot identify the coffee with confidence):",
+      `{"error":"not_found","reason":"...","suggestion":"..."}`
     );
   }
-  return base.join("\n");
+
+  return lines.filter(Boolean).join("\n");
 }
 
 function userContextBlock() {
@@ -4182,32 +4311,51 @@ async function aiSearchOnline(query) {
     }
   }, 2400);
 
-  // Build prompt — reuse the same JSON shape as aiCreate so we get a full recipe back.
-  // Search-online uses web grounding, so we ask the model to spell the JSON shape
-  // explicitly (Gemini doesn't allow responseSchema alongside the google_search tool).
+  // Pre-parse the query — pulls roaster, brew method, grinder, coffee name
+  // out of the user's input so the model is doing recognition (not guessing).
+  // This is the biggest reliability gain for ambiguous queries like
+  // "tropical weather v60 acaia orbit".
+  const parsedQuery = parseSearchQuery(query);
+  console.log("[search-online] parsed query signal:", parsedQuery);
+
   const prefs = state.data.preferences || "(none provided)";
-  const sys = recipeSystemPrompt(prefs, { grounded: true });
-  const user = `Find this coffee online and return a recipe tailored to my preferences:\n\n${query}\n\nUse web_search for the coffee's origin, process, altitude, varietal, roaster recommendations. Then return the JSON.`;
+  const sys = recipeSystemPrompt(prefs, { grounded: true, parsedQuery });
+  const user = [
+    "Identify this coffee and return a recipe.",
+    "",
+    "Query: " + query,
+    "",
+    "Search the web for the specific roaster + coffee, the bag's color (so the saved card matches), origin, process, varietal, altitude, and any roaster brewing recommendations. Then return the JSON.",
+    "",
+    "If after searching you cannot identify the coffee with at least moderate confidence, return the not_found JSON instead of guessing."
+  ].join("\n");
 
   try {
-    // Schema-enforced JSON for faster, more reliable parsing
     const text = await callAI(sys, user, { useWebSearch: true, mode: "recipe" });
-    if (!state.searchOnlineState || state.searchOnlineState.query !== query) return; // user navigated away / cancelled
-    // Surface the raw response in console so the user can inspect it if anything
-    // downstream fails (parse / save).
+    if (!state.searchOnlineState || state.searchOnlineState.query !== query) return;
     console.log("[search-online] AI raw response:", text);
+    state.searchOnlineState.rawResponse = text;
+
     const parsed = extractJsonBlock(text);
     if (!parsed) {
       state.searchOnlineState.status = "error";
       state.searchOnlineState.error = "Got a reply but couldn't parse JSON from it. The first 280 characters were: \"" + (text || "").slice(0, 280) + "\". Open the browser console for the full response.";
-      state.searchOnlineState.rawResponse = text;
       renderSearchOnlineCard();
       return;
     }
-    // Auto-save — the recipe goes straight into the user's collection. No confirm step.
+
+    // Model bailed out cleanly because it couldn't confirm the coffee.
+    if (parsed.error === "not_found") {
+      state.searchOnlineState.status = "error";
+      state.searchOnlineState.error = parsed.reason || "Couldn't identify this coffee online with confidence.";
+      state.searchOnlineState.suggestion = parsed.suggestion || null;
+      renderSearchOnlineCard();
+      return;
+    }
+
+    // Auto-save — the recipe goes straight into the user's collection.
     state.searchOnlineState.status = "saving";
     state.searchOnlineState.recipe = parsed;
-    state.searchOnlineState.rawResponse = text;
     renderSearchOnlineCard();
     await autoSaveSearchedCoffee();
   } catch (e) {
@@ -4348,12 +4496,16 @@ function renderSearchOnlineCard() {
     `;
   } else if (s.status === "error") {
     card.classList.remove("is-searching");
+    const suggestionLine = s.suggestion
+      ? `<div class="soc-suggestion">Try: <em>${escapeHtml(s.suggestion)}</em></div>`
+      : "";
     card.innerHTML = `
       <div class="soc-row">
         <div class="soc-error-icon" aria-hidden="true">!</div>
         <div class="soc-text">
           <div class="soc-title">Couldn't find "${escapeHtml(s.query)}" online</div>
           <div class="soc-status">${escapeHtml(s.error || "Unknown error.")}</div>
+          ${suggestionLine}
         </div>
       </div>
       <div class="soc-actions">
@@ -4474,16 +4626,33 @@ async function aiCreate(useWebSearch) {
   }
   out.innerHTML = `${COFFEE_SPINNER}${useWebSearch ? "Searching the web..." : "Generating recipe..."}`;
   const prefs = state.data.preferences || "(none provided)";
-  const sys = recipeSystemPrompt(prefs, { grounded: useWebSearch });
+  // Pre-parse the description for both flows — the model gets stronger
+  // signal even on the non-grounded "Generate recipe" path.
+  const parsedDesc = parseSearchQuery(desc);
+  const sys = recipeSystemPrompt(prefs, { grounded: useWebSearch, parsedQuery: parsedDesc });
   const user = useWebSearch
-    ? `Find this coffee online and return a recipe tailored to my preferences:\n\n${desc}\n\nUse web_search for the coffee's origin, process, altitude, varietal, roaster recommendations. Then return the JSON.`
-    : `Coffee: ${desc}\n\nReturn the JSON.`;
+    ? [
+        "Identify this coffee and return a recipe.",
+        "",
+        "Query: " + desc,
+        "",
+        "Search the web for the specific roaster + coffee, the bag's color, origin, process, varietal, altitude, and any roaster brewing recommendations. Then return the JSON.",
+        "",
+        "If after searching you cannot identify the coffee with at least moderate confidence, return the not_found JSON instead of guessing."
+      ].join("\n")
+    : "Coffee: " + desc + "\n\nReturn the JSON.";
   try {
     // mode: "recipe" tells the proxy to use Gemini's responseSchema so the model
     // returns the exact JSON shape with no prose preamble — much faster + reliable.
     const text = await callAI(sys, user, { useWebSearch, mode: "recipe" });
+    console.log("[aiCreate] raw response:", text);
     const parsed = extractJsonBlock(text);
     if (!parsed) { out.innerHTML = "<strong>Couldn't parse JSON:</strong>\n\n" + escapeHtml(text); return; }
+    if (parsed.error === "not_found") {
+      out.innerHTML = "<strong>Couldn't identify that coffee.</strong> " + escapeHtml(parsed.reason || "") +
+        (parsed.suggestion ? "<br /><span style=\"color:#6b5840\">Try: " + escapeHtml(parsed.suggestion) + "</span>" : "");
+      return;
+    }
     applyRecipeToEditor(parsed);
     out.innerHTML = "<strong>Generated.</strong> Review the form below, adjust, and save.";
   } catch (e) {
@@ -4805,6 +4974,9 @@ window.aiLookupOnline = aiLookupOnline;
 window.aiQuickFill = aiQuickFill;
 window.askBrewingTip = askBrewingTip;
 window.openTipModal = openTipModal;
+// Exposed for the test harness — also useful for power users debugging
+// what signal the parser pulled from their query.
+window.parseSearchQuery = parseSearchQuery;
 window.cancelSearchOnline = cancelSearchOnline;
 window.discardSearchOnline = discardSearchOnline;
 window.addSearchedManually = addSearchedManually;
