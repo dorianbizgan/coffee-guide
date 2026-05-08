@@ -61,21 +61,23 @@ export default function App() {
     r.dataset.motion = t.motion;
   }, [t.theme, t.voice, t.density, t.bg, t.iri, t.glow, t.noise, t.cardHover, t.motion]);
 
-  // Hydrate user from Supabase session or guest localStorage
+  // Hydrate user from Supabase session (signed-in OR anonymous-guest) or local
+  // guest fallback. Guest mode pairs an anonymous Supabase session — that
+  // session token unlocks /api/ai for guests — with localStorage for shelf
+  // data, so we don't pollute the prod beans table with anonymous users.
   useEffect(() => {
     let mounted = true;
 
     (async () => {
-      const guestRaw = localStorage.getItem("crema-guest-mode");
-      if (guestRaw === "1") {
-        if (!mounted) return;
-        setUser({ mode: "guest", name: "Guest", id: "guest" });
-        return;
-      }
+      const isGuestFlag = localStorage.getItem("crema-guest-mode") === "1";
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
       const session = data?.session;
       if (session?.user) {
+        if (isGuestFlag || session.user.is_anonymous) {
+          setUser({ mode: "guest", name: "Guest", id: session.user.id });
+          return;
+        }
         const meta = session.user.user_metadata || {};
         setUser({
           mode: "user",
@@ -83,12 +85,23 @@ export default function App() {
           email: session.user.email,
           name: meta.full_name || meta.name || session.user.email?.split("@")[0] || "you",
         });
+        return;
+      }
+      // No session at all but flagged guest — drop the flag; user must re-init
+      // by clicking Continue as Guest so we can hand them a fresh anon session.
+      if (isGuestFlag) {
+        localStorage.removeItem("crema-guest-mode");
       }
     })();
 
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
       if (!mounted) return;
       if (session?.user) {
+        const isGuestFlag = localStorage.getItem("crema-guest-mode") === "1";
+        if (isGuestFlag || session.user.is_anonymous) {
+          setUser({ mode: "guest", name: "Guest", id: session.user.id });
+          return;
+        }
         const meta = session.user.user_metadata || {};
         setUser({
           mode: "user",
@@ -155,19 +168,42 @@ export default function App() {
     }
   };
 
-  const startGuest = () => {
-    localStorage.setItem("crema-guest-mode", "1");
-    setUser({ mode: "guest", name: "Guest", id: "guest" });
-    setView({ name: "dashboard" });
+  const startGuest = async () => {
+    setAuthBusy(true); setAuthError(null);
+    try {
+      // Anonymous Supabase session → real bearer token → guests can hit /api/ai.
+      // Beans/brew_logs still live in localStorage (db.js short-circuits on
+      // mode === "guest"), so we don't write anonymous user rows to prod.
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if (error) throw error;
+      localStorage.setItem("crema-guest-mode", "1");
+      setUser({ mode: "guest", name: "Guest", id: data.user.id });
+      setView({ name: "dashboard" });
+    } catch (e) {
+      // Anonymous sign-in failed (most likely it's not enabled in the Supabase
+      // project). Fall back to a pure-local guest — the shelf works, but the
+      // AI proxy will reject these calls with 401 because there's no token.
+      console.warn("[guest] anon sign-in failed:", e?.message || e);
+      setAuthError("Continuing offline — AI features need anonymous sign-ins enabled in Supabase to work for guests.");
+      localStorage.setItem("crema-guest-mode", "1");
+      setUser({ mode: "guest", name: "Guest", id: "guest-local" });
+      setView({ name: "dashboard" });
+    } finally {
+      setAuthBusy(false);
+    }
   };
 
   const signOut = async () => {
-    if (user?.mode === "guest") {
-      localStorage.removeItem("crema-guest-mode");
-    } else {
-      try { await Promise.race([supabase.auth.signOut(), new Promise((_, r) => setTimeout(() => r(new Error("timeout")), 3000))]); }
-      catch {}
-      // Clean up any stale Supabase tokens
+    // Both real users and anonymous-guest users have a Supabase session to
+    // tear down. The pure-local fallback guest (id === "guest-local") doesn't.
+    localStorage.removeItem("crema-guest-mode");
+    if (user?.id && user.id !== "guest-local") {
+      try {
+        await Promise.race([
+          supabase.auth.signOut(),
+          new Promise((_, r) => setTimeout(() => r(new Error("timeout")), 3000)),
+        ]);
+      } catch {}
       Object.keys(localStorage).forEach((k) => {
         if (k.startsWith("sb-") || k.includes("supabase")) localStorage.removeItem(k);
       });
