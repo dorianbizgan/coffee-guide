@@ -144,9 +144,37 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
   const baseClicks = snapClicks(grinder, grinder.min + f01 * (grinder.max - grinder.min));
   const baseTemp = baseRecipe.temp;
 
-  const [temp, setTemp] = useState(baseTemp);
-  const [clicks, setClicks] = useState(baseClicks);
-  useEffect(() => { setTemp(baseTemp); setClicks(baseClicks); /* eslint-disable-next-line */ }, [methodId, grinder.id]);
+  // Sticky dial — when a brew note exists for this bean+method, restore the
+  // dial to the saved temp/clicks instead of resetting to the recipe base.
+  // Computed synchronously so the very first render of a (re)mounted
+  // detail page or a method tab switch shows the user's last-used values.
+  const noteKey = `cb_note_${coffee.id}_${methodId}`;
+  const [saveTick, setSaveTick] = useState(0);
+  const savedNote = useMemo(() => {
+    const fromLog = (coffee.brewLog || []).filter((l) => l.method === methodId).slice(-1)[0] || null;
+    if (fromLog) return fromLog;
+    try {
+      const stored = localStorage.getItem(noteKey);
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return null;
+    // saveTick forces a refresh after we write a new note so the "Last brew"
+    // marker updates immediately without a remount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coffee.brewLog, methodId, noteKey, saveTick]);
+  const lastTemp = Number.isFinite(savedNote?.temp) ? savedNote.temp : null;
+  const lastClicks = savedNote?.clicks != null ? snapClicks(grinder, parseFloat(savedNote.clicks)) : null;
+
+  const [temp, setTemp] = useState(lastTemp ?? baseTemp);
+  const [clicks, setClicks] = useState(lastClicks ?? baseClicks);
+  // Only re-seed the dial on a method or grinder change. Saving a new note
+  // refreshes savedNote but we DON'T want that to yank the dial out from
+  // under the user mid-tweak.
+  useEffect(() => {
+    setTemp(lastTemp ?? baseTemp);
+    setClicks(lastClicks ?? baseClicks);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [methodId, grinder.id]);
 
   // Map current clicks to a generic fineness descriptor for any grinder.
   const grindDescriptor = (n) => {
@@ -164,36 +192,17 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
   const recipe = { ...baseRecipe, temp, grind: `${clicksLabel} · ${grindDescriptor(clicks).split(" — ")[0]}` };
   const warning = dialWarning({ method, grinder, clicks, temp });
 
-  const noteKey = `cb_note_${coffee.id}_${methodId}`;
-  const [note, setNote] = useState("");
-  const [savedNote, setSavedNote] = useState(null);
-
+  const [note, setNote] = useState(savedNote?.text || "");
+  const [tags, setTags] = useState(savedNote?.tags || []);
+  const [tasted, setTasted] = useState(savedNote?.tasted || []);
+  // When the bean+method context changes, reload the freeform note + chip
+  // state from the (newly resolved) savedNote.
   useEffect(() => {
-    const fromLog = (coffee.brewLog || []).filter((l) => l.method === methodId).slice(-1)[0] || null;
-    if (fromLog) {
-      setSavedNote(fromLog);
-      setNote(fromLog.text || "");
-      return;
-    }
-    try {
-      const stored = localStorage.getItem(noteKey);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setSavedNote(parsed);
-        setNote(parsed.text || "");
-        return;
-      }
-    } catch {}
-    setSavedNote(null);
-    setNote("");
-  }, [noteKey, coffee.brewLog, methodId]);
-
-  const [tags, setTags] = useState([]);
-  const [tasted, setTasted] = useState([]);
-  useEffect(() => {
+    setNote(savedNote?.text || "");
     setTags(savedNote?.tags || []);
     setTasted(savedNote?.tasted || []);
-  }, [savedNote]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [methodId, coffee.id]);
 
   const toggleTag = (t) => setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
   const toggleTasted = (t) => setTasted((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
@@ -204,7 +213,7 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
       temp, clicks, method: methodId,
     };
     try { localStorage.setItem(noteKey, JSON.stringify(entry)); } catch {}
-    setSavedNote(entry);
+    setSaveTick((t) => t + 1);
     if (onSaveBrewLog) await onSaveBrewLog(coffee.id, entry);
   };
 
@@ -319,7 +328,11 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
           <div className="dial-head">
             <div>
               <div className="dial-title">Dial it in</div>
-              <div className="dial-sub">Tweak temp &amp; grind for your kit. Resets when you switch methods.</div>
+              <div className="dial-sub">
+                {savedNote
+                  ? `Restored from your last brew on ${new Date(savedNote.savedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })} — saved per coffee + method.`
+                  : "Tweak temp & grind for your kit — Crema remembers your last brew per method."}
+              </div>
             </div>
             {(temp !== baseTemp || clicks !== baseClicks) && (
               <button className="btn btn-ghost btn-sm" onClick={() => { setTemp(baseTemp); setClicks(baseClicks); }}>Reset to recipe</button>
@@ -331,8 +344,23 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
               <span className="l">Water temperature</span>
               <span className="readout">{temp}<small>°C</small></span>
             </div>
-            <input type="range" min="80" max="99" step="1" value={temp} onChange={(e) => setTemp(parseInt(e.target.value, 10))} className="slider slider-temp" style={{ "--p": ((temp - 80) / 19) * 100 + "%" }} />
+            <div className="slider-wrap">
+              <input type="range" min="80" max="99" step="1" value={temp} onChange={(e) => setTemp(parseInt(e.target.value, 10))} className="slider slider-temp" style={{ "--p": ((temp - 80) / 19) * 100 + "%" }} />
+              {lastTemp != null && lastTemp !== temp && (
+                <span
+                  className="slider-ghost"
+                  style={{ left: `${((lastTemp - 80) / 19) * 100}%` }}
+                  title={`Last brew: ${lastTemp}°C — click to restore`}
+                  onClick={() => setTemp(lastTemp)}
+                />
+              )}
+            </div>
             <div className="dial-scale"><span>80°</span><span>89°</span><span>99°</span></div>
+            {lastTemp != null && lastTemp !== temp && (
+              <button className="last-brew-pill" onClick={() => setTemp(lastTemp)}>
+                Last brew · <strong>{lastTemp}°C</strong> · tap to restore
+              </button>
+            )}
           </div>
 
           <div className="dial-row">
@@ -340,17 +368,32 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
               <span className="l">Grind · <em>{grinder.label}</em></span>
               <span className="readout">{clicksDisplay}<small>{grinder.unit || ""}</small></span>
             </div>
-            <input
-              type="range"
-              min={grinder.min}
-              max={grinder.max}
-              step={grinder.step}
-              value={clicks}
-              onChange={(e) => setClicks(snapClicks(grinder, parseFloat(e.target.value)))}
-              className="slider"
-              style={{ "--p": (((clicks - grinder.min) / (grinder.max - grinder.min)) * 100 || 0) + "%" }}
-            />
+            <div className="slider-wrap">
+              <input
+                type="range"
+                min={grinder.min}
+                max={grinder.max}
+                step={grinder.step}
+                value={clicks}
+                onChange={(e) => setClicks(snapClicks(grinder, parseFloat(e.target.value)))}
+                className="slider"
+                style={{ "--p": (((clicks - grinder.min) / (grinder.max - grinder.min)) * 100 || 0) + "%" }}
+              />
+              {lastClicks != null && lastClicks !== clicks && (
+                <span
+                  className="slider-ghost"
+                  style={{ left: `${(((lastClicks - grinder.min) / (grinder.max - grinder.min)) * 100) || 0}%` }}
+                  title={`Last brew: ${formatClicks(grinder, lastClicks)}${grinder.unit ? " " + grinder.unit : ""} — click to restore`}
+                  onClick={() => setClicks(lastClicks)}
+                />
+              )}
+            </div>
             <div className="dial-scale"><span>fine</span><span className="grind-desc">{grindDescriptor(clicks)}</span><span>coarse</span></div>
+            {lastClicks != null && lastClicks !== clicks && (
+              <button className="last-brew-pill" onClick={() => setClicks(lastClicks)}>
+                Last brew · <strong>{formatClicks(grinder, lastClicks)}{grinder.unit ? " " + grinder.unit : ""}</strong> · tap to restore
+              </button>
+            )}
           </div>
           {warning && <div className="dial-warn">{warning}</div>}
         </div>

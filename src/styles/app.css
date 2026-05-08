@@ -2424,6 +2424,66 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
       oklch(0.66 0.19 28)) 0 0 / var(--p, 50%) 100% no-repeat,
     var(--paper-3);
 }
+
+/* Slider wrapper hosts the ghost marker that shows where the LAST saved brew
+   for this bean+method was dialed. Wrapper takes the full slider width so
+   left:N% on the marker maps cleanly to the slider track. */
+.slider-wrap {
+  position: relative;
+  width: 100%;
+  /* Match .slider's height so the ghost line aligns vertically. */
+  display: flex;
+  align-items: center;
+}
+.slider-ghost {
+  position: absolute;
+  top: 50%;
+  width: 3px;
+  height: 30px;
+  background: var(--ink);
+  opacity: 0.32;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: opacity .15s ease, height .15s ease;
+}
+.slider-ghost::before {
+  content: "";
+  position: absolute;
+  top: -4px; bottom: -4px;
+  left: -8px; right: -8px;
+  /* Generous hit target — easy to tap on mobile. */
+}
+.slider-ghost:hover {
+  opacity: 0.6;
+  height: 36px;
+}
+
+/* "Last brew · 92°C · tap to restore" pill below the slider scale. */
+.last-brew-pill {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px dashed color-mix(in oklch, var(--ink) 30%, transparent);
+  background: transparent;
+  color: var(--ink-mute);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.last-brew-pill strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+.last-brew-pill:hover {
+  background: color-mix(in oklch, var(--paper-2) 80%, transparent);
+  border-color: var(--ink-mute);
+  color: var(--ink);
+}
 .dial-scale {
   display: flex; justify-content: space-between;
   font-size: 11px; color: var(--ink-mute);
