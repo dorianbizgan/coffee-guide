@@ -357,6 +357,55 @@
   }
   .demo-banner button:hover { color: var(--ink); }
   .demo-banner.hidden { display: none; }
+
+  /* Brewing tip modal: pill chips, soft card with cached badge */
+  .tip-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+  .tip-chip {
+    border: 1px solid rgba(40, 18, 4, 0.14);
+    background: rgba(255, 250, 240, 0.7);
+    color: #4a3625;
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.18s var(--ease-out), border-color 0.18s var(--ease-out), background 0.18s var(--ease-out);
+  }
+  .tip-chip:hover {
+    border-color: rgba(192, 132, 74, 0.5);
+    background: rgba(255, 245, 220, 0.95);
+    transform: translateY(-1px);
+  }
+  .tip-card-wrap:empty { display: none; }
+  .tip-card {
+    margin-top: 14px;
+    padding: 16px 18px;
+    background: linear-gradient(135deg, #fff9ed, #fff0d8);
+    border: 1px solid #f0d8a8;
+    border-radius: 12px;
+    font-size: 13.5px; line-height: 1.6; color: #2a1a0a;
+    white-space: pre-wrap;
+    position: relative;
+    animation: tipIn 0.45s var(--ease-out);
+  }
+  @keyframes tipIn {
+    from { opacity: 0; transform: translateY(6px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .tip-card-meta {
+    display: flex; gap: 8px; align-items: center;
+    margin-top: 12px; padding-top: 10px;
+    border-top: 1px solid rgba(40, 18, 4, 0.08);
+    font-size: 11px; color: #8a7560;
+  }
+  .tip-cached-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(45, 122, 61, 0.14);
+    color: #1f6a36;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .tip-cached-badge::before { content: "♻"; font-size: 11px; }
   .login-demo-btn {
     background: linear-gradient(135deg, rgba(255, 240, 210, 0.7), rgba(255, 222, 170, 0.6));
     border-color: rgba(192, 132, 74, 0.36);
@@ -1312,9 +1361,9 @@
       Continue with Google
     </button>
 
-    <button class="login-btn login-demo-btn" id="login-demo" title="No email needed — data stays in this browser">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9 L15 15 M15 9 L9 15" opacity="0"/><path d="M8 13 C 9 15, 15 15, 16 13" /><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/></svg>
-      Try the demo (no email, local only)
+    <button class="login-btn login-demo-btn" id="login-demo" title="Sign in without an email — uses Supabase anonymous auth">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 13 C 9 15, 15 15, 16 13" /><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/></svg>
+      Continue as guest
     </button>
   </div>
 
@@ -1364,6 +1413,10 @@
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="text" id="search-input" placeholder="Search coffees, tags, notes…" />
     </div>
+    <button class="icon-btn" id="tip-btn" title="Ask a brewing question (cached, no waste)">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.6c.6.4 1 1.1 1 1.9V18h6v-1.5c0-.8.4-1.5 1-1.9A7 7 0 0 0 12 2z"/></svg>
+      Tip
+    </button>
     <button class="icon-btn primary" id="add-btn" title="Add new coffee">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Add
@@ -1584,6 +1637,7 @@
         <div class="ai-actions">
           <button class="icon-btn primary" id="ai-create-btn" onclick="aiGenerateNew()">Generate recipe</button>
           <button class="icon-btn" id="ai-lookup-btn" onclick="aiLookupOnline()">Search online + generate</button>
+          <button class="icon-btn" id="ai-quickfill-btn" onclick="aiQuickFill()" title="Heuristic — no AI required, instant">Quick fill</button>
         </div>
         <div class="ai-output empty" id="ai-create-output"></div>
       </div>
@@ -1636,6 +1690,38 @@
     <div class="modal-foot">
       <button class="icon-btn" onclick="closeModal('ai-modal')">Close</button>
       <button class="icon-btn primary" id="ai-apply-btn" style="display:none;" onclick="applyAiSuggestion()">Apply to card</button>
+    </div>
+  </div>
+</div>
+
+<!-- Brewing tip modal — ephemeral AI tip cards with shared cache. -->
+<div class="modal-backdrop hidden" id="tip-modal">
+  <div class="modal" style="max-width: 560px;">
+    <div class="modal-head">
+      <h2>☕ Brewing tip</h2>
+      <button class="modal-close" onclick="closeModal('tip-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="field-help" style="margin-bottom:12px;">Ask a brewing question. Answers are cached across users — if someone asked the same thing recently, you'll get the cached tip instantly (no AI call, free).</p>
+      <div class="tip-presets" id="tip-presets">
+        <button class="tip-chip" data-q="How do I dial in a light-roast washed Ethiopian espresso?">Light Ethiopian espresso</button>
+        <button class="tip-chip" data-q="My espresso is sour and channeling — what should I change first?">Fix sour & channeling</button>
+        <button class="tip-chip" data-q="V60 recipe for a natural process Brazilian medium roast?">V60 for natural Brazil</button>
+        <button class="tip-chip" data-q="AeroPress for a chocolatey medium-dark blend, what method?">AeroPress for chocolatey blend</button>
+        <button class="tip-chip" data-q="How do I taste-test if my espresso is over-extracted vs under-extracted?">Over vs under extraction</button>
+        <button class="tip-chip" data-q="Why does my V60 stall mid-pour and what fixes it?">V60 stalling</button>
+      </div>
+      <div class="field" style="margin-top: 14px;">
+        <label>Or ask anything</label>
+        <textarea id="tip-input" placeholder="e.g. how should I adjust grind size for an anaerobic natural espresso?" rows="2"></textarea>
+      </div>
+      <div class="ai-actions" style="margin-top: 6px;">
+        <button class="icon-btn primary" id="tip-ask-btn" onclick="askBrewingTip()">Ask</button>
+      </div>
+      <div class="tip-card-wrap" id="tip-output"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="icon-btn" onclick="closeModal('tip-modal')">Close</button>
     </div>
   </div>
 </div>
@@ -1981,8 +2067,22 @@ async function onSignedIn() {
   document.getElementById("login-screen").classList.add("hidden");
   document.getElementById("app-root").style.display = "block";
 
+  // Guest banner (cloud-backed anonymous user) — different copy from local demo
+  const banner = document.getElementById("demo-banner");
+  if (isGuestUser()) {
+    document.body.classList.add("demo-mode");
+    if (banner) {
+      banner.classList.remove("hidden");
+      banner.querySelector("span").textContent = "☕ Guest account — your data syncs but isn't tied to an email yet";
+      banner.querySelector("button").textContent = "Add an email to save it";
+    }
+  } else {
+    document.body.classList.remove("demo-mode");
+    if (banner) banner.classList.add("hidden");
+  }
+
   // Update user chip
-  const email = state.user.email || "";
+  const email = state.user.email || (isGuestUser() ? "Guest" : "");
   document.getElementById("user-email").textContent = email;
   document.getElementById("user-avatar").textContent = (email[0] || "?").toUpperCase();
 
@@ -2198,14 +2298,54 @@ async function handleSetNewPassword() {
   }
 }
 
-// ---- Demo / local-only mode ----
-// Workaround for Supabase free-tier email rate limits while building the site.
-// Stores everything in localStorage; no Supabase auth or DB calls.
+// ---- Guest / demo mode ----
+// Two flavors:
+//   1) Real guest:   sb.auth.signInAnonymously() — a real Supabase user with
+//      is_anonymous: true. Data syncs to the cloud, AI proxy works, and the
+//      account can later be converted to a full email account without losing
+//      data (sb.auth.updateUser({ email, password })).
+//   2) Local demo:   localStorage-only fallback for when anonymous sign-ins
+//      are disabled in the Supabase project (or Supabase is unreachable).
 const DEMO_DATA_KEY = "coffee-tracker-demo-v1";
 const DEMO_FLAG_KEY = "coffee-tracker-demo-mode-v1";
 
 function isDemoMode() {
   return localStorage.getItem(DEMO_FLAG_KEY) === "1";
+}
+
+function isGuestUser() {
+  return !!state.user?.is_anonymous;
+}
+
+async function continueAsGuest() {
+  hideLoginMsg();
+  // No Supabase available at all -> local-only demo
+  if (!sb) { enterDemoMode(); return; }
+  const btn = document.getElementById("login-demo");
+  if (btn) { btn.disabled = true; btn.textContent = "Setting up your guest account…"; }
+  try {
+    const { data, error } = await sb.auth.signInAnonymously();
+    if (error) throw error;
+    if (!data?.user) throw new Error("No user returned from anonymous sign-in.");
+    // The onAuthStateChange listener routes us into onSignedIn() automatically.
+  } catch (e) {
+    const msg = (e?.message || "").toLowerCase();
+    if (msg.includes("anonymous") && (msg.includes("disabled") || msg.includes("not enabled"))) {
+      // Project hasn't enabled anonymous auth — fall back to local demo so the
+      // user isn't blocked. We surface a soft note about the upgrade path.
+      console.warn("[guest] anonymous sign-ins disabled in Supabase — falling back to local demo");
+      toast("Cloud guest disabled — using local-only demo mode.", "");
+      enterDemoMode();
+      return;
+    }
+    if (msg.includes("captcha")) {
+      loginMsg("error", "Captcha is required for guest sign-in. Disable captcha in Supabase or use email signup.");
+    } else {
+      loginMsg("error", humanizeAuthError(e, "guest"));
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Continue as guest"; }
+  }
 }
 
 function enterDemoMode() {
@@ -2226,12 +2366,94 @@ function enterDemoMode() {
 }
 
 function exitDemoMode() {
-  // Keep the data in localStorage; just drop the flag and route back to login.
+  // Cloud guest: open a save-account flow that links an email/password to the
+  // existing anonymous user — keeps data attached.
+  if (isGuestUser()) {
+    return saveGuestAccountPrompt();
+  }
+  // Local demo: keep the data in localStorage; just drop the flag and route back.
   localStorage.removeItem(DEMO_FLAG_KEY);
   state.user = null;
   document.body.classList.remove("demo-mode");
   document.getElementById("demo-banner").classList.add("hidden");
   onSignedOut();
+}
+
+async function saveGuestAccountPrompt() {
+  // Lightweight inline flow using the confirm-dialog scaffolding: we ask for
+  // email + password and then call sb.auth.updateUser to link them. No new modal.
+  const email = await promptText({
+    title: "Save your guest account",
+    message: "Add an email and password and we'll keep all your data attached. The same coffees, equipment, and preferences carry over.",
+    placeholder: "you@example.com",
+    confirmLabel: "Next"
+  });
+  if (!email) return;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast("Invalid email.", "error"); return; }
+  const password = await promptText({
+    title: "Set a password",
+    message: "At least 8 characters. You'll use this to sign back in.",
+    placeholder: "••••••••",
+    inputType: "password",
+    confirmLabel: "Save account"
+  });
+  if (!password) return;
+  if (password.length < 8) { toast("Password must be at least 8 characters.", "error"); return; }
+  try {
+    const { error } = await sb.auth.updateUser({ email, password });
+    if (error) throw error;
+    toast("Account saved. Check your inbox to confirm the email.", "success");
+    // is_anonymous flips to false once email is confirmed; banner will hide on
+    // the next sign-in. For now keep it visible so the user knows confirm is pending.
+  } catch (e) {
+    toast("Couldn't save account: " + humanizeAuthError(e, "signup"), "error");
+  }
+}
+
+// Tiny styled prompt built on the existing confirm-dialog modal so we don't
+// have to add another piece of UI. Returns the typed string, or null on cancel.
+function promptText({ title = "", message = "", placeholder = "", inputType = "text", confirmLabel = "OK" } = {}) {
+  return new Promise(resolve => {
+    const modal = document.getElementById("confirm-modal");
+    const titleEl = document.getElementById("confirm-title");
+    const msgEl = document.getElementById("confirm-message");
+    const okBtn = document.getElementById("confirm-ok");
+    const cancelBtn = document.getElementById("confirm-cancel");
+    titleEl.textContent = title;
+    msgEl.innerHTML = "";
+    const p = document.createElement("p");
+    p.textContent = message;
+    p.style.cssText = "font-size:14px;line-height:1.55;color:#444;margin-bottom:12px;";
+    msgEl.appendChild(p);
+    const input = document.createElement("input");
+    input.type = inputType;
+    input.placeholder = placeholder;
+    input.maxLength = 254;
+    input.style.cssText = "width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font:inherit;font-size:14px;outline:none;";
+    msgEl.appendChild(input);
+    okBtn.textContent = confirmLabel;
+    cancelBtn.style.display = "";
+    okBtn.className = "icon-btn primary";
+    setTimeout(() => input.focus(), 50);
+    const cleanup = (val) => {
+      modal.classList.add("hidden");
+      okBtn.removeEventListener("click", onOk);
+      cancelBtn.removeEventListener("click", onCancel);
+      document.removeEventListener("keydown", onKey);
+      msgEl.innerHTML = "";
+      resolve(val);
+    };
+    const onOk = () => cleanup(input.value);
+    const onCancel = () => cleanup(null);
+    const onKey = (e) => {
+      if (e.key === "Enter") { e.preventDefault(); onOk(); }
+      else if (e.key === "Escape") { onCancel(); }
+    };
+    okBtn.addEventListener("click", onOk);
+    cancelBtn.addEventListener("click", onCancel);
+    document.addEventListener("keydown", onKey);
+    modal.classList.remove("hidden");
+  });
 }
 
 function loadDemoData() {
@@ -3444,6 +3666,320 @@ function extractJsonBlock(text) {
   return null;
 }
 
+// ============================================================
+// Heuristic recipe generator — works with no API key.
+// Parses a free-text coffee description ("Onyx Geometry, Ethiopia Hambela,
+// washed, light roast") and produces a sensible starting recipe by looking
+// up origin / process / roast in small knowledge tables. No network calls.
+// Used as a fallback when AI isn't configured, and as a "Quick fill" button.
+// ============================================================
+const ORIGIN_TABLE = [
+  { match: /\b(ethiopia|yirgacheffe|sidama|guji|hambela|gedeb|kochere|aricha|wenago)\b/i, origin: "Ethiopia",
+    impliedRoast: "Light", color: "#3a4f6b", typical: "fruity, florally" },
+  { match: /\b(kenya|nyeri|kiambu|kirinyaga|murang'?a)\b/i, origin: "Kenya",
+    impliedRoast: "Light", color: "#5a3030", typical: "blackcurrant, tomato, juicy" },
+  { match: /\b(colombia|huila|narino|narin~|tolima|antioquia|caldas|chiroso)\b/i, origin: "Colombia",
+    impliedRoast: "Light", color: "#2e5e3e", typical: "balanced, sugary, stone fruit" },
+  { match: /\b(panama|geisha|gesha|boquete|volcan|finca momoto)\b/i, origin: "Panama",
+    impliedRoast: "Light", color: "#1e4d6b", typical: "tropical, jasmine, syrupy" },
+  { match: /\b(costa rica|tarrazu|tarraz)\b/i, origin: "Costa Rica",
+    impliedRoast: "Light", color: "#4a6028", typical: "honey, tropical, clean" },
+  { match: /\b(guatemala|huehuetenango|antigua)\b/i, origin: "Guatemala",
+    impliedRoast: "Medium", color: "#5c4030", typical: "chocolate, caramel, balanced" },
+  { match: /\b(brazil|cerrado|sul de minas|santos|mogiana)\b/i, origin: "Brazil",
+    impliedRoast: "Medium", color: "#4a2a16", typical: "nutty, chocolate, low acid" },
+  { match: /\b(honduras|copan|santa barbara|opalaca)\b/i, origin: "Honduras",
+    impliedRoast: "Medium", color: "#4a2a18", typical: "caramel, soft acidity" },
+  { match: /\b(mexico|chiapas|oaxaca|veracruz|huatusco)\b/i, origin: "Mexico",
+    impliedRoast: "Medium", color: "#5c4a3a", typical: "nutty, mild" },
+  { match: /\b(rwanda|burundi)\b/i, origin: "Rwanda/Burundi",
+    impliedRoast: "Light", color: "#4a3050", typical: "berry, jammy" },
+  { match: /\b(yemen|mocha)\b/i, origin: "Yemen",
+    impliedRoast: "Medium", color: "#4a2820", typical: "wine, dried fruit" },
+  { match: /\b(indonesia|sumatra|java|bali|sulawesi)\b/i, origin: "Indonesia",
+    impliedRoast: "Medium", color: "#3a2818", typical: "earthy, herbal, low acid" }
+];
+
+const PROCESS_TABLE = [
+  { match: /\b(natural(?:ly)?\s*processed?|natural|dry[\s-]?processed)\b/i, process: "Natural",
+    grindAdj: 0.2, tempAdj: -2, ratioAdj: 0.0, notes: "Naturals extract easily — coarser, slightly cooler." },
+  { match: /\b(honey|pulped natural|red honey|yellow honey|black honey|white honey)\b/i, process: "Honey",
+    grindAdj: 0.1, tempAdj: -1, ratioAdj: 0.0, notes: "Honey process sits between washed and natural — start medium." },
+  { match: /\b(washed|fully washed|wet[\s-]?processed)\b/i, process: "Washed",
+    grindAdj: -0.1, tempAdj: 1, ratioAdj: 0.0, notes: "Washed coffees benefit from finer grind and slightly higher temp." },
+  { match: /\b(anaerobic|carbonic|co-?ferment(ed)?|lactic|thermal shock)\b/i, process: "Anaerobic",
+    grindAdj: 0.15, tempAdj: -1, ratioAdj: 0.1, notes: "Funky and intense — coarser, slower extraction shows the ferment best." },
+  { match: /\b(decaf(feinated)?|swiss water|ethyl acetate|ea[\s-]?process|sugarcane decaf)\b/i, process: "Decaf",
+    grindAdj: -0.1, tempAdj: 2, ratioAdj: -0.05, notes: "Decaf beans extract less — finer grind, higher temp, shorter yield." }
+];
+
+const ROAST_TABLE = [
+  { match: /\b(light|filter|omni|light\s*roast|light[\s-]?medium|cinnamon)\b/i, roast: "Light",
+    espressoGrind: 1.3, espressoTemp: 205, ratio: 2.7, totalShot: "38–45s" },
+  { match: /\b(medium\s*roast|city|full city|medium[\s-]?dark)\b/i, roast: "Medium",
+    espressoGrind: 1.6, espressoTemp: 202, ratio: 2.4, totalShot: "30–35s" },
+  { match: /\b(dark|french|italian|espresso\s*roast|dark\s*roast|vienna)\b/i, roast: "Dark",
+    espressoGrind: 1.9, espressoTemp: 198, ratio: 2.0, totalShot: "25–30s" }
+];
+
+function heuristicAnalyze(desc) {
+  const out = {
+    roaster: "",
+    name: "",
+    origin: "",
+    process: "",
+    roast: "",
+    tags: [],
+    color: "#5c4a3a",
+    grindAdj: 0,
+    tempAdj: 0,
+    ratioAdj: 0,
+    processNote: "",
+    confidence: 0
+  };
+  if (!desc) return out;
+
+  // Origin
+  for (const r of ORIGIN_TABLE) {
+    if (r.match.test(desc)) {
+      out.origin = r.origin;
+      out.roast = out.roast || r.impliedRoast;
+      out.color = r.color;
+      out.confidence += 1;
+      break;
+    }
+  }
+  // Process
+  for (const r of PROCESS_TABLE) {
+    if (r.match.test(desc)) {
+      out.process = r.process;
+      out.grindAdj += r.grindAdj;
+      out.tempAdj += r.tempAdj;
+      out.ratioAdj += r.ratioAdj;
+      out.processNote = r.notes;
+      out.confidence += 1;
+      break;
+    }
+  }
+  // Roast (explicit roast wins over implied)
+  for (const r of ROAST_TABLE) {
+    if (r.match.test(desc)) { out.roast = r.roast; out.confidence += 1; break; }
+  }
+  if (!out.roast) out.roast = "Medium";
+
+  // Tags
+  if (out.origin) out.tags.push(out.origin);
+  if (out.process) out.tags.push(out.process);
+  if (out.roast) out.tags.push(`${out.roast} Roast`);
+
+  // Roaster + name guess: split on first comma; treat "Roaster, Coffee Name, ..." pattern
+  const parts = desc.split(/[,—–]/).map(s => s.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    out.roaster = parts[0];
+    out.name = parts[1];
+  } else {
+    out.name = desc.trim().slice(0, 60);
+  }
+  return out;
+}
+
+function heuristicRecipe(desc) {
+  const a = heuristicAnalyze(desc);
+  const roastRow = ROAST_TABLE.find(r => r.roast === a.roast) || ROAST_TABLE[1];
+
+  // Espresso
+  const grind = (roastRow.espressoGrind + a.grindAdj).toFixed(1);
+  const temp = roastRow.espressoTemp + a.tempAdj;
+  const ratio = +(roastRow.ratio + a.ratioAdj).toFixed(2);
+  const yield_ = Math.round(18 * ratio);
+  const espresso = {
+    settings: {
+      "Grind (Acaia Orbit SSP V3)": String(grind),
+      "Brew Temp": `${temp}°F`,
+      "Dose": "18g",
+      "Yield": `${yield_ - 2}–${yield_ + 2}g`,
+      "Pressure": "8 bar",
+      "Preinfusion": "10s @ 2–3 bar",
+      "Total Shot Time": roastRow.totalShot,
+      "Basket": "IMS 18g Precision High-Flow"
+    },
+    notes: [
+      a.origin && `${a.origin}${a.process ? ` (${a.process})` : ""} starting recipe.`,
+      a.processNote
+    ].filter(Boolean).join(" ").trim(),
+    status: "next",
+    statusLabel: "Not Yet Tried"
+  };
+
+  // V60 — finer for darker, coarser for lighter (inverse of espresso convention)
+  const v60Grind = a.roast === "Light" ? "7.0–7.2" : a.roast === "Dark" ? "7.6–7.8" : "7.2–7.4";
+  const v60Temp = a.roast === "Light" ? "95–96°C / 203–205°F" : a.roast === "Dark" ? "92–93°C / 198–199°F" : "94°C / 201°F";
+  const v60 = {
+    settings: {
+      "Grind (Acaia Orbit SSP V3)": v60Grind,
+      "Water Temp": v60Temp,
+      "Dose": "24g",
+      "Water": "400g",
+      "Ratio": "1:16.7 (Hoffmann 60g/L)",
+      "Bloom": "48g / 45s",
+      "Target Drawdown": "3:00–3:45"
+    },
+    notes: a.processNote || "",
+    status: "next",
+    statusLabel: "Not Yet Tried"
+  };
+
+  // AeroPress (inverted)
+  const apGrind = a.roast === "Light" ? "5.5–6.0" : a.roast === "Dark" ? "6.5–7.0" : "6.0–6.5";
+  const apTemp = a.roast === "Light" ? "95°C / 203°F" : a.roast === "Dark" ? "90°C / 194°F" : "92°C / 198°F";
+  const aeropress = {
+    settings: {
+      "Grind (Acaia Orbit SSP V3)": apGrind,
+      "Water Temp": apTemp,
+      "Dose": "18g",
+      "Water": "200g",
+      "Method": "Inverted",
+      "Steep Time": a.process === "Natural" ? "1:30–2:00" : "2:00",
+      "Press Time": "0:30"
+    },
+    notes: a.processNote || "",
+    status: "next",
+    statusLabel: "Not Yet Tried"
+  };
+
+  return {
+    roaster: a.roaster,
+    name: a.name,
+    meta: [a.origin, a.process, `${a.roast} Roast`].filter(Boolean).join(" · "),
+    color: a.color,
+    tags: a.tags,
+    espresso, v60, aeropress,
+    _heuristic: true,
+    _analysis: a
+  };
+}
+
+function applyRecipeToEditor(parsed, opts = {}) {
+  if (parsed.roaster) document.getElementById("ed-roaster").value = parsed.roaster;
+  if (parsed.name)    document.getElementById("ed-name").value = parsed.name;
+  if (parsed.meta)    document.getElementById("ed-meta").value = parsed.meta;
+  if (parsed.color)   document.getElementById("ed-color").value = parsed.color;
+  if (Array.isArray(parsed.tags)) document.getElementById("ed-tags").value = parsed.tags.join(", ");
+  ["espresso", "v60", "aeropress"].forEach(m => {
+    if (parsed[m]) {
+      const cur = state.scratchMethods[m];
+      if (parsed[m].settings) cur.settings = { ...cur.settings, ...parsed[m].settings };
+      if (parsed[m].notes) cur.notes = parsed[m].notes;
+    }
+  });
+  setEditorMethod(state.editorMethod);
+}
+
+// Brewing-tip cards: ephemeral AI tips with a shared server-side cache.
+// Same prompt by another user → served from cache (free, instant).
+function openTipModal() {
+  document.getElementById("tip-input").value = "";
+  document.getElementById("tip-output").innerHTML = "";
+  showModal("tip-modal");
+  setTimeout(() => document.getElementById("tip-input").focus(), 80);
+}
+
+async function askBrewingTip(question) {
+  const input = document.getElementById("tip-input");
+  const out = document.getElementById("tip-output");
+  const q = (question || input.value || "").trim();
+  if (!q) { toast("Type a question, or pick a preset.", "error"); return; }
+  if (q.length > 600) { toast("Keep tip questions under 600 chars.", "error"); return; }
+
+  const askBtn = document.getElementById("tip-ask-btn");
+  if (askBtn) { askBtn.disabled = true; askBtn.textContent = "Thinking…"; }
+  out.innerHTML = `<div class="tip-card">${COFFEE_SPINNER}Brewing your tip…</div>`;
+
+  // System prompt is intentionally generic so cache hits can be shared across users.
+  const systemPrompt = "You are a friendly home-barista expert. Answer the user's brewing question in 80–140 words. Plain prose, no lists unless the question demands one. No user-specific assumptions — keep advice generally applicable. Mention the specific lever to change first if there is one.";
+
+  // Provider preference: anthropic if available, else google, else openai. Match the
+  // current AI provider setting by default though.
+  const provider = state.settings.aiProvider || "anthropic";
+
+  try {
+    let result;
+    if (aiHasServerSupport(provider)) {
+      // Server proxy with caching enabled (mode: "tip")
+      result = await callServerTipAI(provider, systemPrompt, q);
+    } else if (state.settings.aiKey) {
+      // BYOK fallback — no shared cache (each user pays for their own call)
+      let text;
+      if (provider === "anthropic") text = await callAnthropic(systemPrompt, q);
+      else if (provider === "google") text = await callGemini(systemPrompt, q);
+      else text = await callOpenAI(systemPrompt, q);
+      result = { text, cached: false, provider };
+    } else {
+      out.innerHTML = `<div class="tip-card">AI isn't connected yet. Set <code>GEMINI_API_KEY</code> in Vercel (free tier) or paste a personal key in Settings to start asking tips.</div>`;
+      return;
+    }
+    renderTipCard(out, q, result);
+  } catch (e) {
+    out.innerHTML = `<div class="tip-card"><strong>Couldn't fetch a tip:</strong> ${escapeHtml(e.message || String(e))}</div>`;
+  } finally {
+    if (askBtn) { askBtn.disabled = false; askBtn.textContent = "Ask"; }
+  }
+}
+
+async function callServerTipAI(provider, systemPrompt, userPrompt) {
+  let token = "";
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    token = session?.access_token || "";
+  } catch {}
+  if (!token) throw new Error("Sign in expired — refresh and sign in again.");
+  const res = await fetch("/api/ai", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token,
+      "Accept": "application/json"
+    },
+    body: JSON.stringify({
+      provider, system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+      mode: "tip", max_tokens: 600
+    })
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`AI server (${res.status}): ${text.slice(0, 200)}`);
+  }
+  return await res.json();
+}
+
+function renderTipCard(container, question, result) {
+  const safe = escapeHtml(result.text || "(no answer)");
+  const cachedBadge = result.cached
+    ? `<span class="tip-cached-badge">cached</span><span>Served from cache — saved an AI call.</span>`
+    : `<span>Fresh from ${escapeHtml(result.provider || "AI")} · cached now for next person who asks.</span>`;
+  container.innerHTML = `
+    <div class="tip-card">${safe}<div class="tip-card-meta">${cachedBadge}</div></div>
+  `;
+}
+
+async function aiQuickFill() {
+  const desc = document.getElementById("ai-create-input").value.trim();
+  const out = document.getElementById("ai-create-output");
+  if (!desc) { toast("Tell me about the coffee first.", "error"); return; }
+  out.classList.remove("empty");
+  const recipe = heuristicRecipe(desc);
+  applyRecipeToEditor(recipe);
+  const detected = [
+    recipe._analysis.origin && `<strong>${escapeHtml(recipe._analysis.origin)}</strong>`,
+    recipe._analysis.process && `<strong>${escapeHtml(recipe._analysis.process)}</strong>`,
+    recipe._analysis.roast && `<strong>${escapeHtml(recipe._analysis.roast + " roast")}</strong>`
+  ].filter(Boolean).join(" · ");
+  out.innerHTML = detected
+    ? `<strong>Quick fill (no AI):</strong> detected ${detected}. Adjust below.`
+    : "<strong>Quick fill (no AI):</strong> couldn't parse origin/process/roast — generic medium-roast starter applied. Edit below.";
+}
+
 async function aiGenerateNew() { await aiCreate(false); }
 async function aiLookupOnline() {
   // Web search is supported by Anthropic (web_search tool) and Google (google_search grounding) — not OpenAI.
@@ -3465,6 +4001,13 @@ async function aiCreate(useWebSearch) {
   if (!desc) { toast("Tell me about the coffee first.", "error"); return; }
   const out = document.getElementById("ai-create-output");
   out.classList.remove("empty");
+  // If no AI is connected at all, fall straight back to the heuristic.
+  const provider = state.settings.aiProvider || "anthropic";
+  if (!aiHasServerSupport(provider) && !state.settings.aiKey) {
+    aiQuickFill();
+    out.innerHTML = (out.innerHTML || "") + `<br /><span style="color:#8a7560">Connect AI in Settings for tailored recipes (Gemini's free tier covers it).</span>`;
+    return;
+  }
   out.innerHTML = `${COFFEE_SPINNER}${useWebSearch ? "Searching the web..." : "Generating recipe..."}`;
   const prefs = state.data.preferences || "(none provided)";
   const sys = `You are a coffee expert. USER PREFERENCES:\n${prefs}\n\nEQUIPMENT:\n- Espresso: Acaia Orbit + SSP Lab Sweet V3 burrs (numeric grind, e.g. 1.3). 18g IMS High-Flow basket.\n- V60: Hoffmann method, 1:16.7 ratio.\n- AeroPress: inverted.\n\nReturn ONLY valid JSON in this exact shape, no prose:\n{\n  "roaster": "...", "name": "...", "meta": "process · origin · altitude", "color": "#hex", "tags": ["..."],\n  "espresso": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Brew Temp": "...°F", "Dose": "18g", "Yield": "...", "Pressure": "8 bar", "Preinfusion": "10s @ 2–3 bar", "Total Shot Time": "...s", "Basket": "IMS 18g Precision High-Flow"}, "notes": "..."},\n  "v60": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Water Temp": "...", "Dose": "24g", "Water": "400g", "Ratio": "1:16.7 (Hoffmann 60g/L)", "Bloom": "48g / 45s", "Target Drawdown": "..."}, "notes": "..."},\n  "aeropress": {"settings": {"Grind (Acaia Orbit SSP V3)": "...", "Water Temp": "...", "Dose": "18g", "Water": "200g", "Method": "Inverted", "Steep Time": "...", "Press Time": "0:30"}, "notes": "..."}\n}`;
@@ -3475,21 +4018,16 @@ async function aiCreate(useWebSearch) {
     const text = await callAI(sys, user, { useWebSearch });
     const parsed = extractJsonBlock(text);
     if (!parsed) { out.innerHTML = "<strong>Couldn't parse JSON:</strong>\n\n" + escapeHtml(text); return; }
-    if (parsed.roaster) document.getElementById("ed-roaster").value = parsed.roaster;
-    if (parsed.name) document.getElementById("ed-name").value = parsed.name;
-    if (parsed.meta) document.getElementById("ed-meta").value = parsed.meta;
-    if (parsed.color) document.getElementById("ed-color").value = parsed.color;
-    if (Array.isArray(parsed.tags)) document.getElementById("ed-tags").value = parsed.tags.join(", ");
-    ["espresso","v60","aeropress"].forEach(m => {
-      if (parsed[m]) {
-        const cur = state.scratchMethods[m];
-        if (parsed[m].settings) cur.settings = { ...cur.settings, ...parsed[m].settings };
-        if (parsed[m].notes) cur.notes = parsed[m].notes;
-      }
-    });
-    setEditorMethod(state.editorMethod);
+    applyRecipeToEditor(parsed);
     out.innerHTML = "<strong>Generated.</strong> Review the form below, adjust, and save.";
-  } catch (e) { out.innerHTML = "<strong>Error:</strong> " + escapeHtml(e.message); }
+  } catch (e) {
+    // If AI fails (rate limit, network, missing key), fall back to the heuristic so the user isn't stuck.
+    console.warn("[aiCreate] falling back to heuristic:", e);
+    aiQuickFill();
+    const original = document.getElementById("ai-create-output").innerHTML;
+    document.getElementById("ai-create-output").innerHTML = original +
+      `<br /><span style="color:#8a4f1c">AI call failed (${escapeHtml(e.message)}) — used the heuristic instead.</span>`;
+  }
 }
 
 function openAiModal(id) {
@@ -3724,9 +4262,9 @@ function bindEvents() {
   if (recovery1) recovery1.addEventListener("keydown", e => { if (e.key === "Enter") handleSetNewPassword(); });
   if (recovery2) recovery2.addEventListener("keydown", e => { if (e.key === "Enter") handleSetNewPassword(); });
 
-  // Demo mode — bypasses Supabase auth (works around free-tier rate limits while building)
+  // Guest sign-in — Supabase anonymous auth, with local-demo fallback
   const demoBtn = document.getElementById("login-demo");
-  if (demoBtn) demoBtn.addEventListener("click", enterDemoMode);
+  if (demoBtn) demoBtn.addEventListener("click", continueAsGuest);
   const demoExit = document.getElementById("demo-exit");
   if (demoExit) demoExit.addEventListener("click", exitDemoMode);
 
@@ -3737,6 +4275,15 @@ function bindEvents() {
   document.getElementById("search-input").addEventListener("input", (e) => { state.searchTerm = e.target.value; render(state.activeMethod); });
   document.getElementById("settings-btn").addEventListener("click", openSettingsModal);
   document.getElementById("add-btn").addEventListener("click", openAddModal);
+  const tipBtn = document.getElementById("tip-btn");
+  if (tipBtn) tipBtn.addEventListener("click", openTipModal);
+  document.querySelectorAll(".tip-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const q = chip.dataset.q || chip.textContent.trim();
+      document.getElementById("tip-input").value = q;
+      askBrewingTip(q);
+    });
+  });
   // Refresh AI status card when provider changes inside settings
   const aiProviderEl = document.getElementById("ai-provider");
   if (aiProviderEl) aiProviderEl.addEventListener("change", () => refreshAiStatusCard());
@@ -3775,6 +4322,9 @@ window.runAiExplain = runAiExplain;
 window.applyAiSuggestion = applyAiSuggestion;
 window.aiGenerateNew = aiGenerateNew;
 window.aiLookupOnline = aiLookupOnline;
+window.aiQuickFill = aiQuickFill;
+window.askBrewingTip = askBrewingTip;
+window.openTipModal = openTipModal;
 window.addSettingRow = addSettingRow;
 window.deleteSettingRow = deleteSettingRow;
 window.saveCoffee = saveCoffee;

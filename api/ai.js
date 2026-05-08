@@ -18,6 +18,51 @@
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://udzsveyedwbmygvpvxpx.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || "sb_publishable_-mBzL95B_KjuBYpEjmHJiQ_oy63JplW";
 
+// Tip cards are cached so repeated identical prompts don't burn AI tokens.
+const TIP_CACHE_TTL_DAYS = 7;
+
+const crypto = require("crypto");
+function hashTipKey({ provider, model, system, prompt, useWebSearch, jsonMode }) {
+  const canonical = JSON.stringify({ provider, model, system, prompt, useWebSearch: !!useWebSearch, jsonMode: !!jsonMode });
+  return "tip:" + crypto.createHash("sha256").update(canonical).digest("hex");
+}
+
+async function readTipCache(key, accessToken) {
+  // Reads via the user's session — RLS policy must allow authenticated SELECT on ai_cache.
+  const url = `${SUPABASE_URL}/rest/v1/ai_cache?key=eq.${encodeURIComponent(key)}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=value,provider,created_at`;
+  try {
+    const r = await fetch(url, {
+      headers: {
+        "apikey": SUPABASE_PUBLISHABLE_KEY,
+        "Authorization": `Bearer ${accessToken}`,
+        "Accept": "application/json"
+      }
+    });
+    if (!r.ok) return null;
+    const arr = await r.json();
+    return arr[0] || null;
+  } catch { return null; }
+}
+
+async function writeTipCache(key, value, provider, accessToken) {
+  const expires = new Date(Date.now() + TIP_CACHE_TTL_DAYS * 86400_000).toISOString();
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/ai_cache`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_PUBLISHABLE_KEY,
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=minimal"
+      },
+      body: JSON.stringify({ key, value, provider, expires_at: expires })
+    });
+  } catch (e) {
+    // Cache writes are best-effort — never fail the user request because of cache problems
+    console.warn("[ai-cache] write failed:", e?.message || e);
+  }
+}
+
 // Per-IP rate limiter (resets on cold start; for serious abuse use Upstash/Redis).
 const RATE = new Map();
 const RATE_WINDOW_MS = 60_000;
@@ -113,12 +158,37 @@ module.exports = async function handler(req, res) {
   const maxTokens = Math.min(Math.max(parseInt(body.max_tokens || 2048, 10) || 2048, 64), 4096);
   const useWebSearch = !!body.useWebSearch;
   const jsonMode = !!body.jsonMode;
+  const mode = body.mode === "tip" ? "tip" : "default"; // "tip" requests are cached
 
   // Hard caps to keep costs bounded
   if (system.length > 8000 || userPrompt.length > 12000) {
     return jsonResponse(res, 413, { error: "Prompt too long" });
   }
   if (!userPrompt) return jsonResponse(res, 400, { error: "Missing user prompt" });
+
+  // Read-through cache for tip-mode requests so repeated questions don't burn tokens.
+  // Cache entries are ai-generated text only (no PII). Disabled silently if the
+  // ai_cache table doesn't exist yet.
+  let cacheKey = null;
+  if (mode === "tip") {
+    cacheKey = hashTipKey({ provider, model: body.model || null, system, prompt: userPrompt, useWebSearch, jsonMode });
+    const cached = await readTipCache(cacheKey, token);
+    if (cached?.value) {
+      return jsonResponse(res, 200, {
+        text: cached.value,
+        provider: cached.provider || provider,
+        model: body.model || null,
+        cached: true,
+        cachedAt: cached.created_at
+      });
+    }
+  }
+
+  // Helper: write the result to cache (tip mode only) and emit the JSON response
+  const respond = async (out, providerOut, model) => {
+    if (cacheKey && out) await writeTipCache(cacheKey, out, providerOut, token);
+    return jsonResponse(res, 200, { text: out, provider: providerOut, model, cached: false });
+  };
 
   try {
     if (provider === "anthropic") {
@@ -146,7 +216,7 @@ module.exports = async function handler(req, res) {
       if (!r.ok) return jsonResponse(res, r.status, { error: `Anthropic ${r.status}: ${text.slice(0, 400)}` });
       const json = JSON.parse(text);
       const out = (json.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
-      return jsonResponse(res, 200, { text: out, provider: "anthropic", model: reqBody.model });
+      return respond(out, "anthropic", reqBody.model);
     }
 
     if (provider === "openai") {
@@ -166,7 +236,7 @@ module.exports = async function handler(req, res) {
       if (!r.ok) return jsonResponse(res, r.status, { error: `OpenAI ${r.status}: ${text.slice(0, 400)}` });
       const json = JSON.parse(text);
       const out = (json.choices?.[0]?.message?.content || "").trim();
-      return jsonResponse(res, 200, { text: out, provider: "openai", model: reqBody.model });
+      return respond(out, "openai", reqBody.model);
     }
 
     // Google Gemini (free tier covers light personal use of this app)
@@ -190,7 +260,7 @@ module.exports = async function handler(req, res) {
     const json = JSON.parse(text);
     const parts = json.candidates?.[0]?.content?.parts || [];
     const out = parts.map(p => p.text || "").join("\n").trim();
-    return jsonResponse(res, 200, { text: out, provider: "google", model });
+    return respond(out, "google", model);
   } catch (e) {
     return jsonResponse(res, 502, { error: "Upstream error: " + (e?.message || String(e)).slice(0, 300) });
   }

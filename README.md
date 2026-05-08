@@ -61,6 +61,8 @@ After deploying:
 2. **Redirect URLs** — add the same URL plus any preview-deployment patterns you want to support (e.g. `https://*.vercel.app`). The forgot-password link won't work otherwise.
 3. **Branded emails** — paste the templates in [`supabase/email-templates/`](supabase/email-templates/) into Authentication → Email Templates. See the README in that folder for which file goes where.
 4. **Google login (optional)** — Authentication → Providers → Google → enable, follow the setup wizard.
+5. **Guest sign-ins (recommended)** — Authentication → Providers → **Anonymous Sign-Ins** → enable. Powers the "Continue as guest" button: visitors get a real cloud-backed account without an email, and can later link an email to keep their data. If you skip this step, the app silently falls back to a localStorage-only demo mode for guests.
+6. **Tip-card cache (recommended)** — open `supabase/migrations/0001_ai_cache.sql` in this repo, paste into Supabase → SQL Editor, run. Creates the `public.ai_cache` table that lets the "Brewing tip" feature share answers across users (same prompt = no AI call, instant + free). Skipping this is fine — the tip feature still works, it just won't share cache.
 
 ## Hitting the free-tier email rate limit?
 
