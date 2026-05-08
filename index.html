@@ -2910,6 +2910,18 @@ function refreshAiStatusCard() {
     return;
   }
 
+  // The user's preferred provider isn't configured server-side, but ANOTHER provider IS.
+  // Surface that — it's exactly the case the auto-fallback covers.
+  const fallback = pickServerProvider(provider);
+  if (fallback && fallback !== provider) {
+    const fbLabel = fallback === "openai" ? "OpenAI" : fallback === "google" ? "Google Gemini" : "Anthropic Claude";
+    card.classList.add("ai-status-card--ready");
+    titleEl.textContent = `Connected — using ${fbLabel} via this site`;
+    subEl.innerHTML = `Your preferred provider (${providerLabel}) isn't configured here, so requests auto-route to ${fbLabel}. Switch the dropdown to make it explicit.`;
+    if (byok && !state.settings.aiKey) byok.removeAttribute("open");
+    return;
+  }
+
   if (state.settings.aiKey) {
     card.classList.add("ai-status-card--byok");
     titleEl.textContent = `${providerLabel} — using your personal key`;
@@ -3538,19 +3550,32 @@ function aiAnyServerSupport() {
   return aiProxy.ready && (aiProxy.anthropic || aiProxy.openai || aiProxy.google);
 }
 
+// Pick the best available server provider for this request. Honors the user's
+// preference if its server key is set, otherwise auto-falls-back to whatever
+// IS configured. Web search needs Anthropic or Google (OpenAI has no equivalent).
+function pickServerProvider(preferred, { useWebSearch = false } = {}) {
+  if (!aiProxy.ready) return null;
+  const all = ["anthropic", "google", "openai"];
+  let available = all.filter(p => aiHasServerSupport(p));
+  if (useWebSearch) available = available.filter(p => p === "anthropic" || p === "google");
+  if (available.includes(preferred)) return preferred;
+  return available[0] || null;
+}
+
 async function callAI(systemPrompt, userPrompt, opts = {}) {
   const now = Date.now();
   if (now - _lastAiCall < AI_RATE_LIMIT_MS) throw new Error("Please wait a moment before making another AI request.");
   _lastAiCall = now;
-  const provider = state.settings.aiProvider || "anthropic";
+  const preferred = state.settings.aiProvider || "google";
   const sys = systemPrompt + userContextBlock();
 
-  // 1) Prefer server proxy if available (no client key needed — uses Claude Max-grade quota of the deployer)
-  if (aiHasServerSupport(provider)) {
+  // 1) Prefer server proxy. Auto-pick whatever provider IS configured server-side
+  // so a stale "anthropic" preference doesn't break things on a Gemini-only deploy.
+  const serverProvider = pickServerProvider(preferred, opts);
+  if (serverProvider) {
     try {
-      return await callServerAI(provider, sys, userPrompt, opts);
+      return await callServerAI(serverProvider, sys, userPrompt, opts);
     } catch (e) {
-      // If the server proxy is misconfigured (503) or auth fails, surface a clear error
       if (e.code === "PROXY_UNAVAILABLE" && state.settings.aiKey) {
         // Fall through to BYOK
       } else {
@@ -3559,15 +3584,15 @@ async function callAI(systemPrompt, userPrompt, opts = {}) {
     }
   }
 
-  // 2) BYOK fallback
+  // 2) BYOK fallback (uses the user's preferred provider with their personal key)
   if (!state.settings.aiKey) {
     const hint = aiProxy.ready
-      ? "AI isn't connected. Either set an API key in Settings, or ask the deployer to add a server-side key to Vercel."
+      ? "AI isn't connected. Either set an API key in Settings, or ask the deployer to add a server-side key (GEMINI_API_KEY is free) to Vercel."
       : "Set your API key in Settings first.";
     throw new Error(hint);
   }
-  if (provider === "anthropic") return callAnthropic(sys, userPrompt, opts);
-  if (provider === "google")    return callGemini(sys, userPrompt, opts);
+  if (preferred === "anthropic") return callAnthropic(sys, userPrompt, opts);
+  if (preferred === "google")    return callGemini(sys, userPrompt, opts);
   return callOpenAI(sys, userPrompt, opts);
 }
 
@@ -3898,22 +3923,23 @@ async function askBrewingTip(question) {
   // System prompt is intentionally generic so cache hits can be shared across users.
   const systemPrompt = "You are a friendly home-barista expert. Answer the user's brewing question in 80–140 words. Plain prose, no lists unless the question demands one. No user-specific assumptions — keep advice generally applicable. Mention the specific lever to change first if there is one.";
 
-  // Provider preference: anthropic if available, else google, else openai. Match the
-  // current AI provider setting by default though.
-  const provider = state.settings.aiProvider || "anthropic";
+  // Auto-pick whichever provider IS configured server-side (preferred wins
+  // when available). Falls back to BYOK with the user's preferred provider.
+  const preferred = state.settings.aiProvider || "google";
+  const serverProvider = pickServerProvider(preferred);
 
   try {
     let result;
-    if (aiHasServerSupport(provider)) {
+    if (serverProvider) {
       // Server proxy with caching enabled (mode: "tip")
-      result = await callServerTipAI(provider, systemPrompt, q);
+      result = await callServerTipAI(serverProvider, systemPrompt, q);
     } else if (state.settings.aiKey) {
       // BYOK fallback — no shared cache (each user pays for their own call)
       let text;
-      if (provider === "anthropic") text = await callAnthropic(systemPrompt, q);
-      else if (provider === "google") text = await callGemini(systemPrompt, q);
+      if (preferred === "anthropic") text = await callAnthropic(systemPrompt, q);
+      else if (preferred === "google") text = await callGemini(systemPrompt, q);
       else text = await callOpenAI(systemPrompt, q);
-      result = { text, cached: false, provider };
+      result = { text, cached: false, provider: preferred };
     } else {
       out.innerHTML = `<div class="tip-card">AI isn't connected yet. Set <code>GEMINI_API_KEY</code> in Vercel (free tier) or paste a personal key in Settings to start asking tips.</div>`;
       return;
@@ -3982,18 +4008,15 @@ async function aiQuickFill() {
 
 async function aiGenerateNew() { await aiCreate(false); }
 async function aiLookupOnline() {
-  // Web search is supported by Anthropic (web_search tool) and Google (google_search grounding) — not OpenAI.
-  const provider = state.settings.aiProvider;
-  if (provider !== "anthropic" && provider !== "google") {
-    toast("Online lookup needs Anthropic or Google. Switch provider in Settings.", "error");
-    return;
-  }
-  if (!aiHasServerSupport(provider) && !state.settings.aiKey) {
-    const which = provider === "google" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY";
-    toast(`Online lookup needs an API key. Add yours in Settings, or set ${which} in Vercel.`, "error");
-    return;
-  }
-  await aiCreate(true);
+  // Web search is supported by Anthropic (web_search tool) and Google (google_search grounding).
+  // Auto-route to whichever the deployer configured.
+  const preferred = state.settings.aiProvider;
+  const serverProvider = pickServerProvider(preferred, { useWebSearch: true });
+  if (serverProvider) { await aiCreate(true); return; }
+  // BYOK fallback
+  const byokProvider = preferred === "anthropic" || preferred === "google" ? preferred : null;
+  if (byokProvider && state.settings.aiKey) { await aiCreate(true); return; }
+  toast("Online lookup needs Anthropic or Gemini. Set GEMINI_API_KEY (free) in Vercel, or paste a personal key.", "error");
 }
 
 async function aiCreate(useWebSearch) {
