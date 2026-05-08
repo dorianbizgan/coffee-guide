@@ -2,8 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <!-- viewport-fit=cover is what enables env(safe-area-inset-*). Without it,
+       Safari ignores the safe-area CSS env() values entirely. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#ebd5a0" />
+  <!-- Theme-color drives the iOS status bar tint when the app is added to
+       the home screen (or in Chrome's URL bar on Android). Match the paper
+       background so the dynamic island sits over a continuous color. -->
+  <meta name="theme-color" content="#f5e6c1" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#1a2218" media="(prefers-color-scheme: dark)" />
+  <!-- iOS PWA: black-translucent makes the status bar transparent over our
+       backdrop-blurred nav, matching the design language. -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Crema" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>Crema · Coffee Field Guide</title>

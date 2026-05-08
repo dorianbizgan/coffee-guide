@@ -45,6 +45,8 @@ export default function App() {
   const [prefillSearch, setPrefillSearch] = useState("");
   const [userMenu, setUserMenu] = useState(false);
   const userMenuRef = useRef(null);
+  const [mobileNav, setMobileNav] = useState(false);
+  const mobileNavRef = useRef(null);
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
 
   // Close user menu on any click outside it. Mirrors the click-away in
@@ -58,6 +60,20 @@ export default function App() {
     document.addEventListener("pointerdown", handle, true);
     return () => document.removeEventListener("pointerdown", handle, true);
   }, [userMenu]);
+
+  // Same click-away pattern for the mobile hamburger drawer.
+  useEffect(() => {
+    if (!mobileNav) return undefined;
+    const handle = (e) => {
+      if (mobileNavRef.current && !mobileNavRef.current.contains(e.target)) setMobileNav(false);
+    };
+    document.addEventListener("pointerdown", handle, true);
+    return () => document.removeEventListener("pointerdown", handle, true);
+  }, [mobileNav]);
+
+  // Close the drawer whenever the route view changes (e.g. tap "Brew log"
+  // → drawer closes + view switches in the same gesture).
+  useEffect(() => { setMobileNav(false); }, [view.name]);
 
   // Bind tweak data attributes onto <html>
   useEffect(() => {
@@ -359,12 +375,18 @@ export default function App() {
             </div>
           </div>
         </div>
-        <nav className="nav-links">
+        <nav className="nav-text-links">
           <span className={`nav-link ${view.name === "dashboard" ? "active" : ""}`} onClick={() => setView({ name: "dashboard" })}>The shelf</span>
           <span className={`nav-link ${view.name === "log" ? "active" : ""}`} onClick={() => setView({ name: "log" })}>Brew log</span>
           <span className={`nav-link ${view.name === "gear" ? "active" : ""}`} onClick={() => setView({ name: "gear" })}>Gear</span>
-          <button className="btn btn-amber btn-sm" onClick={() => { setEditing(null); setAdding(true); }}>
-            <Icon name="plus" size={14} /> New brew
+        </nav>
+        <div className="nav-actions">
+          <button
+            className="btn btn-amber btn-sm nav-new-brew"
+            onClick={() => { setEditing(null); setAdding(true); }}
+            aria-label="New brew"
+          >
+            <Icon name="plus" size={14} /> <span className="nav-new-brew-label">New brew</span>
           </button>
           <div className="user-chip-wrap" ref={userMenuRef}>
             <button className="user-chip" onClick={() => setUserMenu((o) => !o)}>
@@ -383,7 +405,24 @@ export default function App() {
               </div>
             )}
           </div>
-        </nav>
+          <div className="nav-hamburger-wrap" ref={mobileNavRef}>
+            <button
+              className="nav-hamburger"
+              onClick={() => setMobileNav((o) => !o)}
+              aria-label="Open navigation"
+              aria-expanded={mobileNav}
+            >
+              <Icon name="menu" size={20} />
+            </button>
+            {mobileNav && (
+              <div className="nav-drawer">
+                <button className={`nav-drawer-item ${view.name === "dashboard" ? "active" : ""}`} onClick={() => setView({ name: "dashboard" })}>The shelf</button>
+                <button className={`nav-drawer-item ${view.name === "log" ? "active" : ""}`} onClick={() => setView({ name: "log" })}>Brew log</button>
+                <button className={`nav-drawer-item ${view.name === "gear" ? "active" : ""}`} onClick={() => setView({ name: "gear" })}>Gear</button>
+              </div>
+            )}
+          </div>
+        </div>
       </header>
 
       {user.mode === "guest" && (

@@ -4,15 +4,25 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
 const TWEAKS_STYLE = `
-  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
-    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+  .twk-panel{position:fixed;
+    /* Use max() so the panel hugs the safe area on devices that have one
+       (iPhone home indicator, dynamic island in landscape) and stays a
+       comfortable 16px in from the edge everywhere else. */
+    right:max(16px, env(safe-area-inset-right));
+    bottom:max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+    z-index:2147483646;width:280px;
+    max-height:calc(100dvh - max(32px, calc(env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px) + 32px)));
+    display:flex;flex-direction:column;
     background:rgba(250,249,247,.78);color:#29261b;
     -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
     border:.5px solid rgba(255,255,255,.6);border-radius:14px;
     box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
     font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
   .twk-panel.collapsed{width:auto;height:auto}
-  .twk-launch{position:fixed;right:16px;bottom:16px;z-index:2147483646;
+  .twk-launch{position:fixed;
+    right:max(16px, env(safe-area-inset-right));
+    bottom:max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+    z-index:2147483646;
     width:38px;height:38px;border-radius:99px;border:.5px solid rgba(0,0,0,.12);
     background:rgba(250,249,247,.85);-webkit-backdrop-filter:blur(20px);
     backdrop-filter:blur(20px);box-shadow:0 6px 20px rgba(0,0,0,.18);
