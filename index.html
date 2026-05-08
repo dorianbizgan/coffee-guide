@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
+<meta name="theme-color" content="#ebd5a0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://udzsveyedwbmygvpvxpx.supabase.co wss://udzsveyedwbmygvpvxpx.supabase.co https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://lottie.host https://*.lottiefiles.com; img-src 'self' data: https://lottie.host https://*.lottiefiles.com; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests;">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -35,19 +36,37 @@
     --ease-spring: cubic-bezier(.34, 1.4, .64, 1);
   }
   html, body { height: 100%; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    /* Flat warm honey base — no gradient. Visual identity comes from the
-       glass elements catching light, not from the canvas underneath. */
+    /* Base honey tone, blended toward the average color of the user's
+       coffee collection (set on :root via --collection-tint by JS). */
     background-color: #ebd5a0;
+    background-image: linear-gradient(180deg, var(--collection-tint, transparent), transparent 60%);
     background-attachment: fixed;
-    min-height: 100vh;
+    /* 100dvh tracks the dynamic viewport so the page fills the actual screen
+       on mobile (no white strip below the URL bar) without overflowing. */
+    min-height: 100dvh;
+    width: 100%;
     padding: 24px 16px 80px;
+    /* Account for iOS notch / Android nav buttons. */
+    padding-top: calc(24px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     color: var(--ink);
     letter-spacing: -0.005em;
+  }
+  /* Stop iOS from zooming in when an input gets focus. The trigger is any
+     input with a font-size below 16px — we set 16px on focus and keep the
+     visual size via transform so layout doesn't shift. Better: just make
+     all inputs 16px on touch devices. */
+  @media (pointer: coarse) {
+    input, textarea, select { font-size: 16px !important; }
+    .login-input { font-size: 16px !important; }
+    .search-box input { font-size: 16px !important; }
+    .field input, .field textarea, .field select { font-size: 16px !important; }
   }
 
   /* The .bg-accent div is rendered as a no-op now; we keep the element so
@@ -56,7 +75,10 @@
 
   body.loading { overflow: hidden; padding: 0; }
   body.show-login {
-    padding: 0; min-height: 100vh;
+    padding: 16px;
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    min-height: 100dvh;
     display: flex; align-items: center; justify-content: center;
   }
 
@@ -328,9 +350,11 @@
 
   /* Demo mode banner — pinned to the bottom so it never fights with the header.
      Body gets a small bottom padding so it doesn't cover the last card. */
-  body.demo-mode { padding-bottom: 110px; }
+  body.demo-mode { padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
   .demo-banner {
-    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    position: fixed;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    left: 50%; transform: translateX(-50%);
     background: rgba(255, 250, 240, 0.92);
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
@@ -343,6 +367,7 @@
     z-index: 50;
     display: flex; align-items: center; gap: 8px;
     max-width: calc(100vw - 32px);
+    white-space: nowrap;
   }
   .demo-banner button {
     background: transparent; border: 0; padding: 0 0 0 6px;
@@ -353,6 +378,13 @@
   }
   .demo-banner button:hover { color: var(--ink); }
   .demo-banner.hidden { display: none; }
+  /* Two label flavours: long for desktop, short for mobile. */
+  .demo-banner-short { display: none; }
+  @media (max-width: 600px) {
+    .demo-banner { padding: 7px 14px; font-size: 11.5px; }
+    .demo-banner-long { display: none; }
+    .demo-banner-short { display: inline; }
+  }
 
   /* Brewing tip modal: pill chips, soft card with cached badge */
   .tip-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
@@ -615,27 +647,30 @@
     position: relative;
   }
   .tab {
-    flex: 1; padding: 10px 16px; text-align: center;
-    font-size: 13px; font-weight: 600; color: #6b5840; cursor: pointer;
+    flex: 1; padding: 11px 16px; text-align: center;
+    font-size: 13.5px; font-weight: 600; color: #6b4f2c; cursor: pointer;
     border-radius: 10px;
-    transition: color 0.22s var(--ease-out), background 0.22s var(--ease-out), transform 0.18s var(--ease-out);
+    transition: color 0.22s var(--ease-out), background 0.22s var(--ease-out);
     position: relative; z-index: 1;
+    /* Cursor-tracked highlight on hover (matches the rest of the glass tiles). */
+    background-image: radial-gradient(
+      circle 90px at var(--mx, 50%) var(--my, 50%),
+      rgba(255, 255, 255, 0.30) 0%,
+      rgba(255, 255, 255, 0) 65%);
   }
-  .tab:hover { color: #2a1a0a; }
+  .tab:hover { color: #1d0f04; }
   .tab.active {
-    color: var(--ink);
-    background: linear-gradient(180deg, #ffffff 0%, #fff5e0 100%);
+    color: #1a0a02;                        /* deeper contrast on active */
+    background-color: rgba(255, 255, 255, 0.55);
+    background-image: radial-gradient(
+      circle 90px at var(--mx, 50%) var(--my, 50%),
+      rgba(255, 255, 255, 0.50) 0%,
+      rgba(255, 255, 255, 0) 65%);
     box-shadow:
-      0 1px 0 rgba(255, 240, 210, 0.8) inset,
-      0 -1px 0 rgba(140, 90, 40, 0.08) inset,
-      0 4px 12px rgba(40, 18, 4, 0.12);
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 0 rgba(40, 18, 4, 0.18);
   }
-  .tab.active::after {
-    content: ""; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
-    width: 24px; height: 2px; border-radius: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    opacity: 0.7;
-  }
+  /* No more underline accent — contrast is carried by colour + background. */
 
   .grid {
     display: grid;
@@ -681,11 +716,62 @@
   @keyframes ringFade { 0% { opacity: 1; } 100% { opacity: 0; } }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  .card-header { padding: 16px 20px; color: white; position: relative; }
-  .card-roaster { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.75; margin-bottom: 3px; }
-  .card-name { font-size: 17px; font-weight: 600; line-height: 1.2; padding-right: 80px; }
-  .card-meta { font-size: 11px; opacity: 0.7; margin-top: 3px; padding-right: 80px; }
+  /* Card header — same height across every card so the grid reads as a
+     proper grid (uneven headers used to make the cards look mismatched).
+     We pin a fixed total height and clamp the long fields to a fixed line
+     count via line-clamp. */
+  .card-header {
+    padding: 16px 20px; color: white; position: relative;
+    height: 116px;            /* roaster line + 2 lines of name + 1 line of meta */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 4px;
+    overflow: hidden;
+  }
+  .card-roaster {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em;
+    opacity: 0.78; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    padding-right: 80px;
+  }
+  .card-name {
+    font-size: 17px; font-weight: 700; line-height: 1.2;
+    letter-spacing: -0.01em;
+    padding-right: 80px;
+    /* Clamp to two lines so headers stay the same height. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-meta {
+    font-size: 11.5px; opacity: 0.72;
+    padding-right: 80px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-top: auto;        /* anchor to bottom so all cards align */
+  }
   .card-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; }
+  /* Star/favorite button — sits in the top-LEFT corner of the header. */
+  .card-fav-btn {
+    position: absolute; top: 12px; left: 12px;
+    background: rgba(255, 255, 255, 0.18);
+    border: 0;
+    width: 32px; height: 32px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: white;
+    transition: background 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+  }
+  .card-fav-btn svg { width: 16px; height: 16px; }
+  .card-fav-btn:hover { background: rgba(255, 255, 255, 0.32); transform: scale(1.06); }
+  .card-fav-btn:active { transform: scale(0.94); }
+  .card-fav-btn.is-fav { background: rgba(255, 220, 120, 0.32); }
+  .card-fav-btn.is-fav svg { filter: drop-shadow(0 1px 2px rgba(120, 80, 0, 0.4)); }
+  /* Card-name + meta need extra left padding so they don't sit under the star. */
+  .card-fav-btn ~ .card-roaster,
+  .card-fav-btn ~ .card-name,
+  .card-fav-btn ~ .card-meta { padding-left: 40px; }
   .card-actions button {
     background: rgba(255,255,255,0.18); border: 0; color: white;
     width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
@@ -709,8 +795,15 @@
   }
   .notes-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #bbb; margin-bottom: 4px; }
   .status-badge {
-    display: inline-block; font-size: 10px; padding: 2px 8px;
-    border-radius: 20px; margin-top: 6px; font-weight: 500;
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    text-align: center;
+    font-size: 10px; padding: 3px 10px;
+    border-radius: 20px; margin-top: 6px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
   }
   .status-dialing { background: #fff3cd; color: #856404; }
   .status-dialed { background: #d1e7dd; color: #0a3622; }
@@ -949,6 +1042,108 @@
   .field textarea { min-height: 70px; resize: vertical; }
   .field-help { font-size: 11px; color: #999; margin-top: 4px; line-height: 1.4; }
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* "Also tracking" chip strip — extra brew methods the user has registered */
+  .extra-methods {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    margin: -10px 0 14px;
+    font-size: 11.5px; color: #6b5840;
+  }
+  .extra-methods-label {
+    font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; opacity: 0.7; margin-right: 4px;
+  }
+  .extra-methods-chip {
+    padding: 3px 10px;
+    background: rgba(255, 255, 255, 0.45);
+    border: 1px solid rgba(40, 18, 4, 0.10);
+    border-radius: 999px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  /* Machine capability chips — checkboxes styled as tag-style toggles */
+  .cap-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cap-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid rgba(40, 18, 4, 0.18);
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 999px;
+    font-size: 12px; font-weight: 600; color: #4a3625;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.18s var(--ease-out), border-color 0.18s var(--ease-out);
+  }
+  .cap-chip input { margin: 0; accent-color: var(--accent); }
+  .cap-chip:has(input:checked) {
+    background: rgba(192, 132, 74, 0.18);
+    border-color: rgba(192, 132, 74, 0.55);
+    color: var(--ink);
+  }
+
+  /* Brew log sliders — one row each: label / slider / numeric readout */
+  .brewlog-sliders { display: grid; gap: 12px; }
+  .brewlog-row {
+    display: grid;
+    grid-template-columns: 130px 1fr 60px;
+    gap: 10px;
+    align-items: center;
+  }
+  .brewlog-row label {
+    font-size: 12px; font-weight: 600; color: #5e4630;
+    text-transform: none; letter-spacing: 0;
+    margin: 0;
+  }
+  .brewlog-row input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+  }
+  .brewlog-out {
+    font-size: 12.5px; font-weight: 700; color: var(--ink);
+    text-align: right;
+    background: rgba(40, 18, 4, 0.05);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  @media (max-width: 600px) {
+    .brewlog-row { grid-template-columns: 1fr 60px; }
+    .brewlog-row label { grid-column: 1 / 3; }
+    .brewlog-row input[type="range"] { grid-column: 1 / 2; }
+    .brewlog-out { grid-column: 2 / 3; }
+  }
+
+  /* Gradient color picker — two color swatches + angle slider + live preview */
+  .color-grad-picker {
+    display: grid;
+    grid-template-columns: 50px 50px 1fr;
+    grid-template-rows: 38px 32px;
+    gap: 8px;
+    align-items: center;
+  }
+  .color-grad-picker input[type="color"] {
+    width: 50px; height: 38px;
+    padding: 2px;
+    border: 1px solid rgba(40, 18, 4, 0.18);
+    border-radius: 8px;
+    cursor: pointer;
+    background: white;
+  }
+  .color-grad-picker input[type="range"] {
+    grid-column: 1 / 4;
+    grid-row: 2 / 3;
+    width: 100%;
+    accent-color: var(--accent);
+  }
+  .color-grad-preview {
+    grid-column: 3 / 4;
+    grid-row: 1 / 2;
+    height: 38px;
+    border-radius: 8px;
+    border: 1px solid rgba(40, 18, 4, 0.18);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(40,18,4,0.18);
+  }
 
   /* Validation errors */
   .field.has-error input, .field.has-error textarea, .field.has-error select,
@@ -1536,6 +1731,7 @@
   <div class="tab" data-method="v60">V60</div>
   <div class="tab" data-method="aeropress">AeroPress</div>
 </div>
+<div class="extra-methods" id="extra-methods"></div>
 
 <div class="compare-bar" id="compare-bar">
   <div class="compare-title" id="compare-title">Quick Compare — Espresso</div>
@@ -1624,6 +1820,22 @@
         <div class="field-row">
           <div class="field"><label>Espresso machine</label><input type="text" id="eq-machine" placeholder="e.g. Decent DE1, Lelit Bianca, La Marzocco GS3" /></div>
           <div class="field"><label>Portafilter / basket</label><input type="text" id="eq-portafilter" placeholder="e.g. IMS 18g Precision High-Flow" /></div>
+        </div>
+        <div class="field" style="margin-bottom: 6px;">
+          <label>What can your machine do?</label>
+          <div class="cap-grid">
+            <label class="cap-chip"><input type="checkbox" id="cap-preinfusion"> Preinfusion</label>
+            <label class="cap-chip"><input type="checkbox" id="cap-flow"> Flow control</label>
+            <label class="cap-chip"><input type="checkbox" id="cap-pressure"> Pressure profiling</label>
+            <label class="cap-chip"><input type="checkbox" id="cap-pid"> PID temperature</label>
+            <label class="cap-chip"><input type="checkbox" id="cap-steam"> Dedicated steam boiler</label>
+          </div>
+          <p class="field-help">AI suggestions add fields like preinfusion only if your machine supports them — otherwise they go in the notes.</p>
+        </div>
+        <div class="field" style="margin-top: 8px;">
+          <label>Other brew methods you use (optional)</label>
+          <input type="text" id="eq-extra-methods" placeholder="e.g. Moka Pot, French Press, Cold Brew" />
+          <p class="field-help">Comma-separated. These appear as extra method tabs alongside Espresso / V60 / AeroPress.</p>
         </div>
         <div class="field-row">
           <div class="field"><label>Scale</label><input type="text" id="eq-scale" placeholder="e.g. Acaia Lunar, Felicita Arc" /></div>
@@ -1743,7 +1955,16 @@
       </div>
       <div class="field-row">
         <div class="field"><label>Meta line</label><input type="text" id="ed-meta" placeholder="origin · process · altitude…" /></div>
-        <div class="field"><label>Card color (hex)</label><input type="text" id="ed-color" placeholder="#5c4a3a" /></div>
+        <div class="field" id="field-color">
+          <label>Card color (gradient)</label>
+          <div class="color-grad-picker">
+            <input type="color" id="ed-color-start" value="#5c4a3a" aria-label="Start color" />
+            <input type="color" id="ed-color-end"   value="#3a2818" aria-label="End color" />
+            <input type="range" id="ed-color-angle" min="0" max="360" value="135" step="5" aria-label="Gradient angle" />
+            <div class="color-grad-preview" id="ed-color-preview" aria-hidden="true"></div>
+          </div>
+          <input type="hidden" id="ed-color" value="" />
+        </div>
       </div>
       <div class="field"><label>Tags (comma separated)</label><input type="text" id="ed-tags" placeholder="Ethiopia, Washed, Light Roast" /></div>
 
@@ -1759,6 +1980,49 @@
       <button class="icon-btn danger" id="ed-delete" onclick="deleteCoffee()" style="margin-right:auto;">Delete</button>
       <button class="icon-btn" onclick="closeModal('edit-modal')">Cancel</button>
       <button class="icon-btn primary" onclick="saveCoffee()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Brew log modal — sliders prefilled from the last brew, plus an
+     "Additional comments" field. User can either Save or Save + ask AI for
+     a dial-in tweak. -->
+<div class="modal-backdrop hidden" id="brewlog-modal">
+  <div class="modal" style="max-width: 540px;">
+    <div class="modal-head">
+      <h2 id="brewlog-title">Log a brew</h2>
+      <button class="modal-close" onclick="closeModal('brewlog-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="field-help" style="margin-bottom: 10px;">Sliders are pre-filled from your last brew of this coffee + method. Adjust to what you actually pulled.</p>
+      <div class="brewlog-sliders" id="brewlog-sliders"></div>
+      <div class="field" style="margin-top: 12px;">
+        <label>How did it taste?</label>
+        <select id="brewlog-taste">
+          <option value="balanced">Balanced</option>
+          <option value="sour">Sour / under-extracted</option>
+          <option value="bitter">Bitter / over-extracted</option>
+          <option value="watery">Watery / thin</option>
+          <option value="muddy">Muddy / heavy</option>
+          <option value="bright-no-body">Bright, no body</option>
+          <option value="sweet">Sweet, juicy</option>
+          <option value="floral">Floral / clean</option>
+          <option value="other">Other (use comments)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Outcome (one short line)</label>
+        <input type="text" id="brewlog-outcome" placeholder="e.g. 18g in, 44g out in 32s" />
+      </div>
+      <div class="field">
+        <label>Additional comments</label>
+        <textarea id="brewlog-comments" placeholder="Anything else worth remembering — channeling, headspace, water hardness, etc." rows="3"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="icon-btn" onclick="closeModal('brewlog-modal')">Cancel</button>
+      <button class="icon-btn" onclick="saveBrewLog()">Save</button>
+      <button class="icon-btn primary" onclick="saveBrewLogAndRequestTweak()">Save + ask AI tweak</button>
     </div>
   </div>
 </div>
@@ -1839,10 +2103,11 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- Demo-mode banner — only visible when user is in local-only demo mode -->
+<!-- Demo / guest banner — only visible while in guest or local-only demo
+     mode. The label and CTA shrink on small screens (see CSS). -->
 <div class="demo-banner hidden" id="demo-banner" role="status">
-  <span>☕ Demo mode — your data stays in this browser only</span>
-  <button type="button" id="demo-exit" title="Exit demo and sign up properly">Sign up to keep it</button>
+  <span class="demo-banner-label" id="demo-banner-label">☕ Guest mode</span>
+  <button type="button" id="demo-exit" title="Save your account">Save account</button>
 </div>
 
 <!-- Supabase JS SDK -->
@@ -2110,8 +2375,12 @@ async function onSignedIn() {
     document.body.classList.add("demo-mode");
     if (banner) {
       banner.classList.remove("hidden");
-      banner.querySelector("span").textContent = "☕ Guest account — your data syncs but isn't tied to an email yet";
-      banner.querySelector("button").textContent = "Add an email to save it";
+      const label = banner.querySelector("#demo-banner-label");
+      if (label) {
+        // Two strings: full on desktop, short on mobile (CSS toggles).
+        label.innerHTML = '<span class="demo-banner-long">☕ Guest mode — data syncs, no email yet</span><span class="demo-banner-short">☕ Guest</span>';
+      }
+      banner.querySelector("button").textContent = "Save account";
     }
   } else {
     document.body.classList.remove("demo-mode");
@@ -2633,6 +2902,20 @@ async function loadFromDb() {
     };
     state.data.units = profile?.units_pref || "metric";
     state.data.onboardingComplete = !!profile?.onboarding_complete;
+    // Machine capabilities — pull the first entry from `machines` if present.
+    // Schema is an array because eventually we'll let users register multiple
+    // machines, but for now we read/write index 0.
+    const m0 = (Array.isArray(profile?.machines) && profile.machines[0]) || {};
+    state.data.capabilities = {
+      preinfusion: !!m0.preinfusion,
+      flow:        !!m0.flow,
+      pressure:    !!m0.pressure,
+      pid:         !!m0.pid,
+      steam:       !!m0.steam
+    };
+    state.data.extraMethods = (Array.isArray(profile?.custom_brew_methods)
+      ? profile.custom_brew_methods.map(m => m.label || m.key).filter(Boolean)
+      : []);
 
     const rows = await sbFetch(`/coffees?user_id=eq.${state.user.id}&select=*&order=position.asc`);
     state.data.coffees = (rows || []).map(rowToCoffee);
@@ -2654,7 +2937,11 @@ function rowToCoffee(r) {
     espresso: r.espresso || { settings: {}, notes: "", status: "next", statusLabel: "Not Yet Tried" },
     v60: r.v60 || { settings: {}, notes: "", status: "next", statusLabel: "Not Yet Tried" },
     aeropress: r.aeropress || { settings: {}, notes: "", status: "next", statusLabel: "Not Yet Tried" },
-    position: r.position || 0
+    position: r.position || 0,
+    // Migration-0002 fields: graceful when the migration hasn't run (treat as off / empty).
+    favorite: r.favorite === true,
+    custom_methods: r.custom_methods || {},
+    brew_log: Array.isArray(r.brew_log) ? r.brew_log : []
   };
 }
 
@@ -2670,7 +2957,10 @@ function coffeeToRow(c) {
     espresso: c.espresso,
     v60: c.v60,
     aeropress: c.aeropress,
-    position: c.position || 0
+    position: c.position || 0,
+    favorite: !!c.favorite,
+    custom_methods: c.custom_methods || {},
+    brew_log: Array.isArray(c.brew_log) ? c.brew_log : []
   };
   if (c.id) row.id = c.id;
   return row;
@@ -2687,15 +2977,39 @@ async function upsertCoffee(c) {
   const row = coffeeToRow(c);
   console.log("[upsertCoffee] sending:", row, "isUpdate=", !!c.id);
   let data;
-  if (c.id) {
-    data = await sbFetch(`/coffees?id=eq.${encodeURIComponent(c.id)}`, { method: "PATCH", body: row });
-  } else {
-    data = await sbFetch(`/coffees`, { method: "POST", body: row });
+  try {
+    if (c.id) {
+      data = await sbFetch(`/coffees?id=eq.${encodeURIComponent(c.id)}`, { method: "PATCH", body: row });
+    } else {
+      data = await sbFetch(`/coffees`, { method: "POST", body: row });
+    }
+  } catch (e) {
+    // Migration-0002 not run yet — strip the new columns and retry once.
+    if (/column .* does not exist|favorite|custom_methods|brew_log/i.test(e.message)) {
+      const safeRow = { ...row };
+      delete safeRow.favorite;
+      delete safeRow.custom_methods;
+      delete safeRow.brew_log;
+      console.warn("[upsertCoffee] new columns missing — retrying without them. Run supabase/migrations/0002_favorites_and_machines.sql to enable.");
+      if (c.id) {
+        data = await sbFetch(`/coffees?id=eq.${encodeURIComponent(c.id)}`, { method: "PATCH", body: safeRow });
+      } else {
+        data = await sbFetch(`/coffees`, { method: "POST", body: safeRow });
+      }
+    } else {
+      throw e;
+    }
   }
   const saved = Array.isArray(data) ? data[0] : data;
   if (!saved) throw new Error("Server returned no row after save");
-  console.log("[upsertCoffee] saved id:", saved.id);
-  return rowToCoffee(saved);
+  // Preserve client-side fields that didn't round-trip (when the columns
+  // don't exist yet, we still want the in-memory state to remember).
+  const merged = rowToCoffee(saved);
+  if (!("favorite" in saved))       merged.favorite = !!c.favorite;
+  if (!("custom_methods" in saved)) merged.custom_methods = c.custom_methods || {};
+  if (!("brew_log" in saved))       merged.brew_log = c.brew_log || [];
+  console.log("[upsertCoffee] saved id:", merged.id);
+  return merged;
 }
 
 async function deleteCoffeeRow(id) {
@@ -2707,16 +3021,34 @@ async function saveProfile(patch) {
   if (isDemoMode()) { saveDemoData(); return; }
   console.log("[saveProfile] patch:", patch);
   let updated;
+  // Try with the full patch first. If a new column (machines, custom_brew_methods)
+  // doesn't exist yet, drop new keys and retry. Then if equipment columns don't
+  // exist, fall back to the original safe set.
+  const SAFE_OLD = ["preferences", "ai_provider", "display_name", "onboarding_complete"];
+  const SAFE_OLD_PLUS_EQ = SAFE_OLD.concat([
+    "grinder", "burr_type", "espresso_machine", "portafilter", "scale", "kettle",
+    "followed_influencers", "units_pref"
+  ]);
+  const safeSubset = (keys) => {
+    const safe = {};
+    for (const k of keys) if (k in patch) safe[k] = patch[k];
+    return safe;
+  };
   try {
     updated = await sbFetch(`/user_profiles?user_id=eq.${state.user.id}`, { method: "PATCH", body: patch });
-  } catch (e) {
-    if (/column .* does not exist/i.test(e.message)) {
-      const safe = {};
-      for (const k of ["preferences", "ai_provider", "display_name", "onboarding_complete"]) if (k in patch) safe[k] = patch[k];
-      updated = await sbFetch(`/user_profiles?user_id=eq.${state.user.id}`, { method: "PATCH", body: safe });
-      console.warn("[saveProfile] equipment columns not yet migrated — partial save only");
+  } catch (e1) {
+    if (/column .* does not exist/i.test(e1.message)) {
+      console.warn("[saveProfile] new columns not migrated; retrying without machines/custom_brew_methods");
+      try {
+        updated = await sbFetch(`/user_profiles?user_id=eq.${state.user.id}`, { method: "PATCH", body: safeSubset(SAFE_OLD_PLUS_EQ) });
+      } catch (e2) {
+        if (/column .* does not exist/i.test(e2.message)) {
+          console.warn("[saveProfile] equipment columns also missing; partial save only");
+          updated = await sbFetch(`/user_profiles?user_id=eq.${state.user.id}`, { method: "PATCH", body: safeSubset(SAFE_OLD) });
+        } else { throw e2; }
+      }
     } else {
-      throw e;
+      throw e1;
     }
   }
   // If 0 rows updated, the profile row doesn't exist yet — insert it
@@ -2788,10 +3120,72 @@ function escapeHtml(s) {
 
 function sanitizeColor(c) {
   if (!c) return "#3a3a3a";
-  // Allow only valid hex colors and named CSS colors (alphanumeric)
+  // Plain hex
   if (/^#[0-9a-fA-F]{3,8}$/.test(c)) return c;
+  // CSS named colours
   if (/^[a-zA-Z]{1,20}$/.test(c)) return c;
+  // Linear gradient — strict format we ourselves emit (two hex stops + angle).
+  // We only accept the exact shape we generate so injecting CSS is impossible.
+  if (/^linear-gradient\(\d{1,3}deg,\s*#[0-9a-fA-F]{3,8}\s+0%,\s*#[0-9a-fA-F]{3,8}\s+100%\)$/.test(c)) return c;
   return "#3a3a3a";
+}
+
+// Parse a stored colour value (legacy hex OR our gradient string) back into
+// the picker's three controls. Falls back to a sensible default if the input
+// doesn't match.
+function colorToParts(value) {
+  const fallback = { start: "#5c4a3a", end: "#3a2818", angle: 135 };
+  if (!value) return fallback;
+  const m = String(value).match(/^linear-gradient\((\d{1,3})deg,\s*(#[0-9a-fA-F]{3,8})\s+0%,\s*(#[0-9a-fA-F]{3,8})\s+100%\)$/);
+  if (m) {
+    const angle = Math.max(0, Math.min(360, parseInt(m[1], 10) || 135));
+    return { start: hexToSixDigit(m[2]), end: hexToSixDigit(m[3]), angle };
+  }
+  if (/^#[0-9a-fA-F]{3,8}$/.test(value)) {
+    const start = hexToSixDigit(value);
+    return { start, end: shadeHex(start, -28), angle: 135 };
+  }
+  return fallback;
+}
+function hexToSixDigit(hex) {
+  let h = (hex || "").replace("#", "");
+  if (h.length === 3) h = h.split("").map(x => x + x).join("");
+  return "#" + h.slice(0, 6).toLowerCase();
+}
+function shadeHex(hex, amount /* -100..100 */) {
+  const h = hexToSixDigit(hex).slice(1);
+  const r = Math.max(0, Math.min(255, parseInt(h.slice(0,2),16) + amount));
+  const g = Math.max(0, Math.min(255, parseInt(h.slice(2,4),16) + amount));
+  const b = Math.max(0, Math.min(255, parseInt(h.slice(4,6),16) + amount));
+  return "#" + [r,g,b].map(n => n.toString(16).padStart(2,"0")).join("");
+}
+function partsToGradient({ start, end, angle }) {
+  return `linear-gradient(${angle}deg, ${start} 0%, ${end} 100%)`;
+}
+
+// Read the gradient picker's three inputs and (re)build the hidden value
+// + the live preview. Called from any of the picker's input events.
+function syncGradientPicker() {
+  const start = document.getElementById("ed-color-start")?.value || "#5c4a3a";
+  const end   = document.getElementById("ed-color-end")?.value || "#3a2818";
+  const angle = parseInt(document.getElementById("ed-color-angle")?.value || "135", 10);
+  const value = partsToGradient({ start, end, angle });
+  const hidden = document.getElementById("ed-color");
+  if (hidden) hidden.value = value;
+  const preview = document.getElementById("ed-color-preview");
+  if (preview) preview.style.background = value;
+}
+// Populate the picker from a stored colour string (called when opening Edit
+// or when the AI search auto-fills the form).
+function setGradientPicker(value) {
+  const parts = colorToParts(value);
+  const s = document.getElementById("ed-color-start");
+  const e = document.getElementById("ed-color-end");
+  const a = document.getElementById("ed-color-angle");
+  if (s) s.value = parts.start;
+  if (e) e.value = parts.end;
+  if (a) a.value = String(parts.angle);
+  syncGradientPicker();
 }
 
 function escapeAttr(s) {
@@ -2876,6 +3270,14 @@ function render(method) {
     noResults.style.display = filtered.length === 0 ? "block" : "none";
   }
 
+  // Favorites bubble to the top, original order otherwise.
+  filtered.sort((a, b) => {
+    const fa = a.favorite ? 1 : 0;
+    const fb = b.favorite ? 1 : 0;
+    if (fa !== fb) return fb - fa;
+    return (a.position || 0) - (b.position || 0);
+  });
+
   filtered.forEach(c => {
     const d = c[method] || { settings: {}, notes: "", status: "next", statusLabel: "Not Yet Tried" };
     const card = document.createElement("div");
@@ -2887,13 +3289,19 @@ function render(method) {
     const settingRows = Object.entries(d.settings || {}).map(([k, v]) => `<div class="setting-row"><span class="setting-label">${escapeHtml(k)}</span><span class="setting-value">${escapeHtml(v)}</span></div>`).join("");
     const tags = (c.tags || []).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join("");
     const steam = isDialed ? `<div class="steam-stack" aria-hidden="true"><span class="steam-wisp w1"></span><span class="steam-wisp w2"></span><span class="steam-wisp w3"></span></div>` : "";
+    const starFill = c.favorite ? '#fff1cf' : 'none';
+    const starStroke = c.favorite ? '#fff1cf' : 'currentColor';
     card.innerHTML = `
       <div class="card-header" style="background:${sanitizeColor(c.color)}">
         ${steam}
+        <button class="card-fav-btn ${c.favorite ? 'is-fav' : ''}" title="${c.favorite ? 'Unfavorite' : 'Favorite'}" onclick="toggleFavorite('${escapeAttr(c.id)}')">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${starFill}" stroke="${starStroke}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </button>
         <div class="card-roaster">${escapeHtml(c.roaster)}</div>
         <div class="card-name">${escapeHtml(c.name)}</div>
         <div class="card-meta">${escapeHtml(c.meta || "")}</div>
         <div class="card-actions">
+          <button title="Log a brew" onclick="openBrewLog('${escapeAttr(c.id)}', '${escapeAttr(method)}')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg></button>
           <button title="AI assist" onclick="openAiModal('${escapeAttr(c.id)}')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 2 L13.5 8.5 L20 10 L13.5 11.5 L12 18 L10.5 11.5 L4 10 L10.5 8.5 Z"/></svg></button>
           <button title="Edit" onclick="openEditModal('${escapeAttr(c.id)}')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
         </div>
@@ -2906,6 +3314,69 @@ function render(method) {
       </div>`;
     grid.appendChild(card);
   });
+
+  // Ambient tint: blend the page background toward the average dominant
+  // colour of the user's coffees. Keeps the visual identity tied to the
+  // collection without paying for an animated layer.
+  applyCollectionTint();
+  // Extra brew methods the user has registered globally (no per-method
+  // recipe storage yet — these are surfaced as labels so the user sees what
+  // they've added and so the AI prompt can reference them).
+  const extraEl = document.getElementById("extra-methods");
+  if (extraEl) {
+    const extras = getExtraMethods();
+    if (extras.length === 0) {
+      extraEl.style.display = "none";
+      extraEl.innerHTML = "";
+    } else {
+      extraEl.style.display = "flex";
+      extraEl.innerHTML = `<span class="extra-methods-label">Also tracking:</span>` +
+        extras.map(m => `<span class="extra-methods-chip">${escapeHtml(m)}</span>`).join("");
+    }
+  }
+}
+
+// Cheap "average colour" — pick the first colour of each card (we already
+// store hex strings) and average their RGB. Result is exposed via a CSS
+// variable so the body's gradient overlay reflects the user's collection.
+function applyCollectionTint() {
+  const colors = (state.data.coffees || [])
+    .map(c => c.color)
+    .filter(c => /^#[0-9a-fA-F]{3,8}$/.test(c));
+  if (colors.length === 0) {
+    document.documentElement.style.removeProperty("--collection-tint");
+    return;
+  }
+  let r = 0, g = 0, b = 0;
+  for (const hex of colors) {
+    const h = hex.replace("#", "");
+    const full = h.length === 3 ? h.split("").map(x => x + x).join("") : h.slice(0, 6);
+    r += parseInt(full.slice(0, 2), 16);
+    g += parseInt(full.slice(2, 4), 16);
+    b += parseInt(full.slice(4, 6), 16);
+  }
+  r = Math.round(r / colors.length);
+  g = Math.round(g / colors.length);
+  b = Math.round(b / colors.length);
+  // Soft tint — small alpha so it nudges the page colour without overpowering it.
+  document.documentElement.style.setProperty("--collection-tint", `rgba(${r},${g},${b},0.28)`);
+}
+
+// Defaults / helpers for the new equipment fields. Profile may not have
+// these yet (column not migrated, or existing user) — fall back to safe
+// defaults so the rest of the app doesn't blow up.
+function getCapabilities() {
+  const c = state.data.capabilities || {};
+  return {
+    preinfusion: !!c.preinfusion,
+    flow: !!c.flow,
+    pressure: !!c.pressure,
+    pid: !!c.pid,
+    steam: !!c.steam
+  };
+}
+function getExtraMethods() {
+  return Array.isArray(state.data.extraMethods) ? state.data.extraMethods : [];
 }
 
 // ============================================================
@@ -2933,6 +3404,14 @@ function openSettingsModal() {
   document.getElementById("eq-kettle").value = eq.kettle || "";
   document.getElementById("eq-influencers").value = (eq.influencers || []).join(", ");
   document.getElementById("units-pref").value = state.data.units || "metric";
+  // Machine capabilities + custom brew methods
+  const caps = getCapabilities();
+  document.getElementById("cap-preinfusion").checked = caps.preinfusion;
+  document.getElementById("cap-flow").checked = caps.flow;
+  document.getElementById("cap-pressure").checked = caps.pressure;
+  document.getElementById("cap-pid").checked = caps.pid;
+  document.getElementById("cap-steam").checked = caps.steam;
+  document.getElementById("eq-extra-methods").value = getExtraMethods().join(", ");
   document.getElementById("account-info").textContent = `Signed in as ${state.user.email}.`;
   showModal("settings-modal");
   // Upgrade native selects to custom
@@ -3007,6 +3486,16 @@ async function saveSettings() {
     influencers: document.getElementById("eq-influencers").value.split(",").map(s => s.trim()).filter(Boolean)
   };
   state.data.units = document.getElementById("units-pref").value;
+  // Machine capabilities (new fields, persisted as JSONB; falls back to local if column missing)
+  state.data.capabilities = {
+    preinfusion: document.getElementById("cap-preinfusion").checked,
+    flow:        document.getElementById("cap-flow").checked,
+    pressure:    document.getElementById("cap-pressure").checked,
+    pid:         document.getElementById("cap-pid").checked,
+    steam:       document.getElementById("cap-steam").checked
+  };
+  state.data.extraMethods = (document.getElementById("eq-extra-methods").value || "")
+    .split(",").map(s => s.trim()).filter(Boolean).slice(0, 6);
   saveLocal();
   try {
     await saveProfile({
@@ -3019,9 +3508,13 @@ async function saveSettings() {
       scale: state.data.equipment.scale,
       kettle: state.data.equipment.kettle,
       followed_influencers: state.data.equipment.influencers,
-      units_pref: state.data.units
+      units_pref: state.data.units,
+      // New (migration 0002). saveProfile gracefully drops these if missing.
+      machines: [{ name: state.data.equipment.machine || "(machine)", ...state.data.capabilities }],
+      custom_brew_methods: state.data.extraMethods.map(m => ({ key: slugify(m), label: m }))
     });
     closeModal("settings-modal");
+    render(state.activeMethod);   // re-render so extra-method tabs reflect changes
     toast("Saved", "success");
   } catch (e) { toast("Save failed: " + e.message, "error"); }
 }
@@ -3120,7 +3613,7 @@ function openAddModal() {
   state.editorMethod = "v60";
   document.getElementById("edit-modal-title").textContent = "Add coffee";
   ["ed-roaster","ed-name","ed-meta","ed-tags","ai-create-input"].forEach(id => document.getElementById(id).value = "");
-  document.getElementById("ed-color").value = "#5c4a3a";
+  setGradientPicker("");  // resets to defaults
   document.getElementById("ai-create-output").classList.add("empty");
   document.getElementById("ai-create-output").textContent = "";
   document.getElementById("ai-create-panel").style.display = "block";
@@ -3140,7 +3633,7 @@ function openEditModal(id) {
   document.getElementById("ed-roaster").value = c.roaster || "";
   document.getElementById("ed-name").value = c.name || "";
   document.getElementById("ed-meta").value = c.meta || "";
-  document.getElementById("ed-color").value = c.color || "#5c4a3a";
+  setGradientPicker(c.color || "");
   document.getElementById("ed-tags").value = (c.tags || []).join(", ");
   document.getElementById("ai-create-panel").style.display = "none";
   document.getElementById("ed-delete").style.display = "inline-flex";
@@ -3662,6 +4155,24 @@ function parseSearchQuery(query) {
   residue = residue.replace(/\s+/g, " ").trim();
   if (residue && residue.length >= 3) out.coffeeName = residue;
 
+  // Defaults for ambiguous queries:
+  //  - If the user's profile lists an espresso machine, assume espresso when
+  //    no method is detected. Otherwise V60 (most common pourover).
+  //  - If the user's profile lists a grinder, surface it as a default — even
+  //    if the query didn't mention one.
+  if (!out.method) {
+    const eq = (state.data && state.data.equipment) || {};
+    out.methodInferred = true;
+    out.method = eq.machine ? "espresso" : "v60";
+  }
+  if (!out.grinder) {
+    const eq = (state.data && state.data.equipment) || {};
+    if (eq.grinder) {
+      out.grinder = eq.grinder + (eq.burrs ? " (" + eq.burrs + ")" : "");
+      out.grinderInferred = true;
+    }
+  }
+
   // Quick signal check — at least one of these makes the query worth searching
   const hasUsefulSignal = !!(out.roaster || out.coffeeName || query.trim().length >= 4);
   out.hasUsefulSignal = hasUsefulSignal;
@@ -3680,13 +4191,28 @@ function parseSearchQuery(query) {
 // =====================================================================
 function recipeSystemPrompt(prefs, { grounded = false, parsedQuery = null } = {}) {
   const eq = (state.data && state.data.equipment) || {};
+  const caps = getCapabilities();
   const grinderLabel = eq.grinder + (eq.burrs ? " (" + eq.burrs + ")" : "");
   const grindKey = eq.grinder ? "Grind (" + eq.grinder + (eq.burrs ? " " + eq.burrs : "") + ")" : "Grind";
+
+  // Build espresso settings shape DYNAMICALLY based on the user's machine.
+  // Preinfusion / pressure-profile / flow-control fields only appear when the
+  // user's machine actually supports them. Otherwise the AI is told to fold
+  // any related advice into the notes string instead of inventing settings
+  // the user can't tune.
+  const espressoFields = [`"${grindKey}":""`, `"Brew Temp":""`, `"Dose":"18g"`, `"Yield":""`, `"Total Shot Time":""`];
+  if (caps.preinfusion) espressoFields.push(`"Preinfusion":""`);
+  if (caps.pressure)    espressoFields.push(`"Pressure Profile":""`);
+  if (caps.flow)        espressoFields.push(`"Flow Profile":""`);
+  if (eq.portafilter)   espressoFields.push(`"Basket":"${eq.portafilter}"`);
 
   const ctx = [];
   if (prefs && prefs !== "(none provided)") ctx.push("Taste prefs: " + prefs);
   if (eq.grinder) ctx.push("Grinder: " + grinderLabel);
-  if (eq.machine) ctx.push("Machine: " + eq.machine);
+  if (eq.machine) {
+    const capList = Object.entries(caps).filter(([_,v]) => v).map(([k]) => k).join(", ") || "no profiling features";
+    ctx.push("Machine: " + eq.machine + " — capabilities: " + capList);
+  }
   if (parsedQuery?.roaster) ctx.push("Roaster: " + parsedQuery.roaster);
   if (parsedQuery?.coffeeName) ctx.push('Coffee fragment: "' + parsedQuery.coffeeName + '"');
   if (parsedQuery?.method) ctx.push("Method emphasis: " + parsedQuery.method);
@@ -3700,17 +4226,22 @@ function recipeSystemPrompt(prefs, { grounded = false, parsedQuery = null } = {}
     "",
     "Color = the actual coffee bag's dominant color (hex). If you can't find the bag, pick by origin/process.",
     "",
+    "Field-inclusion rule: ONLY include espresso fields the user's machine can tune. If their machine lacks preinfusion / pressure profile / flow control, fold any related guidance into the notes string instead of inventing a field they can't act on.",
+    "",
     "If you cannot identify the coffee with confidence, return: {\"error\":\"not_found\",\"reason\":\"...\",\"suggestion\":\"...\"}"
   ];
   if (ctx.length) {
     baseLines.push("", "Context:", ...ctx.map(l => "- " + l));
   }
   if (grounded) {
-    // Compact shape — variable fields only. Client merges with defaults.
+    // Capability-aware shape — fields included match the user's machine.
     baseLines.push(
       "",
       "Return ONLY this JSON in a ```json fenced block:",
-      `{"roaster":"","name":"","meta":"process · origin · altitude","color":"#hex","tags":[],"espresso":{"settings":{"${grindKey}":"","Brew Temp":"","Yield":"","Total Shot Time":""},"notes":""},"v60":{"settings":{"${grindKey}":"","Water Temp":"","Target Drawdown":""},"notes":""},"aeropress":{"settings":{"${grindKey}":"","Water Temp":"","Steep Time":""},"notes":""}}`
+      `{"roaster":"","name":"","meta":"process · origin · altitude","color":"#hex","tags":[],` +
+      `"espresso":{"settings":{${espressoFields.join(",")}},"notes":""},` +
+      `"v60":{"settings":{"${grindKey}":"","Water Temp":"","Target Drawdown":""},"notes":""},` +
+      `"aeropress":{"settings":{"${grindKey}":"","Water Temp":"","Steep Time":""},"notes":""}}`
     );
   }
   return baseLines.join("\n");
@@ -3831,20 +4362,38 @@ async function callServerAI(provider, systemPrompt, userPrompt, { useWebSearch =
     err.code = "PROXY_UNAVAILABLE";
     throw err;
   }
-  const res = await fetch("/api/ai", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + token,
-      "Accept": "application/json"
-    },
-    body: JSON.stringify({
-      provider, model, system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-      useWebSearch, jsonMode, mode,
-      ...(max_tokens != null ? { max_tokens } : {})
-    })
-  });
+  // Stalling guard: cap any single AI call at 45s. Without this a hung
+  // upstream (Gemini blocked on grounding, Vercel cold start, etc.) would
+  // freeze the searching/spinner state until the user reloaded. 45s is
+  // generous (Gemini grounded calls usually complete in 3-15s) but firm.
+  const ctrl = new AbortController();
+  const timeoutMs = useWebSearch ? 45000 : 30000;
+  const timer = setTimeout(() => ctrl.abort(new Error("AI call timed out after " + timeoutMs/1000 + "s")), timeoutMs);
+  let res;
+  try {
+    res = await fetch("/api/ai", {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token,
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({
+        provider, model, system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        useWebSearch, jsonMode, mode,
+        ...(max_tokens != null ? { max_tokens } : {})
+      })
+    });
+  } catch (e) {
+    clearTimeout(timer);
+    if (e?.name === "AbortError") {
+      throw new Error("AI didn't respond in " + (timeoutMs/1000) + "s. Try again with a more specific query, or wait a moment if the network is slow.");
+    }
+    throw e;
+  }
+  clearTimeout(timer);
   if (res.status === 503) {
     const err = new Error("Server AI isn't configured.");
     err.code = "PROXY_UNAVAILABLE";
@@ -4191,7 +4740,7 @@ function applyRecipeToEditor(parsed, opts = {}) {
   if (parsed.roaster) document.getElementById("ed-roaster").value = parsed.roaster;
   if (parsed.name)    document.getElementById("ed-name").value = parsed.name;
   if (parsed.meta)    document.getElementById("ed-meta").value = parsed.meta;
-  if (parsed.color)   document.getElementById("ed-color").value = parsed.color;
+  if (parsed.color)   setGradientPicker(parsed.color);
   if (Array.isArray(parsed.tags)) document.getElementById("ed-tags").value = parsed.tags.join(", ");
   ["espresso", "v60", "aeropress"].forEach(m => {
     if (parsed[m]) {
@@ -4734,9 +5283,9 @@ function aiCardMode(mode) {
   const formEl = document.getElementById("ai-modal-form");
   const method = state.aiContext.method;
   const methodSelect = `<div class="field"><label>Method</label><select id="ai-method"><option value="espresso" ${method==="espresso"?"selected":""}>Espresso</option><option value="v60" ${method==="v60"?"selected":""}>V60</option><option value="aeropress" ${method==="aeropress"?"selected":""}>AeroPress</option></select></div>`;
-  if (mode === "tweak") formEl.innerHTML = methodSelect + `<div class="field"><label>Last brew taste</label><textarea id="ai-feedback" placeholder="e.g. sour and watery, channeled, gushed"></textarea></div><div class="ai-actions"><button class="icon-btn primary" type="button" onclick="runAiTweak()">Suggest tweak</button></div>`;
+  if (mode === "tweak") formEl.innerHTML = methodSelect + `<div class="field"><label>Additional comments (taste, channeling, anything else)</label><textarea id="ai-feedback" placeholder="e.g. sour and watery, channeled, gushed"></textarea></div><div class="ai-actions"><button class="icon-btn primary" type="button" onclick="runAiTweak()">Suggest tweak</button></div>`;
   else if (mode === "rewrite") formEl.innerHTML = methodSelect + `<p class="field-help">Cleans up notes prose.</p><div class="ai-actions"><button class="icon-btn primary" type="button" onclick="runAiRewrite()">Rewrite notes</button></div>`;
-  else if (mode === "feedback") formEl.innerHTML = methodSelect + `<div class="field"><label>How did the brew go?</label><textarea id="ai-feedback" placeholder="18g in, 52g out in 28s. Bright but sour. Want more body."></textarea></div><p class="field-help">Updates settings AND notes.</p><div class="ai-actions"><button class="icon-btn primary" type="button" onclick="runAiFeedback()">Update from feedback</button></div>`;
+  else if (mode === "feedback") formEl.innerHTML = methodSelect + `<div class="field"><label>Additional comments</label><textarea id="ai-feedback" placeholder="18g in, 52g out in 28s. Bright but sour. Want more body."></textarea></div><p class="field-help">Updates settings AND notes.</p><div class="ai-actions"><button class="icon-btn primary" type="button" onclick="runAiFeedback()">Update from feedback</button></div>`;
   else if (mode === "explain") formEl.innerHTML = methodSelect + `<p class="field-help">Explains the reasoning.</p><div class="ai-actions"><button class="icon-btn primary" type="button" onclick="runAiExplain()">Explain</button></div>`;
   document.getElementById("ai-modal-output").classList.add("empty");
   document.getElementById("ai-modal-output").innerHTML = "";
@@ -4859,6 +5408,190 @@ async function applyAiSuggestion() {
 }
 
 // ============================================================
+// Star / favorite — flip the boolean and persist (graceful if column missing)
+// ============================================================
+async function toggleFavorite(coffeeId) {
+  const c = state.data.coffees.find(x => x.id === coffeeId);
+  if (!c) return;
+  c.favorite = !c.favorite;
+  // Optimistic re-render so the UI feels instant
+  render(state.activeMethod);
+  try {
+    const saved = await upsertCoffee(c);
+    const idx = state.data.coffees.findIndex(x => x.id === c.id);
+    if (idx >= 0) state.data.coffees[idx] = saved;
+  } catch (e) {
+    // Revert on failure
+    c.favorite = !c.favorite;
+    render(state.activeMethod);
+    toast("Couldn't update: " + e.message, "error");
+  }
+}
+
+// ============================================================
+// Brew log — record a brew with sliders prefilled from the last attempt.
+// User can either Save (writes to brew_log + updates the coffee's notes
+// with the comments) or Request Tweak (saves + asks the AI for a dial-in
+// suggestion based on outcome + comments).
+// ============================================================
+function openBrewLog(coffeeId, method) {
+  const c = state.data.coffees.find(x => x.id === coffeeId);
+  if (!c) return;
+  state.brewLogContext = { coffeeId, method };
+  // Prefill from the most recent brew log entry for this coffee+method, or
+  // failing that the current settings on the coffee.
+  const last = (c.brew_log || []).filter(b => b.method === method).slice(-1)[0];
+  const settings = last?.settings || (c[method]?.settings) || {};
+  const taste    = last?.taste || "balanced";
+  const outcome  = last?.outcome || "";
+  const comments = last?.comments || "";
+  const m = c[method] || {};
+  document.getElementById("brewlog-title").textContent = `Log a brew — ${escapeHtml(c.name)} · ${method.toUpperCase()}`;
+  // Build the slider rows dynamically from the method's settings
+  const sliderRows = brewLogSliders(method, settings, m).map(row =>
+    `<div class="brewlog-row">
+       <label for="brewlog-${row.id}">${escapeHtml(row.label)}</label>
+       <input type="range" id="brewlog-${row.id}" data-key="${escapeAttr(row.key)}" min="${row.min}" max="${row.max}" step="${row.step}" value="${row.value}">
+       <output id="brewlog-${row.id}-out" class="brewlog-out">${escapeHtml(row.display(row.value))}</output>
+     </div>`
+  ).join("");
+  document.getElementById("brewlog-sliders").innerHTML = sliderRows;
+  // Wire up live readout
+  brewLogSliders(method, settings, m).forEach(row => {
+    const slider = document.getElementById("brewlog-" + row.id);
+    const out = document.getElementById("brewlog-" + row.id + "-out");
+    slider.addEventListener("input", () => { out.textContent = row.display(slider.value); });
+  });
+  document.getElementById("brewlog-taste").value = taste;
+  document.getElementById("brewlog-outcome").value = outcome;
+  document.getElementById("brewlog-comments").value = comments;
+  showModal("brewlog-modal");
+}
+
+// Define the sliders that appear for each brew method. Numbers come from
+// the previous brew (if any) or the recipe's current settings.
+function brewLogSliders(method, settings, recipe) {
+  const get = (k, fallback) => {
+    const v = settings[k];
+    if (v == null) return fallback;
+    const n = parseFloat(String(v).replace(/[^\d.]/g, ""));
+    return isNaN(n) ? fallback : n;
+  };
+  const labelFor = (suffix) => suffix;
+  if (method === "espresso") {
+    const grindKey = Object.keys(settings).find(k => /grind/i.test(k)) || "Grind";
+    return [
+      { id: "grind", key: grindKey, label: grindKey, min: 0.5, max: 30, step: 0.1, value: get(grindKey, 1.4), display: v => Number(v).toFixed(1) },
+      { id: "temp", key: "Brew Temp", label: "Brew Temp (°F)", min: 185, max: 215, step: 1, value: get("Brew Temp", 204), display: v => v + "°F" },
+      { id: "dose", key: "Dose", label: "Dose (g)", min: 12, max: 22, step: 0.1, value: get("Dose", 18), display: v => v + "g" },
+      { id: "yield", key: "Yield", label: "Yield (g)", min: 18, max: 70, step: 0.5, value: get("Yield", 44), display: v => v + "g" },
+      { id: "preinf", key: "Preinfusion", label: "Preinfusion (s)", min: 0, max: 20, step: 1, value: get("Preinfusion", 10), display: v => v + "s" },
+      { id: "shot", key: "Total Shot Time", label: "Total Shot Time (s)", min: 12, max: 60, step: 1, value: get("Total Shot Time", 32), display: v => v + "s" }
+    ];
+  }
+  if (method === "v60") {
+    const grindKey = Object.keys(settings).find(k => /grind/i.test(k)) || "Grind";
+    return [
+      { id: "grind", key: grindKey, label: grindKey, min: 0.5, max: 60, step: 0.1, value: get(grindKey, 7.0), display: v => Number(v).toFixed(1) },
+      { id: "temp", key: "Water Temp", label: "Water Temp (°C)", min: 80, max: 100, step: 1, value: get("Water Temp", 95), display: v => v + "°C" },
+      { id: "dose", key: "Dose", label: "Dose (g)", min: 10, max: 50, step: 0.5, value: get("Dose", 24), display: v => v + "g" },
+      { id: "water", key: "Water", label: "Water (g)", min: 100, max: 800, step: 5, value: get("Water", 400), display: v => v + "g" },
+      { id: "drawdown", key: "Target Drawdown", label: "Drawdown (s)", min: 90, max: 360, step: 5, value: get("Target Drawdown", 200), display: v => Math.floor(v / 60) + ":" + String(v % 60).padStart(2, "0") }
+    ];
+  }
+  // aeropress (and unknowns)
+  const grindKey = Object.keys(settings).find(k => /grind/i.test(k)) || "Grind";
+  return [
+    { id: "grind", key: grindKey, label: grindKey, min: 0.5, max: 60, step: 0.1, value: get(grindKey, 6.0), display: v => Number(v).toFixed(1) },
+    { id: "temp", key: "Water Temp", label: "Water Temp (°C)", min: 70, max: 100, step: 1, value: get("Water Temp", 92), display: v => v + "°C" },
+    { id: "dose", key: "Dose", label: "Dose (g)", min: 10, max: 30, step: 0.5, value: get("Dose", 18), display: v => v + "g" },
+    { id: "water", key: "Water", label: "Water (g)", min: 100, max: 350, step: 5, value: get("Water", 200), display: v => v + "g" },
+    { id: "steep", key: "Steep Time", label: "Steep Time (s)", min: 30, max: 240, step: 5, value: get("Steep Time", 90), display: v => Math.floor(v / 60) + ":" + String(v % 60).padStart(2, "0") }
+  ];
+}
+
+function readBrewLogForm() {
+  const ctx = state.brewLogContext;
+  if (!ctx) return null;
+  const method = ctx.method;
+  const c = state.data.coffees.find(x => x.id === ctx.coffeeId);
+  if (!c) return null;
+  // Read all sliders by key
+  const newSettings = { ...((c[method] && c[method].settings) || {}) };
+  const slidersDef = brewLogSliders(method, c[method]?.settings || {}, c[method] || {});
+  for (const row of slidersDef) {
+    const slider = document.getElementById("brewlog-" + row.id);
+    if (!slider) continue;
+    newSettings[row.key] = row.display(slider.value);
+  }
+  return {
+    coffee: c,
+    method,
+    settings: newSettings,
+    taste: document.getElementById("brewlog-taste").value,
+    outcome: document.getElementById("brewlog-outcome").value.trim(),
+    comments: document.getElementById("brewlog-comments").value.trim()
+  };
+}
+
+async function saveBrewLog() {
+  const form = readBrewLogForm();
+  if (!form) return;
+  const c = form.coffee;
+  c[form.method] = c[form.method] || { settings: {}, notes: "", status: "next", statusLabel: "Not Yet Tried" };
+  c[form.method].settings = form.settings;
+  // Status moves to "dialing" when user has at least one logged brew.
+  if (c[form.method].status === "next") {
+    c[form.method].status = "dialing";
+    c[form.method].statusLabel = "Dialing In";
+  }
+  // Append to the per-coffee brew log
+  c.brew_log = Array.isArray(c.brew_log) ? c.brew_log : [];
+  c.brew_log.push({
+    method: form.method,
+    settings: form.settings,
+    taste: form.taste,
+    outcome: form.outcome,
+    comments: form.comments,
+    created_at: new Date().toISOString()
+  });
+  try {
+    const saved = await upsertCoffee(c);
+    const idx = state.data.coffees.findIndex(x => x.id === c.id);
+    if (idx >= 0) state.data.coffees[idx] = saved;
+    closeModal("brewlog-modal");
+    render(state.activeMethod);
+    toast("Brew logged", "success");
+  } catch (e) { toast("Save failed: " + e.message, "error"); }
+}
+
+// Save the brew log AND ask the AI for a dial-in suggestion based on the
+// outcome + comments. The suggestion appears in the AI modal so the user
+// can then choose to apply it.
+async function saveBrewLogAndRequestTweak() {
+  const form = readBrewLogForm();
+  if (!form) return;
+  await saveBrewLog();
+  // Open the AI assist modal with prefilled outcome
+  state.aiContext = { coffeeId: form.coffee.id, method: form.method, mode: "tweak" };
+  state.aiSuggestion = null;
+  document.getElementById("ai-modal-title").textContent = "AI dial-in tweak — " + form.coffee.name;
+  showModal("ai-modal");
+  aiCardMode("tweak");
+  // Pre-fill the feedback textarea with what we just collected
+  setTimeout(() => {
+    const feedbackEl = document.getElementById("ai-feedback");
+    if (feedbackEl) {
+      const taste = form.taste ? `Taste: ${form.taste}.` : "";
+      const out = form.outcome ? ` Result: ${form.outcome}.` : "";
+      const com = form.comments ? ` Notes: ${form.comments}.` : "";
+      feedbackEl.value = (taste + out + com).trim();
+      runAiTweak();
+    }
+  }, 80);
+}
+
+// ============================================================
 // UI helpers
 // ============================================================
 function showModal(id) { document.getElementById(id).classList.remove("hidden"); }
@@ -4911,6 +5644,11 @@ function toast(msg, kind = "") {
 }
 
 function bindEvents() {
+  // Gradient picker — any of its three inputs rebuilds the hidden value
+  ["ed-color-start", "ed-color-end", "ed-color-angle"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("input", syncGradientPicker);
+  });
   // Login — main substep
   document.querySelectorAll(".login-tab").forEach(t => {
     t.addEventListener("click", () => setLoginMode(t.dataset.mode));
@@ -5025,6 +5763,10 @@ window.aiLookupOnline = aiLookupOnline;
 window.aiQuickFill = aiQuickFill;
 window.askBrewingTip = askBrewingTip;
 window.openTipModal = openTipModal;
+window.toggleFavorite = toggleFavorite;
+window.openBrewLog = openBrewLog;
+window.saveBrewLog = saveBrewLog;
+window.saveBrewLogAndRequestTweak = saveBrewLogAndRequestTweak;
 // Exposed for the test harness — also useful for power users debugging
 // what signal the parser pulled from their query.
 window.parseSearchQuery = parseSearchQuery;
