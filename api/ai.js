@@ -298,11 +298,42 @@ module.exports = async function handler(req, res) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return jsonResponse(res, 503, { error: "Server-side Gemini not configured" });
     const model = body.model || "gemini-2.5-flash";
+    // Per-mode generation config:
+    // - Gemini 2.5 Flash defaults to "dynamic" thinking that competes for the
+    //   maxOutputTokens budget. Truncated outputs (mid-JSON cutoffs) usually
+    //   mean thinking ate too much of the budget, leaving the actual content
+    //   nowhere to go. We pin thinking explicitly per task.
+    // - For schema-enforced recipe (no grounding), the schema does the work.
+    //   thinkingBudget=0 saves us tokens AND latency.
+    // - For grounded recipe (search → recipe), give the model a small thinking
+    //   budget so it can plan the search, but cap it tight so the final JSON
+    //   gets all the room.
+    // - Tip cards are short; a tiny thinking budget keeps them snappy.
+    let thinkingBudget;       // -1 means omit (auto / SDK default)
+    let temperature = 0.7;
+    let resolvedMaxTokens = maxTokens;
+    if (mode === "recipe" && useWebSearch) {
+      thinkingBudget = 256;
+      temperature = 0.3;
+      resolvedMaxTokens = Math.max(resolvedMaxTokens, 3000);
+    } else if (mode === "recipe") {
+      thinkingBudget = 0;     // schema enforcement → no thinking needed
+      temperature = 0.3;
+    } else if (mode === "tip") {
+      thinkingBudget = 128;
+      temperature = 0.6;
+    } else {
+      thinkingBudget = -1;    // auto for everything else
+    }
+
     const reqBody = {
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-      generationConfig: { maxOutputTokens: maxTokens, temperature: mode === "recipe" ? 0.4 : 0.7 }
+      generationConfig: { maxOutputTokens: resolvedMaxTokens, temperature }
     };
+    if (thinkingBudget !== -1) {
+      reqBody.generationConfig.thinkingConfig = { thinkingBudget };
+    }
     // Gemini constraint: when the google_search tool is active you CANNOT
     // also set responseMimeType=application/json or responseSchema. The API
     // returns 400 INVALID_ARGUMENT. So when grounding is on we let the model
@@ -321,9 +352,14 @@ module.exports = async function handler(req, res) {
     const text = await r.text();
     if (!r.ok) return jsonResponse(res, r.status, { error: `Gemini ${r.status}: ${text.slice(0, 400)}` });
     const json = JSON.parse(text);
-    const parts = json.candidates?.[0]?.content?.parts || [];
+    const cand = json.candidates?.[0];
+    const parts = cand?.content?.parts || [];
     const out = parts.map(p => p.text || "").join("\n").trim();
-    return respond(out, "google", model);
+    // Surface finish reason so the client can show a smarter error if Gemini
+    // hit its token budget mid-JSON.
+    const finishReason = cand?.finishReason || null;
+    if (cacheKey && out) await writeTipCache(cacheKey, out, "google", token);
+    return jsonResponse(res, 200, { text: out, provider: "google", model, cached: false, finishReason });
   } catch (e) {
     return jsonResponse(res, 502, { error: "Upstream error: " + (e?.message || String(e)).slice(0, 300) });
   }

@@ -3669,87 +3669,51 @@ function parseSearchQuery(query) {
 }
 
 // =====================================================================
-// Recipe-generation system prompt. Designed for reliability on ambiguous
-// inputs:
-//   - Receives the parsed query context so the model is doing recognition
-//     against a focused candidate set rather than free-form guessing.
-//   - Receives the user's actual equipment so grind values and field labels
-//     match what they own (no more "Grind (Acaia Orbit SSP V3)" when the
-//     user has a Fellow Ode).
-//   - Gives the model an explicit escape hatch — when it can't identify
-//     the coffee with at least moderate confidence, return
-//     {"error":"not_found", "reason":"...", "suggestion":"..."} instead of
-//     hallucinating a recipe for a coffee that doesn't exist.
+// Recipe-generation system prompt — kept as terse as possible. Verbose
+// prompts make the model echo more prose, eat the token budget, and risk
+// truncating mid-JSON. We only spell out the JSON shape when grounding is
+// on (in non-grounded mode the responseSchema enforces it server-side).
+//
+// Compact JSON shape: only the variable fields per method. The client
+// merges with blankMethod() defaults, so we never need the model to emit
+// boilerplate like "Pressure":"8 bar" for every recipe.
 // =====================================================================
 function recipeSystemPrompt(prefs, { grounded = false, parsedQuery = null } = {}) {
   const eq = (state.data && state.data.equipment) || {};
-  const grinderLabel = eq.grinder
-    ? (eq.grinder + (eq.burrs ? " (" + eq.burrs + " burrs)" : ""))
-    : "(grinder not specified — guess by query, or use generic 'fine/medium/coarse')";
+  const grinderLabel = eq.grinder + (eq.burrs ? " (" + eq.burrs + ")" : "");
   const grindKey = eq.grinder ? "Grind (" + eq.grinder + (eq.burrs ? " " + eq.burrs : "") + ")" : "Grind";
 
-  const lines = [
-    "You are a deeply experienced home-barista expert. Your job is to identify a specific coffee from the user's query and produce a starting brew recipe for it.",
+  const ctx = [];
+  if (prefs && prefs !== "(none provided)") ctx.push("Taste prefs: " + prefs);
+  if (eq.grinder) ctx.push("Grinder: " + grinderLabel);
+  if (eq.machine) ctx.push("Machine: " + eq.machine);
+  if (parsedQuery?.roaster) ctx.push("Roaster: " + parsedQuery.roaster);
+  if (parsedQuery?.coffeeName) ctx.push('Coffee fragment: "' + parsedQuery.coffeeName + '"');
+  if (parsedQuery?.method) ctx.push("Method emphasis: " + parsedQuery.method);
+  if (parsedQuery?.grinder) ctx.push("Grinder in query: " + parsedQuery.grinder);
+
+  const baseLines = [
+    "You are a home-barista expert. Identify the coffee" + (grounded ? " (search the web)" : "") + " and return a starter recipe for all three brew methods.",
     "",
-    "USER CONTEXT",
-    "- Taste preferences: " + (prefs || "(none provided)"),
-    "- Grinder: " + grinderLabel,
-    eq.machine ? "- Espresso machine: " + eq.machine : "",
-    eq.portafilter ? "- Basket: " + eq.portafilter : "",
-    eq.kettle ? "- Kettle: " + eq.kettle : "",
-    eq.scale ? "- Scale: " + eq.scale : "",
+    "Grind hints by grinder (numeric where applicable):",
+    "Acaia Orbit SSP V3: espresso 1.0–2.0 (lighter roast=lower); Niche Zero: 10–25; DF64: 1.5–3.5; Fellow Ode/Opus: 4–7; Comandante: 22–32 clicks; 1Zpresso J-max/J-Pro: 0.6–1.4. Unknown grinder → descriptive (fine/medium/coarse).",
     "",
-    "RECIPE DEFAULTS (only use what makes sense for the user's gear)",
-    "- Espresso: 18g dose, 8 bar peak pressure, 10s preinfusion @ 2–3 bar.",
-    "- V60: Hoffmann method, 1:16.7 ratio (60g/L), 48g bloom for 45s.",
-    "- AeroPress: inverted, 18g dose, 200g water, 0:30 press time.",
+    "Color = the actual coffee bag's dominant color (hex). If you can't find the bag, pick by origin/process.",
     "",
-    "GRIND HINT BY GRINDER (numeric where the grinder uses numeric values):",
-    "- Acaia Orbit + SSP Sweet V3: espresso 1.0–2.0 (lighter roast = finer/lower number)",
-    "- Niche Zero: espresso 10–25 (lower = finer)",
-    "- DF64 / DF83: espresso 1.5–3.5",
-    "- Fellow Ode / Opus: pourover 4–7 setting",
-    "- Comandante: pourover 22–32 clicks",
-    "- 1Zpresso J-max / J-Pro: espresso 0.6–1.4 (clicks)",
-    "- If the grinder is unknown, return descriptive values: 'fine', 'medium-fine', etc.",
-    "",
-    "ON BREW METHOD",
-    "- The user can have an espresso machine OR not. Always produce a recipe for ALL THREE methods (espresso, V60, AeroPress) so the saved card is useful across moods.",
-    "- 'drip', 'filter', 'pour-over', 'pourover', 'V60', 'Kalita', 'Chemex' all map to the V60 entry. AeroPress stays AeroPress. Everything else is espresso.",
-    "",
-    "FAILURE MODE",
-    "If after web search you cannot identify the coffee with at least moderate confidence (e.g. the query mentions a roaster you can't confirm, or a coffee name that doesn't exist in any catalogue), DO NOT hallucinate. Return:",
-    '  {"error":"not_found","reason":"<one short sentence>","suggestion":"<a specific suggestion the user can try, e.g. \\"Try the roaster\'s exact product name like Onyx Geometry\\">"}',
-    "",
-    "BAG COLOR",
-    "- For `color`, find the actual coffee bag's dominant color from the roaster's site/marketing and return it as a hex like #5c4a3a. If the bag is unidentifiable, pick a color that captures the origin/process character (light Ethiopia → blue/purple ~ #3a4f6b, natural Brazil → deep brown ~ #4a2a18, etc.)."
+    "If you cannot identify the coffee with confidence, return: {\"error\":\"not_found\",\"reason\":\"...\",\"suggestion\":\"...\"}"
   ];
-
-  if (parsedQuery) {
-    lines.push("", "QUERY ANALYSIS (pre-parsed signal from the user's input)");
-    lines.push("- Raw query: \"" + parsedQuery.raw + "\"");
-    if (parsedQuery.roaster) lines.push("- Likely roaster: " + parsedQuery.roaster);
-    if (parsedQuery.coffeeName) lines.push("- Likely coffee name fragment: \"" + parsedQuery.coffeeName + "\"");
-    if (parsedQuery.method) lines.push("- Brew method emphasis: " + parsedQuery.method.toUpperCase() + " (still produce all three methods, but prioritize this one's notes)");
-    if (parsedQuery.grinder) lines.push("- Grinder mentioned in query: " + parsedQuery.grinder + " — match grind values to this even if user profile says otherwise");
+  if (ctx.length) {
+    baseLines.push("", "Context:", ...ctx.map(l => "- " + l));
   }
-
   if (grounded) {
-    lines.push(
+    // Compact shape — variable fields only. Client merges with defaults.
+    baseLines.push(
       "",
-      "OUTPUT FORMAT",
-      "Return ONLY a single JSON object inside a ```json fenced block, no prose around it. Either:",
-      `{"roaster":"...","name":"...","meta":"process · origin · altitude · varietal","color":"#hex","tags":["origin","process","roast level"],`,
-      `"espresso":{"settings":{"${grindKey}":"...","Brew Temp":"...°F","Dose":"18g","Yield":"...g","Pressure":"8 bar","Preinfusion":"10s @ 2–3 bar","Total Shot Time":"...s","Basket":"${eq.portafilter || "18g"}"},"notes":"<one short sentence>"},`,
-      `"v60":{"settings":{"${grindKey}":"...","Water Temp":"...","Dose":"24g","Water":"400g","Ratio":"1:16.7 (Hoffmann 60g/L)","Bloom":"48g / 45s","Target Drawdown":"..."},"notes":"..."},`,
-      `"aeropress":{"settings":{"${grindKey}":"...","Water Temp":"...","Dose":"18g","Water":"200g","Method":"Inverted","Steep Time":"...","Press Time":"0:30"},"notes":"..."}}`,
-      "",
-      "OR (when you cannot identify the coffee with confidence):",
-      `{"error":"not_found","reason":"...","suggestion":"..."}`
+      "Return ONLY this JSON in a ```json fenced block:",
+      `{"roaster":"","name":"","meta":"process · origin · altitude","color":"#hex","tags":[],"espresso":{"settings":{"${grindKey}":"","Brew Temp":"","Yield":"","Total Shot Time":""},"notes":""},"v60":{"settings":{"${grindKey}":"","Water Temp":"","Target Drawdown":""},"notes":""},"aeropress":{"settings":{"${grindKey}":"","Water Temp":"","Steep Time":""},"notes":""}}`
     );
   }
-
-  return lines.filter(Boolean).join("\n");
+  return baseLines.join("\n");
 }
 
 function userContextBlock() {
@@ -3891,6 +3855,10 @@ async function callServerAI(provider, systemPrompt, userPrompt, { useWebSearch =
     throw new Error(`AI server (${res.status}): ${text.slice(0, 240)}`);
   }
   const json = await res.json();
+  // Surface metadata via a state slot so callers can inspect (e.g., react
+  // differently on MAX_TOKENS-truncated responses without changing every
+  // call site signature).
+  state._lastAiMeta = { finishReason: json.finishReason || null, cached: !!json.cached, provider: json.provider || null };
   return json.text || "";
 }
 
@@ -3944,10 +3912,85 @@ async function callGemini(systemPrompt, userPrompt, { useWebSearch = false, json
 }
 
 function extractJsonBlock(text) {
+  if (!text) return null;
+  // 1) Fenced code block
   let m = text.match(/```json\s*([\s\S]*?)```/i) || text.match(/```\s*([\s\S]*?)```/i);
-  if (m) { try { return JSON.parse(m[1]); } catch (e) {} }
+  if (m) {
+    try { return JSON.parse(m[1]); } catch (e) {}
+    const repaired = repairTruncatedJson(m[1]);
+    if (repaired) return repaired;
+  }
+  // 2) Naked JSON range
   const start = text.indexOf("{"), end = text.lastIndexOf("}");
-  if (start >= 0 && end > start) { try { return JSON.parse(text.slice(start, end + 1)); } catch (e) {} }
+  if (start >= 0 && end > start) {
+    try { return JSON.parse(text.slice(start, end + 1)); } catch (e) {}
+  }
+  // 3) Truncation rescue — common when Gemini hits MAX_TOKENS mid-string.
+  // Walk from the start of the JSON, balance braces/brackets, drop whatever
+  // partial token is hanging off the end, and try parsing what we have.
+  if (start >= 0) {
+    const repaired = repairTruncatedJson(text.slice(start));
+    if (repaired) return repaired;
+  }
+  return null;
+}
+
+// Best-effort repair for JSON cut off mid-emit (e.g. Gemini hitting
+// maxOutputTokens partway through). Strategy:
+//   1. Walk the string tracking string/escape state + a bracket stack,
+//      collecting "safe truncation points" (positions just past a comma or
+//      a closed pair, while there are still open brackets).
+//   2. If the input ended mid-string, recurse on the slice up to the last
+//      safe point — this drops the unfinished key or value.
+//   3. Otherwise, close every still-open bracket and try to parse. If that
+//      fails (because the final value was partial e.g. "foo: 1.3"), trim
+//      to the last safe point and retry.
+function repairTruncatedJson(input) {
+  let s = String(input || "").trim();
+  if (!s.startsWith("{") && !s.startsWith("[")) return null;
+
+  const stack = [];
+  let inStr = false, esc = false;
+  const safePoints = [];
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (esc) { esc = false; continue; }
+    if (inStr) {
+      if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === "{" || c === "[") stack.push(c);
+    else if (c === "}" || c === "]") stack.pop();
+    // Safe truncation point: just past a comma or just past a closed
+    // structure, while we still have open brackets to close.
+    if (!inStr && stack.length > 0 && (c === "," || c === "]" || c === "}")) {
+      safePoints.push(i + 1);
+    }
+  }
+
+  // Ended mid-string → drop the unfinished token, retry on the prefix.
+  if (inStr) {
+    const lastSafe = safePoints[safePoints.length - 1];
+    if (lastSafe == null) return null;
+    return repairTruncatedJson(s.slice(0, lastSafe));
+  }
+
+  // Try closing-brackets-only first.
+  const close = (str, st) => {
+    let out = str.replace(/,\s*$/, "");
+    const local = [...st];
+    while (local.length) out += (local.pop() === "{") ? "}" : "]";
+    return out.replace(/,(\s*[\}\]])/g, "$1");
+  };
+  try { return JSON.parse(close(s, stack)); } catch (e) {}
+
+  // Trailing partial value (number, bare identifier) — trim to last safe
+  // point and try again.
+  if (safePoints.length) {
+    return repairTruncatedJson(s.slice(0, safePoints[safePoints.length - 1]));
+  }
   return null;
 }
 
@@ -4333,13 +4376,16 @@ async function aiSearchOnline(query) {
   try {
     const text = await callAI(sys, user, { useWebSearch: true, mode: "recipe" });
     if (!state.searchOnlineState || state.searchOnlineState.query !== query) return;
-    console.log("[search-online] AI raw response:", text);
+    console.log("[search-online] AI raw response:", text, "meta:", state._lastAiMeta);
     state.searchOnlineState.rawResponse = text;
+    const truncated = state._lastAiMeta?.finishReason === "MAX_TOKENS";
 
     const parsed = extractJsonBlock(text);
     if (!parsed) {
       state.searchOnlineState.status = "error";
-      state.searchOnlineState.error = "Got a reply but couldn't parse JSON from it. The first 280 characters were: \"" + (text || "").slice(0, 280) + "\". Open the browser console for the full response.";
+      state.searchOnlineState.error = truncated
+        ? "Gemini cut its response short before finishing the recipe. Try a shorter or more specific query (e.g. just the roaster + coffee name)."
+        : "Got a reply but couldn't parse JSON from it. The first 280 characters were: \"" + (text || "").slice(0, 280) + "\". Open the browser console for the full response.";
       renderSearchOnlineCard();
       return;
     }
@@ -4353,11 +4399,16 @@ async function aiSearchOnline(query) {
       return;
     }
 
-    // Auto-save — the recipe goes straight into the user's collection.
+    // Auto-save — the recipe goes straight into the user's collection. If
+    // the response was truncated and we recovered a partial via JSON repair,
+    // missing methods will be filled in by blankMethod() defaults inside
+    // autoSaveSearchedCoffee, so the user still gets a usable card.
     state.searchOnlineState.status = "saving";
     state.searchOnlineState.recipe = parsed;
+    state.searchOnlineState.truncated = truncated;
     renderSearchOnlineCard();
     await autoSaveSearchedCoffee();
+    if (truncated) toast("Recipe was cut short — saved with starter defaults for missing methods.", "");
   } catch (e) {
     if (!state.searchOnlineState) return;
     console.error("[search-online] AI call failed:", e);
