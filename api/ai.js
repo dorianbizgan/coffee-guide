@@ -207,8 +207,10 @@ module.exports = async function handler(req, res) {
   const useWebSearch = !!body.useWebSearch;
   const mode = body.mode === "tip" ? "tip" : body.mode === "recipe" ? "recipe" : "default";
   // Recipe calls return JSON only — drop the cap to ~1500 to cut latency.
-  // The recipe schema fits comfortably within that.
-  const defaultMax = mode === "recipe" ? 1500 : 2048;
+  // BUT grounded (web-search) recipes also produce prose + citations on the
+  // way to the JSON, so they need the full 2048 to avoid the JSON getting
+  // truncated mid-output.
+  const defaultMax = (mode === "recipe" && !useWebSearch) ? 1500 : 2048;
   const maxTokens = Math.min(Math.max(parseInt(body.max_tokens || defaultMax, 10) || defaultMax, 64), 4096);
   // Recipe and explicit JSON-mode requests both want JSON output.
   const jsonMode = !!body.jsonMode || mode === "recipe";

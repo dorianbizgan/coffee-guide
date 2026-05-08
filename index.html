@@ -4366,20 +4366,26 @@ async function aiSearchOnline(query) {
     // Schema-enforced JSON for faster, more reliable parsing
     const text = await callAI(sys, user, { useWebSearch: true, mode: "recipe" });
     if (!state.searchOnlineState || state.searchOnlineState.query !== query) return; // user navigated away / cancelled
+    // Surface the raw response in console so the user can inspect it if anything
+    // downstream fails (parse / save).
+    console.log("[search-online] AI raw response:", text);
     const parsed = extractJsonBlock(text);
     if (!parsed) {
       state.searchOnlineState.status = "error";
-      state.searchOnlineState.error = "Got a reply but couldn't parse it as a recipe. Try adding manually.";
+      state.searchOnlineState.error = "Got a reply but couldn't parse JSON from it. The first 280 characters were: \"" + (text || "").slice(0, 280) + "\". Open the browser console for the full response.";
+      state.searchOnlineState.rawResponse = text;
       renderSearchOnlineCard();
       return;
     }
     // Auto-save — the recipe goes straight into the user's collection. No confirm step.
     state.searchOnlineState.status = "saving";
     state.searchOnlineState.recipe = parsed;
+    state.searchOnlineState.rawResponse = text;
     renderSearchOnlineCard();
     await autoSaveSearchedCoffee();
   } catch (e) {
     if (!state.searchOnlineState) return;
+    console.error("[search-online] AI call failed:", e);
     state.searchOnlineState.status = "error";
     state.searchOnlineState.error = e.message || String(e);
     renderSearchOnlineCard();
@@ -4392,19 +4398,37 @@ async function autoSaveSearchedCoffee() {
   const s = state.searchOnlineState;
   if (!s?.recipe) return;
   const r = s.recipe;
-  const name = (r.name || s.query).slice(0, 120);
+  const name = String(r.name || s.query).slice(0, 120);
+  // Some Gemini responses come back with `notes` as an object {text: "..."} or
+  // missing entirely — coerce to a clean shape before sending to the DB.
+  const cleanMethod = (m, fallbackKey) => {
+    if (!m || typeof m !== "object") return blankMethod(fallbackKey);
+    const settings = (m.settings && typeof m.settings === "object") ? m.settings : null;
+    if (!settings) return blankMethod(fallbackKey);
+    // Coerce all setting values to strings (Postgres jsonb is fine but the UI
+    // assumes strings everywhere)
+    const cleanSettings = {};
+    for (const [k, v] of Object.entries(settings)) {
+      cleanSettings[String(k).slice(0, 80)] = v == null ? "" : String(v).slice(0, 200);
+    }
+    const notes = typeof m.notes === "string" ? m.notes
+                : (m.notes && typeof m.notes === "object" && typeof m.notes.text === "string") ? m.notes.text
+                : "";
+    return { settings: cleanSettings, notes: notes.slice(0, 2000), status: "next", statusLabel: "Not Yet Tried" };
+  };
   const c = {
     slug: slugify(name) + "-" + Math.random().toString(36).slice(2, 6),
-    roaster: r.roaster || "",
+    roaster: String(r.roaster || "").slice(0, 120),
     name,
-    meta: r.meta || "",
+    meta: String(r.meta || "").slice(0, 200),
     color: sanitizeColor(r.color || "#5c4a3a"),
-    tags: Array.isArray(r.tags) ? r.tags : [],
-    espresso: r.espresso && r.espresso.settings ? { ...r.espresso, status: "next", statusLabel: "Not Yet Tried" } : blankMethod("espresso"),
-    v60: r.v60 && r.v60.settings ? { ...r.v60, status: "next", statusLabel: "Not Yet Tried" } : blankMethod("v60"),
-    aeropress: r.aeropress && r.aeropress.settings ? { ...r.aeropress, status: "next", statusLabel: "Not Yet Tried" } : blankMethod("aeropress"),
+    tags: Array.isArray(r.tags) ? r.tags.filter(t => typeof t === "string").slice(0, 16) : [],
+    espresso: cleanMethod(r.espresso, "espresso"),
+    v60: cleanMethod(r.v60, "v60"),
+    aeropress: cleanMethod(r.aeropress, "aeropress"),
     position: state.data.coffees.length
   };
+  console.log("[search-online] saving normalized coffee:", c);
   try {
     const saved = await upsertCoffee(c);
     state.data.coffees.push(saved);
@@ -4428,8 +4452,9 @@ async function autoSaveSearchedCoffee() {
       }
     }, 4500);
   } catch (e) {
+    console.error("[search-online] save failed. Recipe was:", c, "Raw response:", state.searchOnlineState?.rawResponse);
     state.searchOnlineState.status = "error";
-    state.searchOnlineState.error = "Couldn't save: " + (e.message || e);
+    state.searchOnlineState.error = "Couldn't save: " + humanizeDbError(e) + ". Open the browser console — the AI's raw response and the row we tried to save are logged there.";
     renderSearchOnlineCard();
   }
 }
