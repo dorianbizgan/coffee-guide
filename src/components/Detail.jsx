@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, MethodIcon } from "./Icons.jsx";
-import { BREW_METHODS, adjustRecipe, recommend, detectGrinder, dialWarning } from "../lib/data.js";
+import { BREW_METHODS, adjustRecipe, recommend, detectGrinder, dialWarning, snapClicks, formatClicks, quantize } from "../lib/data.js";
 
 function parseStepTime(s) {
   if (!s) return [null, null];
@@ -138,9 +138,7 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
   };
   const baseRecipeClicks = parseBaseClicks(baseRecipe.grind);
   const f01 = Math.min(1, Math.max(0, (baseRecipeClicks - COMANDANTE_RANGE[0]) / (COMANDANTE_RANGE[1] - COMANDANTE_RANGE[0])));
-  const baseClicks = grinder.step >= 1
-    ? Math.round(grinder.min + f01 * (grinder.max - grinder.min))
-    : Math.round((grinder.min + f01 * (grinder.max - grinder.min)) / grinder.step) * grinder.step;
+  const baseClicks = snapClicks(grinder, grinder.min + f01 * (grinder.max - grinder.min));
   const baseTemp = baseRecipe.temp;
 
   const [temp, setTemp] = useState(baseTemp);
@@ -158,7 +156,8 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
     return "coarse — French press, cold brew";
   };
 
-  const clicksLabel = grinder.unit ? `${clicks} ${grinder.unit}` : `${clicks}`;
+  const clicksDisplay = formatClicks(grinder, clicks);
+  const clicksLabel = grinder.unit ? `${clicksDisplay} ${grinder.unit}` : `${clicksDisplay}`;
   const recipe = { ...baseRecipe, temp, grind: `${clicksLabel} · ${grindDescriptor(clicks).split(" — ")[0]}` };
   const warning = dialWarning({ method, grinder, clicks, temp });
 
@@ -231,9 +230,7 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
   const applyAi = () => {
     if (aiResult?.tempC) setTemp(Math.max(80, Math.min(99, Math.round(aiResult.tempC))));
     if (aiResult?.clicks != null) {
-      const c = parseFloat(aiResult.clicks);
-      const clamped = Math.max(grinder.min, Math.min(grinder.max, c));
-      setClicks(grinder.step >= 1 ? Math.round(clamped) : clamped);
+      setClicks(snapClicks(grinder, parseFloat(aiResult.clicks)));
     }
     setAiResult(null);
   };
@@ -323,7 +320,7 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
           <div className="dial-row">
             <div className="dial-label">
               <span className="l">Grind · <em>{grinder.label}</em></span>
-              <span className="readout">{clicks}<small>{grinder.unit || ""}</small></span>
+              <span className="readout">{clicksDisplay}<small>{grinder.unit || ""}</small></span>
             </div>
             <input
               type="range"
@@ -331,10 +328,7 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
               max={grinder.max}
               step={grinder.step}
               value={clicks}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value);
-                setClicks(grinder.step >= 1 ? Math.round(v) : v);
-              }}
+              onChange={(e) => setClicks(snapClicks(grinder, parseFloat(e.target.value)))}
               className="slider"
               style={{ "--p": (((clicks - grinder.min) / (grinder.max - grinder.min)) * 100 || 0) + "%" }}
             />
@@ -383,7 +377,7 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
             placeholder="A few words — body, sweetness, what you'd change next time…"
           />
           <div className="brewnote-actions">
-            <span className="brewnote-stamp">{temp}°C · {clicks} {grinder.unit || ""}</span>
+            <span className="brewnote-stamp">{temp}°C · {clicksDisplay} {grinder.unit || ""}</span>
             <div className="bn-btn-row">
               <button
                 className="btn btn-ghost btn-sm"
@@ -418,11 +412,21 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
                       <span className="ai-v">{aiResult.tempC}°C</span>
                       <span className="ai-diff">{aiResult.tempC > temp ? `+${aiResult.tempC - temp}` : aiResult.tempC < temp ? `${aiResult.tempC - temp}` : "—"}</span>
                     </div>
-                    <div className="ai-delta">
-                      <span className="ai-l">Grind</span>
-                      <span className="ai-v">{aiResult.clicks} {grinder.unit || ""}</span>
-                      <span className="ai-diff">{aiResult.clicks > clicks ? `+${(aiResult.clicks - clicks).toFixed(grinder.step >= 1 ? 0 : 1)}` : aiResult.clicks < clicks ? `${(aiResult.clicks - clicks).toFixed(grinder.step >= 1 ? 0 : 1)}` : "—"}</span>
-                    </div>
+                    {(() => {
+                      const aiClicks = snapClicks(grinder, parseFloat(aiResult.clicks));
+                      const rawDelta = aiClicks - clicks;
+                      // Snap to step before formatting so we don't print 0.30000001
+                      const snappedDelta = quantize(Math.abs(rawDelta), grinder.step) * Math.sign(rawDelta);
+                      const negligible = Math.abs(snappedDelta) < grinder.step / 2;
+                      const sign = snappedDelta > 0 ? "+" : "";
+                      return (
+                        <div className="ai-delta">
+                          <span className="ai-l">Grind</span>
+                          <span className="ai-v">{formatClicks(grinder, aiClicks)} {grinder.unit || ""}</span>
+                          <span className="ai-diff">{negligible ? "—" : `${sign}${formatClicks(grinder, snappedDelta)}`}</span>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <p className="ai-advice">{aiResult.advice}</p>
                   <div className="ai-actions">

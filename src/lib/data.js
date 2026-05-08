@@ -284,6 +284,37 @@ export function finenessToClicks(grinder, f01) {
   return grinder.min + Math.max(0, Math.min(1, f01)) * (grinder.max - grinder.min);
 }
 
+// Quantize a value to a step without float-math ghosts. The naive
+// `Math.round(v / 0.1) * 0.1` produces 5.000000001 because 0.1 isn't
+// representable in binary floating point. We scale to integer space using
+// the step's decimal places, round there, and scale back.
+export function quantize(value, step) {
+  if (!step || step <= 0) return value;
+  if (step >= 1) return Math.round(value);
+  // Count decimal places in the step (handles 0.1, 0.05, 0.01, etc.).
+  const stepStr = String(step);
+  const decimals = stepStr.includes(".") ? stepStr.split(".")[1].length : 0;
+  const factor = Math.pow(10, decimals);
+  // toFixed → parseFloat collapses the residual binary ghost (e.g.
+  // 4.9999999996 → "5.0" → 5).
+  return parseFloat((Math.round(value * factor / Math.round(step * factor)) * step).toFixed(decimals));
+}
+
+// Snap a click value to the grinder's scale, clamping to its range.
+export function snapClicks(grinder, value) {
+  const clamped = Math.max(grinder.min, Math.min(grinder.max, value));
+  return quantize(clamped, grinder.step);
+}
+
+// Format a click value for display using the grinder's precision.
+export function formatClicks(grinder, value) {
+  if (!Number.isFinite(value)) return "—";
+  if (grinder.step >= 1) return String(Math.round(value));
+  const stepStr = String(grinder.step);
+  const decimals = stepStr.includes(".") ? stepStr.split(".")[1].length : 0;
+  return value.toFixed(decimals);
+}
+
 // What range of fineness (0..1, 0=finest) is sane for each method.
 // Anything outside the band gets a soft "you sure?" warning in the UI.
 export const METHOD_FINENESS_BAND = {
