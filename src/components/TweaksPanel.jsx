@@ -10,7 +10,12 @@ const TWEAKS_STYLE = `
        comfortable 16px in from the edge everywhere else. */
     right:max(16px, env(safe-area-inset-right));
     bottom:max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px));
-    z-index:2147483646;width:280px;
+    z-index:2147483646;
+    /* On small screens (iPhone SE = 375px, even smaller for older devices)
+       the fixed 280px panel + 16px right margin would leave under 80px on
+       the left and could overflow horizontally. min() shrinks the panel so
+       it always fits comfortably with 16px breathing room on each side. */
+    width:min(280px, calc(100vw - max(32px, env(safe-area-inset-left)) - max(32px, env(safe-area-inset-right))));
     max-height:calc(100dvh - max(32px, calc(env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px) + 32px)));
     display:flex;flex-direction:column;
     background:rgba(250,249,247,.78);color:#29261b;

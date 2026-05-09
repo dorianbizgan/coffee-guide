@@ -44,22 +44,23 @@ export function BrewLogView({ logs, onOpenBean }) {
             }}>
               <MethodIcon id={l.method} size={20} />
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
-                <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline", flexWrap: "wrap" }}>
+                <div style={{ minWidth: 0, flex: "1 1 auto" }}>
                   <button
                     onClick={() => onOpenBean && onOpenBean(l.beanId)}
                     style={{
                       border: 0, background: "transparent", padding: 0,
                       font: "inherit", color: "var(--ink)", cursor: "pointer",
                       fontFamily: "var(--font-display)", fontSize: 22, lineHeight: 1.1,
+                      textAlign: "left", overflowWrap: "anywhere",
                     }}
                   >
                     {l.beanName}
                   </button>
                   <div className="card-roaster" style={{ marginTop: 2 }}>{l.beanRoaster}</div>
                 </div>
-                <div className="brewnote-stamp">{l.temp}°C · {l.clicks} clicks</div>
+                <div className="brewnote-stamp" style={{ flexShrink: 0 }}>{l.temp}°C · {l.clicks} clicks</div>
               </div>
               {l.text && <p style={{ marginTop: 10, marginBottom: 0, color: "var(--ink-soft)" }}>{l.text}</p>}
               <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>

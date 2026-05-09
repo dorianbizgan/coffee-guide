@@ -270,13 +270,19 @@ function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite, activeTi
         style={{
           // Top-left corner so it doesn't overlap the upper-right .card-stamp.
           position: "absolute",
-          top: 14,
-          left: 14,
+          top: 8,
+          left: 8,
           border: 0,
           background: coffee.favorite ? "var(--amber-100)" : "transparent",
           color: coffee.favorite ? "var(--amber-700)" : "var(--ink-mute)",
           cursor: "pointer",
-          padding: 6,
+          // 44×44 hit area to meet the iOS HIG tap-target floor. Star itself
+          // stays 16px; padding does the work.
+          width: 44,
+          height: 44,
+          display: "grid",
+          placeItems: "center",
+          padding: 0,
           lineHeight: 0,
           zIndex: 2,
           borderRadius: 999,

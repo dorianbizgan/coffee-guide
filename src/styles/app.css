@@ -1341,6 +1341,10 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* Wrap on narrow cards (mobile, narrow widths) so the method badge +
+     "Start brewing" + "OPEN →" don't get clipped by .card's overflow:hidden. */
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: 18px;
   padding-top: 14px;
   border-top: 1px solid var(--line);
@@ -1759,8 +1763,10 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
 }
 .modal-close {
   position: absolute;
-  top: 20px; right: 20px;
-  width: 36px; height: 36px;
+  top: 16px; right: 16px;
+  /* 44×44 hit area for iOS — the visible border stays 36px-feeling because
+     the icon is small and centered. */
+  width: 44px; height: 44px;
   background: transparent;
   border: 1px solid var(--line);
   border-radius: 50%;
@@ -3261,7 +3267,16 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
      we just tighten its padding. */
   .panel { padding: 20px 20px; }
   .panel h3 { font-size: 20px; margin-bottom: 12px; }
-  .gear-row { font-size: 13.5px; padding: 10px 0; }
+  .gear-row {
+    font-size: 13.5px;
+    padding: 10px 0;
+    /* Allow long values ("freezer · since 2026-04-22", custom-grinder
+       names) to wrap below the label instead of pushing it off-screen. */
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  .gear-row .k { flex-shrink: 0; }
+  .gear-row .v { min-width: 0; word-break: break-word; text-align: right; }
   /* Dial section: keep the dial readable on small screens. */
   .dial { padding: 20px 18px; }
   .dial-title { font-size: 20px; }
