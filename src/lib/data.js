@@ -318,23 +318,46 @@ export const ACCENTS = [
 //
 // To detect a grinder from a free-text gear field we lowercase + match
 // substrings. The fallback is the generic 0–10 scale.
-// `goodFor` is the list of brew methods this grinder can actually nail. Some
-// grinders physically can't reach the right particle size — e.g. the Fellow
-// Ode has no espresso burrs, the Comandante is too coarse-stepped for
-// reliable espresso, the EK43 is overkill for French press but won't go
-// coarse enough for proper cold brew.
+// `goodFor` is the list of brew methods this grinder can actually pull off.
+// We're permissive by default — most premium grinders cover the full range
+// (espresso through cold brew) when set to the right particle size. The
+// only realistic exclusions are grinders whose burr geometry physically
+// can't reach the size required by a method:
+//   - Fellow Ode (V1) ships with brew-only burrs — no espresso burrs sold.
+//     Even at the finest setting it doesn't choke a 9-bar shot.
+//   - Baratza Encore stock burrs are filter-tuned. Espresso is possible
+//     in theory (lots of YouTubers have shown it) but unreliable in
+//     practice; we flag it as not-recommended.
+//
+// Everything else gets the full set. Niche, Acaia Orbit (SSP), Comandante,
+// 1Zpresso, EK43, DF64 — all of these have well-documented use across the
+// whole brew spectrum, including cold brew at their coarse end.
+const ALL_METHODS = ["espresso", "moka", "v60", "aeropress", "chemex", "french", "cold"];
+
 export const GRINDERS = [
-  { id: "comandante",   match: ["comandante", "c40"],              label: "Comandante C40",        min: 6,  max: 36,  step: 1,   unit: "clicks",   defaultClicks: 22, goodFor: ["v60", "aeropress", "chemex", "moka", "french"] },
-  { id: "1zpresso-jx",  match: ["1zpresso jx", "jx-pro", "jxpro"], label: "1Zpresso JX-Pro",       min: 30, max: 200, step: 1,   unit: "clicks",   defaultClicks: 90, goodFor: ["v60", "aeropress", "chemex", "moka", "french", "cold"] },
-  { id: "1zpresso-zp6", match: ["1zpresso zp6", "zp6"],            label: "1Zpresso ZP6",          min: 0,  max: 90,  step: 1,   unit: "clicks",   defaultClicks: 35, goodFor: ["v60", "aeropress", "chemex", "moka", "french"] },
-  { id: "1zpresso-q2",  match: ["1zpresso q2", "q2"],              label: "1Zpresso Q2",           min: 0,  max: 36,  step: 1,   unit: "clicks",   defaultClicks: 14, goodFor: ["v60", "aeropress", "chemex", "moka"] },
-  { id: "kingrinder-k6",match: ["kingrinder k6", "k6"],            label: "Kingrinder K6",         min: 0,  max: 90,  step: 1,   unit: "clicks",   defaultClicks: 50, goodFor: ["v60", "aeropress", "chemex", "moka", "french", "cold"] },
-  { id: "niche",        match: ["niche zero", "niche-zero", "niche"], label: "Niche Zero",         min: 0,  max: 50,  step: 1,   unit: "notches",  defaultClicks: 22, goodFor: ["espresso", "moka", "v60", "aeropress", "chemex"] },
-  { id: "df64",         match: ["df64", "df 64"],                  label: "DF64",                  min: 0,  max: 80,  step: 1,   unit: "notches",  defaultClicks: 30, goodFor: ["espresso", "moka", "v60", "aeropress"] },
-  { id: "ek43",         match: ["ek43", "ek 43"],                  label: "Mahlkönig EK43",        min: 0,  max: 11,  step: 0.1, unit: "",         defaultClicks: 5,  goodFor: ["espresso", "v60", "aeropress", "chemex"] },
-  { id: "acaia-orbit",  match: ["acaia orbit", "ssp v3", "ssp"],   label: "Acaia Orbit (SSP)",     min: 0,  max: 10,  step: 0.1, unit: "",         defaultClicks: 1.5, goodFor: ["espresso", "v60", "aeropress", "chemex"] },
-  { id: "fellow-ode",   match: ["fellow ode", "ode"],              label: "Fellow Ode",            min: 1,  max: 11,  step: 1,   unit: "settings", defaultClicks: 5,  goodFor: ["v60", "aeropress", "chemex", "french"] },
-  { id: "baratza-encore", match: ["baratza encore", "encore"],     label: "Baratza Encore",        min: 1,  max: 40,  step: 1,   unit: "settings", defaultClicks: 18, goodFor: ["v60", "aeropress", "chemex", "french", "cold"] },
+  { id: "comandante",     match: ["comandante", "c40"],                   label: "Comandante C40",        min: 6,  max: 36,  step: 1,   unit: "clicks",   defaultClicks: 22,  goodFor: ALL_METHODS },
+  { id: "1zpresso-jx",    match: ["1zpresso jx", "jx-pro", "jxpro"],      label: "1Zpresso JX-Pro",       min: 30, max: 200, step: 1,   unit: "clicks",   defaultClicks: 90,  goodFor: ALL_METHODS },
+  { id: "1zpresso-zp6",   match: ["1zpresso zp6", "zp6"],                 label: "1Zpresso ZP6",          min: 0,  max: 90,  step: 1,   unit: "clicks",   defaultClicks: 35,  goodFor: ALL_METHODS },
+  { id: "1zpresso-q2",    match: ["1zpresso q2", "q2"],                   label: "1Zpresso Q2",           min: 0,  max: 36,  step: 1,   unit: "clicks",   defaultClicks: 14,  goodFor: ALL_METHODS },
+  { id: "1zpresso-kplus", match: ["1zpresso k-plus", "k-plus", "kplus"],  label: "1Zpresso K-Plus",       min: 0,  max: 90,  step: 1,   unit: "clicks",   defaultClicks: 40,  goodFor: ALL_METHODS },
+  { id: "1zpresso-kpro",  match: ["1zpresso k-pro", "kpro", "k-pro"],     label: "1Zpresso K-Pro",        min: 0,  max: 90,  step: 1,   unit: "clicks",   defaultClicks: 40,  goodFor: ALL_METHODS },
+  { id: "1zpresso-kmax",  match: ["1zpresso k-max", "kmax", "k-max"],     label: "1Zpresso K-Max",        min: 0,  max: 90,  step: 1,   unit: "clicks",   defaultClicks: 40,  goodFor: ALL_METHODS },
+  { id: "kingrinder-k6",  match: ["kingrinder k6", "k6"],                 label: "Kingrinder K6",         min: 0,  max: 90,  step: 1,   unit: "clicks",   defaultClicks: 50,  goodFor: ALL_METHODS },
+  { id: "kingrinder-k4",  match: ["kingrinder k4", "k4"],                 label: "Kingrinder K4",         min: 0,  max: 90,  step: 1,   unit: "clicks",   defaultClicks: 45,  goodFor: ALL_METHODS },
+  { id: "timemore-c2",    match: ["timemore c2", "c2"],                   label: "Timemore C2",           min: 0,  max: 30,  step: 1,   unit: "clicks",   defaultClicks: 15,  goodFor: ALL_METHODS },
+  { id: "niche",          match: ["niche zero", "niche-zero", "niche"],   label: "Niche Zero",            min: 0,  max: 50,  step: 1,   unit: "notches",  defaultClicks: 22,  goodFor: ALL_METHODS },
+  { id: "df64",           match: ["df64", "df 64", "g-iota", "giota"],    label: "DF64",                  min: 0,  max: 80,  step: 1,   unit: "notches",  defaultClicks: 30,  goodFor: ALL_METHODS },
+  { id: "df54",           match: ["df54", "df 54"],                       label: "DF54",                  min: 0,  max: 80,  step: 1,   unit: "notches",  defaultClicks: 30,  goodFor: ALL_METHODS },
+  { id: "df83",           match: ["df83", "df 83"],                       label: "DF83",                  min: 0,  max: 80,  step: 1,   unit: "notches",  defaultClicks: 30,  goodFor: ALL_METHODS },
+  { id: "ek43",           match: ["ek43", "ek 43"],                       label: "Mahlkönig EK43",        min: 0,  max: 11,  step: 0.1, unit: "",         defaultClicks: 5,   goodFor: ALL_METHODS },
+  { id: "ek43s",          match: ["ek43s", "ek 43s"],                     label: "Mahlkönig EK43s",       min: 0,  max: 11,  step: 0.1, unit: "",         defaultClicks: 5,   goodFor: ALL_METHODS },
+  { id: "x54",            match: ["x54", "mahlkonig x54", "mahlkönig x54"], label: "Mahlkönig X54",       min: 0,  max: 13,  step: 0.1, unit: "",         defaultClicks: 6,   goodFor: ALL_METHODS },
+  { id: "acaia-orbit",    match: ["acaia orbit", "ssp v3", "ssp mp", "ssp hu", "ssp"], label: "Acaia Orbit (SSP)", min: 0, max: 10, step: 0.1, unit: "", defaultClicks: 1.5, goodFor: ALL_METHODS },
+  { id: "weber-key",      match: ["weber key", "weber eg-1"],             label: "Weber Key",             min: 0,  max: 10,  step: 0.1, unit: "",         defaultClicks: 3,   goodFor: ALL_METHODS },
+  { id: "fellow-ode2",    match: ["fellow ode 2", "ode 2", "ode gen 2"],  label: "Fellow Ode Gen 2",      min: 1,  max: 11,  step: 1,   unit: "settings", defaultClicks: 5,   goodFor: ["v60", "aeropress", "chemex", "moka", "french", "cold"] },
+  { id: "fellow-ode",     match: ["fellow ode", "ode"],                   label: "Fellow Ode (Gen 1)",    min: 1,  max: 11,  step: 1,   unit: "settings", defaultClicks: 5,   goodFor: ["v60", "aeropress", "chemex", "french", "cold"] },
+  { id: "baratza-encore", match: ["baratza encore", "encore"],            label: "Baratza Encore",        min: 1,  max: 40,  step: 1,   unit: "settings", defaultClicks: 18,  goodFor: ["v60", "aeropress", "chemex", "moka", "french", "cold"] },
+  { id: "eureka-mignon",  match: ["eureka mignon", "mignon"],             label: "Eureka Mignon",         min: 0,  max: 60,  step: 1,   unit: "settings", defaultClicks: 25,  goodFor: ALL_METHODS },
 ];
 
 const GENERIC_GRINDER = {
@@ -382,10 +405,21 @@ export function resolveGrinder(gear) {
 // Returns null if the grinder is well-suited to the brew method, otherwise
 // a short human warning. `goodFor: null` (generic / unknown grinders) skips
 // the check so we don't nag users who haven't told us what they own.
+//
+// Most grinders are flagged as capable of every method (premium grinders
+// generally cover the full range when set to the right particle size).
+// The exclusions we DO flag are real burr-geometry limits — typically
+// filter-burr grinders that can't choke an espresso machine.
 export function grinderCapability(grinder, method) {
   if (!grinder?.goodFor) return null;
   if (grinder.goodFor.includes(method?.id)) return null;
-  return `Heads up — your ${grinder.label} isn't a great match for ${method?.short || method?.name}. Most users who own one stick to: ${grinder.goodFor.join(", ")}.`;
+  // Specifically about espresso — that's what filter-burr grinders can't
+  // physically do. Other exclusions are rare; keep the wording generic for
+  // those.
+  if (method?.id === "espresso") {
+    return `Heads up — your ${grinder.label} ships with filter burrs and won't grind fine enough for proper espresso pressure. You can dial below, but expect very fast / gushing shots.`;
+  }
+  return `Heads up — your ${grinder.label} isn't built for ${method?.short || method?.name}. Most users who own one stick to: ${grinder.goodFor.join(", ")}.`;
 }
 
 // Map a grinder's clicks to a fineness ratio 0..1 (0 = finest, 1 = coarsest).
