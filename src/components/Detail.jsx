@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, MethodIcon } from "./Icons.jsx";
 import { BREW_METHODS, adjustRecipe, recommend, resolveGrinder, dialWarning, grinderCapability, snapClicks, formatClicks, quantize, ageSummary, ageAdjustment, effectiveAgeDays, methodTempRange } from "../lib/data.js";
+import { CircularTimer } from "./CircularTimer.jsx";
+import { elapsedSec, currentStepIndex, isDone as timerIsDone, realSteps as timerRealSteps } from "../lib/timers.js";
 
 function parseStepTime(s) {
   if (!s) return [null, null];
@@ -31,138 +33,45 @@ function fmtTime(sec) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function BrewTimer({ steps: allSteps, beanName, methodName }) {
-  const prepSteps = allSteps.filter((s) => s.prep);
-  const steps = allSteps.filter((s) => !s.prep);
-  const [running, setRunning] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const [notify, setNotify] = useState(() => {
-    try { return localStorage.getItem("crema-timer-notify") === "1"; } catch { return false; }
-  });
+function BrewTimer({ coffee, method, timerStore, primeAudio }) {
+  const prepSteps = method.steps.filter((s) => s.prep);
+  const steps = method.steps.filter((s) => !s.prep);
+  const timer = timerStore?.findFor(coffee.id, method.id) || null;
+  const now = timerStore?.now || Date.now();
+  const elapsed = elapsedSec(timer, now);
+  const ranges = steps.map((s) => parseStepTime(s.time));
+  const totalEnd = timer?.totalEndSec ?? ranges.reduce((acc, [a, b]) => Math.max(acc, b ?? a ?? 0), 0);
+  const activeIdx = timer ? currentStepIndex(timer, now) : -1;
+  const done = timer ? timerIsDone(timer, now) : false;
+
+  // Notification permission toggle stays here so users can opt-in per-detail.
+  // The actual notification firing is centralized in App.jsx so it works no
+  // matter which view the user is on when the timer ends.
   const [permState, setPermState] = useState(
     typeof Notification !== "undefined" ? Notification.permission : "default"
   );
-  const startedAt = useRef(null);
-  const accumRef = useRef(0);
-  const firedRef = useRef(false);
-  const audioCtxRef = useRef(null);
-
-  useEffect(() => {
-    let id;
-    if (running) {
-      startedAt.current = Date.now();
-      id = setInterval(() => {
-        setElapsed(accumRef.current + (Date.now() - startedAt.current) / 1000);
-      }, 100);
-    }
-    return () => clearInterval(id);
-  }, [running]);
-
-  const ranges = steps.map((s) => parseStepTime(s.time));
-  const activeIdx = ranges.findIndex(([a, b], i) => {
-    if (a == null) return false;
-    const next = ranges[i + 1];
-    const upper = b != null && b > a ? b : next && next[0] != null ? next[0] : a + 60;
-    return elapsed >= a && elapsed < upper;
-  });
-  const totalEnd = ranges.reduce((acc, [a, b]) => Math.max(acc, b ?? a ?? 0), 0);
-
-  // Fire the brew-done notification + sound + vibration the moment elapsed
-  // crosses the target end. firedRef prevents repeated firing (effect runs
-  // every interval tick). Reset / pause clears the flag.
-  useEffect(() => {
-    if (!running || firedRef.current || totalEnd <= 0) return;
-    if (elapsed >= totalEnd) {
-      firedRef.current = true;
-      if (notify && typeof Notification !== "undefined" && Notification.permission === "granted") {
-        try {
-          const n = new Notification("Brew done — pull it off", {
-            body: `${methodName || "Your brew"}${beanName ? " · " + beanName : ""} hit the target time.`,
-            icon: "/favicon.ico",
-            tag: "crema-brew-done",
-            silent: false,
-          });
-          n.onclick = () => { window.focus(); n.close(); };
-        } catch {}
-      }
-      // Soft beep — one tone, short. Browsers without WebAudio just skip it.
-      try {
-        if (!audioCtxRef.current) {
-          const Ctx = window.AudioContext || window.webkitAudioContext;
-          if (Ctx) audioCtxRef.current = new Ctx();
-        }
-        const ctx = audioCtxRef.current;
-        if (ctx) {
-          if (ctx.state === "suspended") ctx.resume();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = "sine";
-          osc.frequency.value = 880;
-          osc.connect(gain); gain.connect(ctx.destination);
-          gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.32, ctx.currentTime + 0.05);
-          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.7);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.75);
-        }
-      } catch {}
-      // Vibration is Android-only (no iOS support).
-      try { if (navigator.vibrate) navigator.vibrate([180, 80, 180]); } catch {}
-    }
-  }, [elapsed, running, totalEnd, notify, methodName, beanName]);
+  const notifyEnabled = permState === "granted";
+  const requestNotifyPerm = async () => {
+    if (typeof Notification === "undefined") return;
+    if (permState !== "default") return;
+    try { setPermState(await Notification.requestPermission()); } catch {}
+  };
 
   const start = async () => {
-    if (running) return;
-    firedRef.current = false;
-    // Ask for notification permission lazily — only when the user opts in.
-    if (notify && typeof Notification !== "undefined" && Notification.permission === "default") {
-      try {
-        const next = await Notification.requestPermission();
-        setPermState(next);
-      } catch {}
-    }
-    // Pre-create AudioContext on the same gesture so iOS will allow audio.
-    try {
-      if (!audioCtxRef.current) {
-        const Ctx = window.AudioContext || window.webkitAudioContext;
-        if (Ctx) audioCtxRef.current = new Ctx();
-      }
-      if (audioCtxRef.current?.state === "suspended") audioCtxRef.current.resume();
-    } catch {}
-    setRunning(true);
-  };
-  const pause = () => {
-    if (!running) return;
-    accumRef.current += (Date.now() - startedAt.current) / 1000;
-    setRunning(false);
-    setElapsed(accumRef.current);
-  };
-  const reset = () => {
-    setRunning(false);
-    accumRef.current = 0;
-    setElapsed(0);
-    firedRef.current = false;
-  };
-
-  const toggleNotify = async () => {
-    const next = !notify;
-    setNotify(next);
-    try { localStorage.setItem("crema-timer-notify", next ? "1" : "0"); } catch {}
-    if (next && typeof Notification !== "undefined" && Notification.permission === "default") {
-      try {
-        const p = await Notification.requestPermission();
-        setPermState(p);
-      } catch {}
+    if (primeAudio) primeAudio();
+    await requestNotifyPerm();
+    if (timer) {
+      // Resume / pause toggle.
+      timerStore.toggle(timer.id);
+    } else {
+      timerStore.create(coffee, method);
     }
   };
+  const pause = () => { if (timer) timerStore.toggle(timer.id); };
+  const reset = () => { if (timer) timerStore.reset(timer.id); };
+  const stop  = () => { if (timer) timerStore.dismiss(timer.id); };
 
-  const notifyHint = (() => {
-    if (typeof Notification === "undefined") return "Notifications not supported on this browser.";
-    if (permState === "denied") return "Notifications were blocked — re-enable in site settings.";
-    if (permState === "granted" && notify) return "You'll get a buzz + ping when the timer hits the target.";
-    if (notify) return "Notifications will be requested when you start the timer.";
-    return "Toggle on to get a notification + buzz when the timer ends.";
-  })();
+  const running = timer?.state === "running";
 
   return (
     <div className="timer">
@@ -179,28 +88,47 @@ function BrewTimer({ steps: allSteps, beanName, methodName }) {
           </ul>
         </div>
       )}
-      <div className="timer-clock">
-        <div className="timer-display">
-          <span className="t-num">{fmtTime(elapsed)}</span>
-          {totalEnd > 0 && <span className="t-target">/ {fmtTime(totalEnd)} target</span>}
+
+      {/* Circular timer — primary visual. Shows elapsed inside, current step
+          name + description, fills the ring as elapsed/total → 1. */}
+      {timer ? (
+        <CircularTimer
+          timer={timer}
+          now={now}
+          size={240}
+          variant="large"
+          onToggle={() => timerStore.toggle(timer.id)}
+          onDismiss={() => timerStore.dismiss(timer.id)}
+        />
+      ) : (
+        <div className="timer-clock" style={{ textAlign: "center", padding: "8px 0 4px" }}>
+          <div className="timer-display" style={{ justifyContent: "center" }}>
+            <span className="t-num">{fmtTime(0)}</span>
+            {totalEnd > 0 && <span className="t-target">/ {fmtTime(totalEnd)} target</span>}
+          </div>
+          <div className="timer-bar"><div className="timer-bar-fill" style={{ width: 0 }} /></div>
+          <button className="btn btn-primary btn-sm" onClick={start} style={{ marginTop: 14 }}>
+            Start brewing
+          </button>
         </div>
-        <div className="timer-bar">
-          <div className="timer-bar-fill" style={{ width: `${Math.min(100, totalEnd ? (elapsed / totalEnd) * 100 : 0)}%` }} />
+      )}
+
+      <BrewSteps steps={steps} ranges={ranges} activeIdx={timer && (running || elapsed > 0) ? activeIdx : -1} elapsed={elapsed} />
+
+      {timer && !notifyEnabled && permState === "default" && (
+        <button
+          className="btn btn-ghost btn-sm"
+          style={{ marginTop: 12 }}
+          onClick={requestNotifyPerm}
+        >
+          🔔 Enable timer notifications
+        </button>
+      )}
+      {timer && permState === "denied" && (
+        <div style={{ marginTop: 12, fontSize: 12, color: "var(--ink-mute)" }}>
+          Notifications were blocked — re-enable in site settings if you want a buzz when the timer ends.
         </div>
-      </div>
-      <div className="timer-ctrls">
-        {!running ? (
-          <button className="btn btn-primary btn-sm" onClick={start}>{elapsed > 0 ? "Resume" : "Start brewing"}</button>
-        ) : (
-          <button className="btn btn-ghost btn-sm" onClick={pause}>Pause</button>
-        )}
-        <button className="btn btn-ghost btn-sm" onClick={reset} disabled={elapsed === 0 && !running}>Reset</button>
-        <label className="timer-notify-toggle" title={notifyHint}>
-          <input type="checkbox" checked={notify} onChange={toggleNotify} disabled={typeof Notification === "undefined" || permState === "denied"} />
-          <span>Notify me</span>
-        </label>
-      </div>
-      <BrewSteps steps={steps} ranges={ranges} activeIdx={running || elapsed > 0 ? activeIdx : -1} elapsed={elapsed} />
+      )}
     </div>
   );
 }
@@ -227,7 +155,7 @@ function BrewSteps({ steps, ranges, activeIdx, elapsed }) {
   );
 }
 
-export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, onDelete, requestAi, gear }) {
+export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, onDelete, requestAi, gear, timerStore, primeAudio }) {
   const [methodId, setMethodId] = useState(coffee.method);
   const method = BREW_METHODS.find((m) => m.id === methodId) || BREW_METHODS[0];
   const baseRecipe = adjustRecipe(method, coffee);
@@ -413,10 +341,15 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
           })}
         </div>
         {capabilityWarning && (
-          <div className="dial-warn" style={{ marginTop: 12 }}>
+          <div className="dial-warn" style={{ marginTop: 14, marginBottom: 18 }}>
             {capabilityWarning}
           </div>
         )}
+
+        <div className="section-h">
+          <h2>Cheat sheet</h2>
+          <span className="eyebrow">{method.name}</span>
+        </div>
 
         <div className="recipe-grid">
           <div className="recipe-cell accent"><div className="l">Dose</div><div><span className="v">{recipe.dose}</span><span className="u">g</span></div></div>
@@ -425,11 +358,6 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
           <div className="recipe-cell"><div className="l">Temp</div><div><span className="v">{recipe.temp}</span><span className="u">°C</span></div></div>
           <div className="recipe-cell" style={{ gridColumn: "span 2" }}><div className="l">Grind</div><div><span className="v" style={{ fontSize: 24 }}>{recipe.grind}</span></div></div>
           <div className="recipe-cell" style={{ gridColumn: "span 2" }}><div className="l">Total time</div><div><span className="v">{recipe.time}</span></div></div>
-        </div>
-
-        <div className="section-h">
-          <h2>Cheat sheet</h2>
-          <span className="eyebrow">{method.name}</span>
         </div>
 
         <div className="dial">
@@ -515,7 +443,7 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
           {warning && <div className="dial-warn">{warning}</div>}
         </div>
 
-        <BrewTimer steps={method.steps} beanName={coffee.name} methodName={method.name} key={method.id} />
+        <BrewTimer coffee={coffee} method={method} timerStore={timerStore} primeAudio={primeAudio} key={method.id} />
 
         <div className="brewnote">
           <div className="brewnote-head">

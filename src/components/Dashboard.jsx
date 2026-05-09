@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, MethodIcon } from "./Icons.jsx";
 import { BREW_METHODS, adjustRecipe } from "../lib/data.js";
+import { isDone } from "../lib/timers.js";
 
 // Document-level click-away. The .method-menu-bg viewport overlay we used to
 // rely on gets trapped inside the card's bounds whenever the card has a CSS
@@ -19,7 +20,7 @@ function useClickAway(ref, onAway, enabled) {
   }, [ref, onAway, enabled]);
 }
 
-export function Dashboard({ coffees, onOpen, onAdd, onChangeMethod, onToggleFavorite, onSearchOnline, user }) {
+export function Dashboard({ coffees, onOpen, onAdd, onChangeMethod, onToggleFavorite, onSearchOnline, user, timerStore, onStartBrewing }) {
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
 
@@ -117,15 +118,22 @@ export function Dashboard({ coffees, onOpen, onAdd, onChangeMethod, onToggleFavo
       </section>
 
       <section className="grid">
-        {filtered.map((c) => (
-          <CoffeeCard
-            key={c.id}
-            coffee={c}
-            onOpen={() => onOpen(c.id)}
-            onChangeMethod={(mid) => onChangeMethod(c.id, mid)}
-            onToggleFavorite={() => onToggleFavorite(c.id)}
-          />
-        ))}
+        {filtered.map((c) => {
+          const method = BREW_METHODS.find((m) => m.id === c.method) || BREW_METHODS[0];
+          const activeTimer = timerStore?.findFor ? timerStore.findFor(c.id, method.id) : null;
+          return (
+            <CoffeeCard
+              key={c.id}
+              coffee={c}
+              onOpen={() => onOpen(c.id)}
+              onChangeMethod={(mid) => onChangeMethod(c.id, mid)}
+              onToggleFavorite={() => onToggleFavorite(c.id)}
+              activeTimer={activeTimer}
+              now={timerStore?.now}
+              onStartBrewing={onStartBrewing ? (() => onStartBrewing(c, method)) : undefined}
+            />
+          );
+        })}
         <button className="card-add" onClick={onAdd}>
           <div>
             <div className="plus">+</div>
@@ -149,7 +157,7 @@ export function Dashboard({ coffees, onOpen, onAdd, onChangeMethod, onToggleFavo
   );
 }
 
-function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite }) {
+function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite, activeTimer, now, onStartBrewing }) {
   const [openMenu, setOpenMenu] = useState(false);
   const method = BREW_METHODS.find((m) => m.id === coffee.method) || BREW_METHODS[0];
   const recipe = adjustRecipe(method, coffee);
@@ -236,14 +244,29 @@ function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite }) {
             </div>
           )}
         </div>
-        <span
-          className="open-hint"
-          onClick={stop}
-          style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-mute)", letterSpacing: "0.1em", cursor: "pointer" }}
-          onClickCapture={(e) => { e.stopPropagation(); onOpen && onOpen(); }}
-        >
-          OPEN →
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {onStartBrewing && (
+            <button
+              className={`btn btn-sm ${activeTimer ? "btn-ghost" : "btn-amber"}`}
+              onClick={(e) => { stop(e); onStartBrewing(); }}
+              title={activeTimer ? "Brew already running — tap card to view" : "Start a brew timer for this method"}
+              disabled={!!activeTimer}
+              style={activeTimer ? { opacity: 0.55, cursor: "default" } : undefined}
+            >
+              {activeTimer
+                ? (isDone(activeTimer, now) ? "Brew done" : "Brewing…")
+                : "Start brewing"}
+            </button>
+          )}
+          <span
+            className="open-hint"
+            onClick={stop}
+            style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-mute)", letterSpacing: "0.1em", cursor: "pointer" }}
+            onClickCapture={(e) => { e.stopPropagation(); onOpen && onOpen(); }}
+          >
+            OPEN →
+          </span>
+        </div>
       </div>
     </article>
   );

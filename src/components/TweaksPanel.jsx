@@ -98,8 +98,17 @@ export function useTweaks(defaults, storageKey = "crema-tweaks") {
   return [values, setTweak];
 }
 
-export function TweaksPanel({ title = "Tweaks", children, defaultOpen = false }) {
-  const [open, setOpen] = useState(defaultOpen);
+// `open` and `onOpenChange` are optional — if provided, the panel is controlled
+// by the parent (so e.g. the mobile hamburger can pop it open). If absent,
+// the panel manages its own state with the floating ✦ button.
+export function TweaksPanel({ title = "Tweaks", children, defaultOpen = false, open: openProp, onOpenChange }) {
+  const [openState, setOpenState] = useState(defaultOpen);
+  const isControlled = typeof openProp === "boolean";
+  const open = isControlled ? openProp : openState;
+  const setOpen = (v) => {
+    if (!isControlled) setOpenState(v);
+    if (onOpenChange) onOpenChange(v);
+  };
   const ref = useRef(null);
   useEffect(() => { injectStyle(); }, []);
   if (!open) {

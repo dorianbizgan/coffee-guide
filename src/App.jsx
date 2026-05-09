@@ -13,6 +13,9 @@ import { Detail } from "./components/Detail.jsx";
 import { CoffeeForm } from "./components/CoffeeForm.jsx";
 import { BrewLogView } from "./components/BrewLogView.jsx";
 import { GearView } from "./components/GearView.jsx";
+import { InstallPrompt } from "./components/InstallPrompt.jsx";
+import { TimerTray } from "./components/TimerTray.jsx";
+import { useBrewTimers, isDone } from "./lib/timers.js";
 import {
   TweaksPanel, TweakSection, TweakSelect, TweakRadio, useTweaks,
 } from "./components/TweaksPanel.jsx";
@@ -47,6 +50,61 @@ export default function App() {
   const userMenuRef = useRef(null);
   const [mobileNav, setMobileNav] = useState(false);
   const mobileNavRef = useRef(null);
+  const [tweaksOpen, setTweaksOpen] = useState(false);
+  const timerStore = useBrewTimers();
+
+  // Brew-done audio context — primed lazily on the user's first interaction
+  // so iOS allows audio playback. Single shared context across all timers.
+  const audioCtxRef = useRef(null);
+  const primeAudio = useCallback(() => {
+    try {
+      if (!audioCtxRef.current) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) audioCtxRef.current = new Ctx();
+      }
+      if (audioCtxRef.current?.state === "suspended") audioCtxRef.current.resume();
+    } catch {}
+  }, []);
+
+  // Top-level timer-completion side-effects: notification + beep + vibrate.
+  // Lives here (not in Detail) so the alert fires regardless of which view
+  // the user is on when the timer ends.
+  useEffect(() => {
+    Object.values(timerStore.timers).forEach((tt) => {
+      if (!isDone(tt, timerStore.now)) return;
+      if (tt.notifiedAt) return;
+      timerStore.markNotified(tt.id);
+      try {
+        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+          const n = new Notification("Brew done — pull it off", {
+            body: `${tt.methodName} · ${tt.beanName} hit the target time.`,
+            icon: "/favicon.ico",
+            tag: `crema-brew-done-${tt.id}`,
+            silent: false,
+          });
+          n.onclick = () => { window.focus(); n.close(); };
+        }
+      } catch {}
+      try {
+        const ctx = audioCtxRef.current;
+        if (ctx) {
+          if (ctx.state === "suspended") ctx.resume();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = 880;
+          osc.connect(gain); gain.connect(ctx.destination);
+          gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.32, ctx.currentTime + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.7);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.75);
+        }
+      } catch {}
+      try { if (navigator.vibrate) navigator.vibrate([180, 80, 180]); } catch {}
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timerStore.now]);
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
 
   // Close user menu on any click outside it. Mirrors the click-away in
@@ -341,7 +399,7 @@ export default function App() {
       <>
         <EffectsHost tweaks={t} />
         <Login onSignIn={signIn} onGuest={startGuest} busy={authBusy} error={authError} />
-        <TweaksPanel title="Tweaks">
+        <TweaksPanel title="Tweaks" open={tweaksOpen} onOpenChange={setTweaksOpen}>
           <TweakSection label="Mood">
             <TweakSelect
               label="Theme"
@@ -416,9 +474,19 @@ export default function App() {
             </button>
             {mobileNav && (
               <div className="nav-drawer">
-                <button className={`nav-drawer-item ${view.name === "dashboard" ? "active" : ""}`} onClick={() => setView({ name: "dashboard" })}>The shelf</button>
-                <button className={`nav-drawer-item ${view.name === "log" ? "active" : ""}`} onClick={() => setView({ name: "log" })}>Brew log</button>
-                <button className={`nav-drawer-item ${view.name === "gear" ? "active" : ""}`} onClick={() => setView({ name: "gear" })}>Gear</button>
+                <button className={`nav-drawer-item ${view.name === "dashboard" ? "active" : ""}`} onClick={() => setView({ name: "dashboard" })}>
+                  <Icon name="cup" size={16} /> Shelf
+                </button>
+                <button className={`nav-drawer-item ${view.name === "log" ? "active" : ""}`} onClick={() => setView({ name: "log" })}>
+                  <Icon name="edit" size={16} /> Brew log
+                </button>
+                <button className={`nav-drawer-item ${view.name === "gear" ? "active" : ""}`} onClick={() => setView({ name: "gear" })}>
+                  <Icon name="settings" size={16} /> Gear &amp; preferences
+                </button>
+                <div style={{ height: 1, background: "var(--line)", margin: "6px 8px" }} />
+                <button className="nav-drawer-item" onClick={() => { setMobileNav(false); setTweaksOpen(true); }}>
+                  <Icon name="sparkle" size={16} /> Appearance
+                </button>
               </div>
             )}
           </div>
@@ -449,6 +517,8 @@ export default function App() {
           onToggleFavorite={onToggleFavorite}
           onSearchOnline={onSearchOnline}
           user={user}
+          timerStore={timerStore}
+          onStartBrewing={(coffee, method) => { primeAudio(); timerStore.create(coffee, method); }}
         />
       )}
 
@@ -462,6 +532,8 @@ export default function App() {
           onDelete={onDelete}
           requestAi={requestAi}
           gear={profile.gear}
+          timerStore={timerStore}
+          primeAudio={primeAudio}
         />
       )}
 
@@ -499,7 +571,17 @@ export default function App() {
         />
       )}
 
-      <TweaksPanel title="Tweaks">
+      <InstallPrompt />
+
+      <TimerTray
+        timers={timerStore.timers}
+        now={timerStore.now}
+        onToggle={timerStore.toggle}
+        onDismiss={timerStore.dismiss}
+        onOpen={(t) => setView({ name: "detail", id: t.beanId })}
+      />
+
+      <TweaksPanel title="Tweaks" open={tweaksOpen} onOpenChange={setTweaksOpen}>
         <TweakSection label="Mood">
           <TweakSelect
             label="Theme"

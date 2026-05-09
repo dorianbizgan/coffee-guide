@@ -981,27 +981,31 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
 .nav-hamburger-wrap { position: relative; display: none; }
 .nav-hamburger {
   appearance: none;
-  border: 1px solid var(--line);
+  /* Prominent border + slight forest accent on mobile so it reads as
+     an interactive control rather than a passive icon. */
+  border: 1.5px solid var(--line-strong);
   background: var(--paper-2);
-  color: var(--ink);
-  width: 40px; height: 40px;
-  border-radius: 10px;
+  color: var(--forest-700);
+  width: 44px; height: 44px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
   cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, transform .12s ease;
 }
-.nav-hamburger:hover { border-color: var(--line-strong); }
+.nav-hamburger:hover { border-color: var(--forest-700); background: var(--paper); }
+.nav-hamburger:active { transform: scale(0.96); }
 .nav-drawer {
   position: absolute;
   right: 0;
-  top: calc(100% + 8px);
+  top: calc(100% + 10px);
   z-index: 9;
   background: var(--paper);
   border: 1px solid var(--line-strong);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 6px;
   box-shadow: var(--shadow-pop);
-  min-width: 200px;
+  min-width: 240px;
   display: flex;
   flex-direction: column;
   animation: slideUp 0.15s ease;
@@ -1014,11 +1018,16 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
   font: inherit;
   color: var(--ink);
   padding: 12px 14px;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
 }
 .nav-drawer-item:hover { background: var(--paper-2); }
 .nav-drawer-item.active { color: var(--forest-700); font-weight: 500; }
+.nav-drawer-item svg { color: var(--ink-mute); }
+.nav-drawer-item.active svg { color: var(--forest-700); }
 .nav-link {
   font-size: 14px;
   color: var(--ink-soft);
@@ -2607,10 +2616,241 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
    had no visual feedback. */
 .chip.on { background: var(--forest-700); color: var(--paper); border-color: var(--forest-700); }
 .chip.flavor.on { background: var(--amber-500); color: var(--paper); border-color: var(--amber-500); }
+/* ═══ Brew timer — circular chip + large variant ═══════════════════════
+   Used by both the floating <TimerTray /> (chip, ~76px) and the in-detail
+   embedded timer (large, ~220px). Renders as an SVG ring whose stroke
+   fills clockwise as elapsed/total → 1, with step name + countdown text
+   stacked inside the ring. */
+.circular-timer {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.circular-timer .ct-svg {
+  display: block;
+}
+.circular-timer .ct-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+  font-family: var(--font-body);
+}
+/* Chip variant — used in the floating tray. Whole chip is clickable via
+   .ct-open absolute overlay; the small ▶/× corner buttons sit above it. */
+.circular-timer.chip {
+  width: 76px; height: 76px;
+}
+.circular-timer.chip .ct-icon {
+  color: var(--ink-mute);
+  margin-bottom: 1px;
+}
+.circular-timer.chip .ct-time-small {
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--ink);
+  font-feature-settings: "tnum";
+}
+.circular-timer.chip .ct-step-small {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  max-width: 60px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.circular-timer.chip.done .ct-step-small {
+  color: var(--amber-700);
+  font-weight: 600;
+}
+.circular-timer.chip .ct-open {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.circular-timer.chip .ct-toggle,
+.circular-timer.chip .ct-dismiss {
+  position: absolute;
+  border: 1.5px solid var(--paper);
+  background: var(--ink);
+  color: var(--paper);
+  width: 22px; height: 22px;
+  border-radius: 999px;
+  font-size: 9px;
+  line-height: 1;
+  display: grid; place-items: center;
+  cursor: pointer;
+  z-index: 2;
+  padding: 0;
+  font-family: var(--font-body);
+}
+.circular-timer.chip .ct-toggle {
+  bottom: -2px; left: 50%; transform: translateX(-50%);
+  background: var(--forest-700);
+}
+.circular-timer.chip .ct-dismiss {
+  top: -4px; right: -4px;
+  font-size: 14px;
+}
+.circular-timer.chip .ct-toggle:hover,
+.circular-timer.chip .ct-dismiss:hover { transform: translateX(-50%) scale(1.08); }
+.circular-timer.chip .ct-dismiss:hover { transform: scale(1.1); }
+.circular-timer.chip.done .ct-svg circle:last-child {
+  filter: drop-shadow(0 0 4px var(--amber-500));
+  animation: ctDonePulse 1.6s ease-in-out infinite;
+}
+@keyframes ctDonePulse {
+  0%, 100% { filter: drop-shadow(0 0 4px var(--amber-500)); }
+  50%      { filter: drop-shadow(0 0 12px var(--amber-500)); }
+}
+
+/* Large variant — embedded in Detail's cheat sheet panel. */
+.circular-timer.large {
+  width: 220px; height: 220px;
+  margin: 0 auto;
+}
+.circular-timer.large .ct-step-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 4px;
+}
+.circular-timer.large .ct-time-large {
+  font-family: var(--font-display);
+  font-size: 56px;
+  line-height: 1;
+  color: var(--ink);
+  font-feature-settings: "tnum";
+}
+.circular-timer.large .ct-target {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+.circular-timer.large .ct-step-desc {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 8px;
+  padding: 0 18px;
+  line-height: 1.4;
+  max-height: 48px;
+  overflow: hidden;
+}
+.circular-timer.large.done .ct-time-large { color: var(--amber-700); }
+.circular-timer.large.done .ct-svg circle:last-child {
+  filter: drop-shadow(0 0 6px var(--amber-500));
+  animation: ctDonePulse 1.6s ease-in-out infinite;
+}
+.ct-large-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+/* Floating timer tray — anchored bottom-LEFT so the TweaksPanel ✦ button
+   keeps the bottom-right corner. Wraps to a second row if many timers run
+   at once. Z-index 90 keeps it under the modal (100) but over content. */
+.timer-tray {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left));
+  bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+  z-index: 90;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  max-width: calc(100vw - max(32px, env(safe-area-inset-left)) - max(76px, env(safe-area-inset-right)));
+  padding: 8px;
+  border-radius: 50px;
+  background: color-mix(in oklch, var(--paper) 85%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.18);
+  animation: slideUp 0.25s ease;
+}
+@media (max-width: 520px) {
+  /* On phones, the tray sits along the bottom edge with smaller chips
+     so multiple timers fit without sprawl. */
+  .timer-tray { gap: 8px; padding: 6px; }
+  .circular-timer.chip { width: 64px; height: 64px; }
+  .circular-timer.chip .ct-time-small { font-size: 14px; }
+  .circular-timer.chip .ct-step-small { font-size: 8px; max-width: 48px; }
+}
+
+/* "Add to Home Screen" first-visit prompt. Floats at the bottom of the
+   viewport, respects safe-area-bottom (iOS home indicator). */
+.install-prompt {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+  z-index: 95;
+  margin: 0 auto;
+  max-width: 520px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line-strong);
+  background: color-mix(in oklch, var(--paper) 92%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: var(--shadow-pop);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  animation: slideUp 0.25s ease;
+}
+.install-prompt-body { flex: 1; min-width: 0; }
+.install-prompt-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.install-prompt-mark {
+  color: var(--amber-700);
+  font-size: 16px;
+}
+.install-prompt-text {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+.install-prompt-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+@media (max-width: 520px) {
+  .install-prompt { flex-direction: column; align-items: stretch; gap: 10px; }
+  .install-prompt-actions { justify-content: flex-end; }
+}
+
 /* Soft inline warning banner shown below the dial when a value is way off
    for the selected method. Looks like a tip card but with amber edges. */
 .dial-warn {
   margin-top: 14px;
+  margin-bottom: 4px;
   padding: 10px 14px;
   border-radius: 10px;
   border: 1px solid color-mix(in oklch, var(--amber-500) 60%, transparent);
