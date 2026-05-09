@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, MethodIcon } from "./Icons.jsx";
 import { BREW_METHODS, adjustRecipe, recommend, resolveGrinder, dialWarning, grinderCapability, snapClicks, formatClicks, quantize, ageSummary, ageAdjustment, effectiveAgeDays, methodTempRange } from "../lib/data.js";
-import { CircularTimer } from "./CircularTimer.jsx";
-import { elapsedSec, currentStepIndex, isDone as timerIsDone, realSteps as timerRealSteps } from "../lib/timers.js";
+import { elapsedSec, currentStepIndex } from "../lib/timers.js";
 
 function parseStepTime(s) {
   if (!s) return [null, null];
@@ -33,6 +32,13 @@ function fmtTime(sec) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+// Detail-page timer keeps the original linear layout (target clock + bar +
+// numbered step list) — that's what fits the cheat-sheet density. The
+// circular variant is reserved for the floating tray on the dashboard.
+//
+// State is sourced from the global timerStore so the same timer is visible
+// here AND in the tray, and persists across navigation. No local elapsed
+// state — the store ticks `now` for us.
 function BrewTimer({ coffee, method, timerStore, primeAudio }) {
   const prepSteps = method.steps.filter((s) => s.prep);
   const steps = method.steps.filter((s) => !s.prep);
@@ -42,15 +48,14 @@ function BrewTimer({ coffee, method, timerStore, primeAudio }) {
   const ranges = steps.map((s) => parseStepTime(s.time));
   const totalEnd = timer?.totalEndSec ?? ranges.reduce((acc, [a, b]) => Math.max(acc, b ?? a ?? 0), 0);
   const activeIdx = timer ? currentStepIndex(timer, now) : -1;
-  const done = timer ? timerIsDone(timer, now) : false;
+  const running = timer?.state === "running";
 
-  // Notification permission toggle stays here so users can opt-in per-detail.
-  // The actual notification firing is centralized in App.jsx so it works no
-  // matter which view the user is on when the timer ends.
+  // Notification permission UI stays here so users can opt-in per-detail.
+  // The actual notification firing is centralized in App.jsx so it works
+  // regardless of which view is mounted when the timer ends.
   const [permState, setPermState] = useState(
     typeof Notification !== "undefined" ? Notification.permission : "default"
   );
-  const notifyEnabled = permState === "granted";
   const requestNotifyPerm = async () => {
     if (typeof Notification === "undefined") return;
     if (permState !== "default") return;
@@ -61,17 +66,13 @@ function BrewTimer({ coffee, method, timerStore, primeAudio }) {
     if (primeAudio) primeAudio();
     await requestNotifyPerm();
     if (timer) {
-      // Resume / pause toggle.
       timerStore.toggle(timer.id);
     } else {
       timerStore.create(coffee, method);
     }
   };
-  const pause = () => { if (timer) timerStore.toggle(timer.id); };
+  const pauseToggle = () => { if (timer) timerStore.toggle(timer.id); };
   const reset = () => { if (timer) timerStore.reset(timer.id); };
-  const stop  = () => { if (timer) timerStore.dismiss(timer.id); };
-
-  const running = timer?.state === "running";
 
   return (
     <div className="timer">
@@ -89,44 +90,47 @@ function BrewTimer({ coffee, method, timerStore, primeAudio }) {
         </div>
       )}
 
-      {/* Circular timer — primary visual. Shows elapsed inside, current step
-          name + description, fills the ring as elapsed/total → 1. */}
-      {timer ? (
-        <CircularTimer
-          timer={timer}
-          now={now}
-          size={240}
-          variant="large"
-          onToggle={() => timerStore.toggle(timer.id)}
-          onDismiss={() => timerStore.dismiss(timer.id)}
-        />
-      ) : (
-        <div className="timer-clock" style={{ textAlign: "center", padding: "8px 0 4px" }}>
-          <div className="timer-display" style={{ justifyContent: "center" }}>
-            <span className="t-num">{fmtTime(0)}</span>
-            {totalEnd > 0 && <span className="t-target">/ {fmtTime(totalEnd)} target</span>}
-          </div>
-          <div className="timer-bar"><div className="timer-bar-fill" style={{ width: 0 }} /></div>
-          <button className="btn btn-primary btn-sm" onClick={start} style={{ marginTop: 14 }}>
-            Start brewing
-          </button>
+      <div className="timer-clock">
+        <div className="timer-display">
+          <span className="t-num">{fmtTime(elapsed)}</span>
+          {totalEnd > 0 && <span className="t-target">/ {fmtTime(totalEnd)} target</span>}
         </div>
-      )}
+        <div className="timer-bar">
+          <div
+            className="timer-bar-fill"
+            style={{ width: `${Math.min(100, totalEnd ? (elapsed / totalEnd) * 100 : 0)}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="timer-ctrls">
+        {!running ? (
+          <button className="btn btn-primary btn-sm" onClick={start}>
+            {elapsed > 0 ? "Resume" : "Start brewing"}
+          </button>
+        ) : (
+          <button className="btn btn-ghost btn-sm" onClick={pauseToggle}>Pause</button>
+        )}
+        <button className="btn btn-ghost btn-sm" onClick={reset} disabled={!timer || (elapsed === 0 && !running)}>
+          Reset
+        </button>
+        {timer && (
+          <button className="btn btn-ghost btn-sm" onClick={() => timerStore.dismiss(timer.id)} style={{ marginLeft: "auto" }}>
+            Stop
+          </button>
+        )}
+      </div>
 
       <BrewSteps steps={steps} ranges={ranges} activeIdx={timer && (running || elapsed > 0) ? activeIdx : -1} elapsed={elapsed} />
 
-      {timer && !notifyEnabled && permState === "default" && (
-        <button
-          className="btn btn-ghost btn-sm"
-          style={{ marginTop: 12 }}
-          onClick={requestNotifyPerm}
-        >
+      {permState === "default" && (
+        <button className="btn btn-ghost btn-sm" style={{ marginTop: 12 }} onClick={requestNotifyPerm}>
           🔔 Enable timer notifications
         </button>
       )}
-      {timer && permState === "denied" && (
+      {permState === "denied" && (
         <div style={{ marginTop: 12, fontSize: 12, color: "var(--ink-mute)" }}>
-          Notifications were blocked — re-enable in site settings if you want a buzz when the timer ends.
+          Notifications were blocked — re-enable them in site settings if you want a buzz when the timer ends.
         </div>
       )}
     </div>
