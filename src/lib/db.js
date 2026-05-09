@@ -118,8 +118,9 @@ export async function loadCoffees(user) {
       text: l.notes_text || "",
       tags: l.tags || [],
       tasted: l.tasted || [],
-      temp: l.temp_c,
-      clicks: l.clicks,
+      // Supabase returns numeric columns as strings to preserve precision.
+      temp: l.temp_c == null ? null : parseFloat(l.temp_c),
+      clicks: l.clicks == null ? null : parseFloat(l.clicks),
       savedAt: l.created_at,
     }));
     return { ...rowToCoffee(row), brewLog: logs };
@@ -267,8 +268,10 @@ export async function loadAllBrewLogs(user) {
     text: l.notes_text || "",
     tags: l.tags || [],
     tasted: l.tasted || [],
-    temp: l.temp_c,
-    clicks: l.clicks,
+    // Supabase returns numeric columns as strings to preserve precision —
+    // parseFloat them so the dial sees a number, not "5.3".
+    temp: l.temp_c == null ? null : parseFloat(l.temp_c),
+    clicks: l.clicks == null ? null : parseFloat(l.clicks),
     savedAt: l.created_at,
     beanId: l.bean_id,
     beanName: l.beans?.name || "—",

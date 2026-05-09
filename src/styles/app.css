@@ -427,7 +427,17 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
+html, body {
+  margin: 0;
+  padding: 0;
+  /* Defensive: any single overflowing element (a long unbroken word, a
+     stray fixed-width SVG, etc.) would otherwise let Mobile Safari fall
+     back to its desktop-fit behavior and render the whole page at half
+     scale. overflow-x:hidden keeps width=device-width binding. */
+  overflow-x: hidden;
+  /* Make sure no min-width baseline can sneak the layout above viewport. */
+  max-width: 100vw;
+}
 body {
   font-family: var(--font-body);
   background: var(--paper);
@@ -3178,13 +3188,13 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
 }
 @media (max-width: 720px) {
   .shell {
-    padding-left:  max(20px, env(safe-area-inset-left));
-    padding-right: max(20px, env(safe-area-inset-right));
+    padding-left:  max(18px, env(safe-area-inset-left));
+    padding-right: max(18px, env(safe-area-inset-right));
   }
   .nav {
-    padding: calc(env(safe-area-inset-top, 0px) + 16px)
+    padding: calc(env(safe-area-inset-top, 0px) + 14px)
              max(16px, env(safe-area-inset-right))
-             16px
+             14px
              max(16px, env(safe-area-inset-left));
     gap: 10px;
   }
@@ -3195,33 +3205,35 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
   .nav-new-brew { padding: 8px 12px; }
   .user-name { display: none; }
   .user-chip { padding: 4px; }
-  .recipe-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .recipe-cell { padding: 14px 16px; }
-  .recipe-cell .v { font-size: 28px; }
+  .brand-name { font-size: 22px; }
+
+  /* Recipe grid: 2-col, generously padded. fluid font on .v so big values
+     like "16:00:00" don't overflow the narrow column on cold brew. */
+  .recipe-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 24px; }
+  .recipe-cell { padding: 14px 14px; min-width: 0; }
+  .recipe-cell .l { font-size: 9.5px; margin-bottom: 6px; }
+  .recipe-cell .v { font-size: clamp(26px, 7.5vw, 36px); letter-spacing: -0.025em; }
   .form-row { grid-template-columns: 1fr; }
-  .modal { padding: 24px 20px; }
+  .modal { padding: 24px 18px; }
   .card-cheat { grid-template-columns: repeat(2, 1fr); gap: 14px; }
-  .hero { padding-top: 18px; padding-bottom: 22px; }
-  .hero h1 { font-size: clamp(36px, 9vw, 56px); line-height: 1.05; }
+  .hero { padding-top: 18px; padding-bottom: 24px; }
+  .hero h1 { font-size: clamp(40px, 11vw, 64px); line-height: 1.04; }
   .hero-stats { grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  .hero-stat .num { font-size: 28px; }
+  .hero-stat .num { font-size: clamp(24px, 7vw, 32px); }
   .filter-row { flex-direction: column; align-items: stretch; gap: 12px; }
   .dash-search { width: 100%; }
   .dash-search input { width: 100% !important; }
   .grid { grid-template-columns: 1fr; }
-  .login-h1 { font-size: clamp(32px, 9vw, 48px); }
+  .login-h1 { font-size: clamp(36px, 11vw, 52px); }
   .login-pitch .login-feats { font-size: 14px; }
 
   /* === Detail header — fluid on phones === */
-  .detail-head { padding-bottom: 20px; margin-bottom: 22px; }
-  .detail-roaster { font-size: 10.5px; letter-spacing: 0.16em; }
+  .detail-head { padding-bottom: 22px; margin-bottom: 24px; }
+  .detail-roaster { font-size: 11px; letter-spacing: 0.16em; }
   .detail-name {
-    /* Bigger floor reduction so 6-letter names + 2-word names fit narrow widths. */
-    font-size: clamp(36px, 11vw, 56px);
+    font-size: clamp(40px, 12vw, 64px);
     line-height: 1.02;
     margin-top: 10px;
-    /* Allow word breaks on extremely narrow widths so a long single
-       word ("Geometry", "Yirgacheffe") doesn't overflow horizontally. */
     overflow-wrap: anywhere;
   }
   /* Detail meta: 2-column grid instead of 6 cramped columns. Each cell
@@ -3230,31 +3242,36 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px 16px;
-    margin-top: 18px;
+    margin-top: 20px;
   }
   .meta-item { min-width: 0; }
-  .meta-item .v { font-size: 14px; word-break: break-word; }
+  .meta-item .l { font-size: 9.5px; }
+  .meta-item .v { font-size: 15px; word-break: break-word; line-height: 1.3; }
   /* Tasting notes pills wrap tighter on mobile. */
   .notes { gap: 6px; row-gap: 8px; }
-  .note-pill { font-size: 11px; padding: 4px 10px; }
-  /* Section headers (Brew method, Cheat sheet) shrink so the right-side
+  .note-pill { font-size: 11.5px; padding: 5px 12px; }
+  /* Section headers (Brew method, Cheat sheet) wrap so the right-side
      button doesn't spill onto a new line awkwardly. */
   .section-h { gap: 12px; flex-wrap: wrap; }
-  .section-h h2 { font-size: 22px; }
-  .method-tabs { margin-bottom: 18px; }
-  .method-tab { font-size: 12px; padding: 8px 12px; }
+  .section-h h2 { font-size: 26px; }
+  .method-tabs { margin-bottom: 20px; }
+  .method-tab { font-size: 12.5px; padding: 9px 13px; }
   /* Sidebar (Bag info / Trail tip / Edit) rejoin the main flow on mobile.
      Already happens at 1100px via .detail{grid-template-columns:1fr};
      we just tighten its padding. */
-  .panel { padding: 18px 18px; }
-  .panel h3 { font-size: 18px; margin-bottom: 12px; }
-  .gear-row { font-size: 13px; }
-  /* Dial section: scale the readout text + reduce padding. */
-  .dial { padding: 18px 18px; }
-  .dial-title { font-size: 18px; }
-  .dial-label .readout { font-size: 26px; }
+  .panel { padding: 20px 20px; }
+  .panel h3 { font-size: 20px; margin-bottom: 12px; }
+  .gear-row { font-size: 13.5px; padding: 10px 0; }
+  /* Dial section: keep the dial readable on small screens. */
+  .dial { padding: 20px 18px; }
+  .dial-title { font-size: 20px; }
+  .dial-label .readout { font-size: 30px; }
+  .dial-label .l { font-size: 11px; letter-spacing: 0.18em; }
   /* Brewnote padding tighter on mobile. */
-  .brewnote { padding: 18px 18px; }
+  .brewnote { padding: 20px 18px; }
+  /* Buttons should be tappable. */
+  .btn { padding: 10px 16px; font-size: 13px; }
+  .btn-sm { padding: 8px 14px; font-size: 12px; }
 }
 /* iPhone landscape — short height. Dial sliders + hero collapse. */
 @media (max-height: 540px) and (orientation: landscape) {
