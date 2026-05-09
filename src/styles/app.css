@@ -957,6 +957,24 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
   z-index: 50;
   background: color-mix(in oklch, var(--paper), transparent 8%);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+/* The body of the nav stays lightly frosted (8% transparent + blur), but the
+   strip directly under the Dynamic Island / notch must be FULLY opaque —
+   otherwise as the user scrolls, page content (filter chips, hero text)
+   bleeds through the safe-area region and reads as "rendering under the
+   Dynamic Island." This pseudo-element fills exactly the safe-area-top
+   region with solid paper so the system overlay sits on a clean backdrop. */
+.nav::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--paper);
+  pointer-events: none;
+  z-index: -1;
 }
 .nav .brand { margin-right: auto; }
 .brand {
@@ -2669,7 +2687,11 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
   font-size: 14px;
   line-height: 1;
   color: var(--ink);
+  /* Both the OpenType feature flag and the higher-level CSS property —
+     tabular-nums keeps the timer from visually jumping each tick because
+     "1" / "2" / "9" all reserve identical column widths. */
   font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
 .card-active-timer .cat-text {
@@ -2788,6 +2810,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
   line-height: 1;
   color: var(--ink);
   font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
 }
 .circular-timer.chip .ct-step-small {
   font-family: var(--font-mono);
@@ -2869,6 +2892,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
   line-height: 1;
   color: var(--ink);
   font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
 }
 .circular-timer.large .ct-target {
   font-family: var(--font-mono);

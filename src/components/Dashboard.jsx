@@ -198,7 +198,13 @@ function CardActiveTimer({ timer, now, onToggle, onDismiss }) {
       onClick={stop}
     >
       <div className="cat-ring">
-        <svg viewBox="0 0 56 56" width="56" height="56" aria-hidden>
+        {/* viewBox keeps the internal coordinate system at 56×56 (so the
+            cx/cy/r literals don't need to change), but width/height are 100%
+            so the SVG actually fills its parent. The parent .cat-ring shrinks
+            to 48×48 on mobile via @media — without 100% sizing the SVG kept
+            its 56×56 box and the absolutely-positioned digit centered itself
+            in the 48×48 wrapper, ~4px off the visual ring center. */}
+        <svg viewBox="0 0 56 56" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" aria-hidden>
           <circle cx="28" cy="28" r={r} fill="none" stroke="var(--paper-3)" strokeWidth="4" />
           <circle
             cx="28" cy="28" r={r}

@@ -55,9 +55,17 @@ export function CircularTimer({
         />
       )}
       <svg
-        width={size}
-        height={size}
+        // 100% width/height so the SVG fills the parent .circular-timer
+        // box, which CSS shrinks on mobile (e.g. .chip from 76px → 64px at
+        // ≤520px). viewBox keeps the internal coordinate system anchored
+        // to `size`, so the cx/cy/r math doesn't need to change. Without
+        // this, the digits inside the ring would be centered in the CSS
+        // box while the ring itself drew at the larger inline-size,
+        // making the time read look offset.
+        width="100%"
+        height="100%"
         viewBox={`0 0 ${size} ${size}`}
+        preserveAspectRatio="xMidYMid meet"
         className="ct-svg"
         aria-hidden
       >
