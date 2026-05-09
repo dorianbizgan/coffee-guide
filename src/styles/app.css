@@ -2616,6 +2616,121 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
    had no visual feedback. */
 .chip.on { background: var(--forest-700); color: var(--paper); border-color: var(--forest-700); }
 .chip.flavor.on { background: var(--amber-500); color: var(--paper); border-color: var(--amber-500); }
+/* In-card brew timer strip (Dashboard CoffeeCard). Sits in the gap between
+   .card-divider and .card-grind so the brew status reads inline with the
+   bag — not in a far-off floating tray. */
+.card-active-timer {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  margin: 8px 0 14px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklch, var(--forest-700) 35%, var(--line));
+  background: color-mix(in oklch, var(--forest-100) 50%, var(--paper));
+  position: relative;
+  overflow: hidden;
+}
+.card-active-timer.done {
+  border-color: var(--amber-500);
+  background: color-mix(in oklch, var(--amber-100) 60%, var(--paper));
+  animation: cardTimerDonePulse 1.6s ease-in-out infinite;
+}
+@keyframes cardTimerDonePulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--amber-500) 40%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in oklch, var(--amber-500) 12%, transparent); }
+}
+.card-active-timer .cat-ring {
+  position: relative;
+  width: 56px; height: 56px;
+  flex-shrink: 0;
+}
+.card-active-timer .cat-ring-time {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-family: var(--font-display);
+  font-size: 14px;
+  line-height: 1;
+  color: var(--ink);
+  font-feature-settings: "tnum";
+  pointer-events: none;
+}
+.card-active-timer .cat-text {
+  min-width: 0;
+}
+.card-active-timer .cat-step-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.card-active-timer .cat-step-name {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.card-active-timer.done .cat-step-name { color: var(--amber-700); }
+.card-active-timer .cat-step-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  font-feature-settings: "tnum";
+  flex-shrink: 0;
+}
+.card-active-timer .cat-step-desc {
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.4;
+  margin-top: 3px;
+  /* Keep the description to one line so the timer block stays the same
+     height regardless of how verbose a step is. */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.card-active-timer .cat-actions {
+  display: inline-flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.card-active-timer .cat-btn {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  width: 30px; height: 30px;
+  border-radius: 999px;
+  font: 600 11px/1 var(--font-body);
+  display: grid; place-items: center;
+  cursor: pointer;
+  transition: transform .12s ease, background .15s ease, border-color .15s ease;
+  padding: 0;
+}
+.card-active-timer .cat-btn:hover { background: var(--paper-2); border-color: var(--line-strong); }
+.card-active-timer .cat-btn:active { transform: scale(0.92); }
+.card-active-timer .cat-btn-toggle {
+  background: var(--forest-700);
+  color: var(--paper);
+  border-color: var(--forest-700);
+}
+.card-active-timer .cat-btn-toggle:hover { background: var(--forest-500); border-color: var(--forest-500); }
+.card-active-timer .cat-btn-stop {
+  font-size: 16px;
+  font-weight: 400;
+}
+@media (max-width: 480px) {
+  /* On phones the description column gets too cramped — drop it and let
+     the step-name + remaining-time row stand on its own. */
+  .card-active-timer { gap: 10px; padding: 8px 10px; }
+  .card-active-timer .cat-step-desc { display: none; }
+  .card-active-timer .cat-ring { width: 48px; height: 48px; }
+  .card-active-timer .cat-ring-time { font-size: 12px; }
+}
+
 /* ═══ Brew timer — circular chip + large variant ═══════════════════════
    Used by both the floating <TimerTray /> (chip, ~76px) and the in-detail
    embedded timer (large, ~220px). Renders as an SVG ring whose stroke

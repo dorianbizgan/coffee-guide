@@ -573,13 +573,19 @@ export default function App() {
 
       <InstallPrompt />
 
-      <TimerTray
-        timers={timerStore.timers}
-        now={timerStore.now}
-        onToggle={timerStore.toggle}
-        onDismiss={timerStore.dismiss}
-        onOpen={(t) => setView({ name: "detail", id: t.beanId })}
-      />
+      {/* The Dashboard renders each card's own inline timer, so the floating
+          tray would just duplicate it there. Hide on dashboard; show on every
+          other view (Detail, Brew log, Gear) so the user can see brews
+          in progress for OTHER beans. */}
+      {view.name !== "dashboard" && (
+        <TimerTray
+          timers={timerStore.timers}
+          now={timerStore.now}
+          onToggle={timerStore.toggle}
+          onDismiss={timerStore.dismiss}
+          onOpen={(t) => setView({ name: "detail", id: t.beanId })}
+        />
+      )}
 
       <TweaksPanel title="Tweaks" open={tweaksOpen} onOpenChange={setTweaksOpen}>
         <TweakSection label="Mood">

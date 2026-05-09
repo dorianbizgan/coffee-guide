@@ -1,7 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon, MethodIcon } from "./Icons.jsx";
 import { BREW_METHODS, adjustRecipe } from "../lib/data.js";
-import { isDone } from "../lib/timers.js";
+import { isDone, elapsedSec, currentStepIndex, realSteps } from "../lib/timers.js";
+
+function fmtTime(sec) {
+  if (sec < 0) sec = 0;
+  if (sec >= 3600) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = Math.floor(sec % 60);
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
 
 // Document-level click-away. The .method-menu-bg viewport overlay we used to
 // rely on gets trapped inside the card's bounds whenever the card has a CSS
@@ -131,6 +144,8 @@ export function Dashboard({ coffees, onOpen, onAdd, onChangeMethod, onToggleFavo
               activeTimer={activeTimer}
               now={timerStore?.now}
               onStartBrewing={onStartBrewing ? (() => onStartBrewing(c, method)) : undefined}
+              onToggleTimer={timerStore?.toggle}
+              onDismissTimer={timerStore?.dismiss}
             />
           );
         })}
@@ -157,7 +172,83 @@ export function Dashboard({ coffees, onOpen, onAdd, onChangeMethod, onToggleFavo
   );
 }
 
-function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite, activeTimer, now, onStartBrewing }) {
+// Slim brew-progress strip rendered inside an active CoffeeCard. Sits in
+// place of the dashed-divider gap (above the grind block) so the user sees
+// "what's happening now" inline with the bag, not in a far-away tray.
+//
+// Left: 56px circular ring filling clockwise (elapsed/total).
+// Middle: current step name + remaining time + step description.
+// Right: Pause / Resume + Stop buttons.
+function CardActiveTimer({ timer, now, onToggle, onDismiss }) {
+  const elapsed = elapsedSec(timer, now);
+  const total = timer.totalEndSec || 1;
+  const pct = Math.min(1, elapsed / total);
+  const r = 24;
+  const c = 2 * Math.PI * r;
+  const stepIdx = currentStepIndex(timer, now);
+  const steps = realSteps(timer);
+  const step = stepIdx >= 0 ? steps[stepIdx] : null;
+  const remaining = Math.max(0, total - elapsed);
+  const done = isDone(timer, now);
+  const stop = (e) => e.stopPropagation();
+
+  return (
+    <div
+      className={`card-active-timer ${done ? "done" : ""} ${timer.state === "running" ? "running" : "paused"}`}
+      onClick={stop}
+    >
+      <div className="cat-ring">
+        <svg viewBox="0 0 56 56" width="56" height="56" aria-hidden>
+          <circle cx="28" cy="28" r={r} fill="none" stroke="var(--paper-3)" strokeWidth="4" />
+          <circle
+            cx="28" cy="28" r={r}
+            fill="none"
+            stroke={done ? "var(--amber-500)" : "var(--forest-700)"}
+            strokeWidth="4"
+            strokeDasharray={c}
+            strokeDashoffset={c * (1 - pct)}
+            strokeLinecap="round"
+            transform="rotate(-90 28 28)"
+            style={{ transition: "stroke-dashoffset 0.25s linear" }}
+          />
+        </svg>
+        <span className="cat-ring-time">{fmtTime(elapsed)}</span>
+      </div>
+      <div className="cat-text">
+        <div className="cat-step-row">
+          <span className="cat-step-name">{done ? "Done" : (step?.t || "Brewing")}</span>
+          <span className="cat-step-time">{done ? "+ " + fmtTime(elapsed - total) : fmtTime(remaining) + " left"}</span>
+        </div>
+        {step?.d && !done && <div className="cat-step-desc">{step.d}</div>}
+        {done && <div className="cat-step-desc">Pull it off — beyond target now.</div>}
+      </div>
+      <div className="cat-actions">
+        {onToggle && (
+          <button
+            className="cat-btn cat-btn-toggle"
+            onClick={(e) => { stop(e); onToggle(timer.id); }}
+            aria-label={timer.state === "running" ? "Pause timer" : "Resume timer"}
+            title={timer.state === "running" ? "Pause" : "Resume"}
+          >
+            {timer.state === "running" ? "❚❚" : "▶"}
+          </button>
+        )}
+        {onDismiss && (
+          <button
+            className="cat-btn cat-btn-stop"
+            onClick={(e) => { stop(e); onDismiss(timer.id); }}
+            aria-label="Stop timer"
+            title="Stop"
+          >
+            ×
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite, activeTimer, now, onStartBrewing, onToggleTimer, onDismissTimer }) {
   const [openMenu, setOpenMenu] = useState(false);
   const method = BREW_METHODS.find((m) => m.id === coffee.method) || BREW_METHODS[0];
   const recipe = adjustRecipe(method, coffee);
@@ -210,6 +301,14 @@ function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite, activeTi
         {(coffee.notes || []).slice(0, 2).map((n) => <span key={n} className="tag">{n}</span>)}
       </div>
       <div className="card-divider" />
+
+      {activeTimer && <CardActiveTimer
+        timer={activeTimer}
+        now={now || Date.now()}
+        onToggle={onToggleTimer}
+        onDismiss={onDismissTimer}
+      />}
+
       <div className="card-grind">
         <div className="card-grind-main">
           <div className="l">Grind · Comandante C40</div>
