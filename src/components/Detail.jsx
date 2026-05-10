@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon, MethodIcon } from "./Icons.jsx";
 import { BREW_METHODS, adjustRecipe, recommend } from "../lib/data.js";
+import { LinearTimer, elapsedSec, useTimerTick, fmtTimerTime } from "./Timer.jsx";
 
 function parseStepTime(s) {
   if (!s) return [null, null];
@@ -23,34 +24,16 @@ function fmtTime(sec) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function BrewTimer({ steps: allSteps }) {
+function BrewTimer({ steps: allSteps, coffeeId, methodId, timer, onStart, onPause, onReset }) {
   const prepSteps = allSteps.filter((s) => s.prep);
   const steps = allSteps.filter((s) => !s.prep);
-  const [running, setRunning] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const startedAt = useRef(null);
-  const accumRef = useRef(0);
 
-  useEffect(() => {
-    let id;
-    if (running) {
-      startedAt.current = Date.now();
-      id = setInterval(() => {
-        setElapsed(accumRef.current + (Date.now() - startedAt.current) / 1000);
-      }, 100);
-    }
-    return () => clearInterval(id);
-  }, [running]);
-
-  const start = () => { if (!running) setRunning(true); };
-  const pause = () => {
-    if (running) {
-      accumRef.current += (Date.now() - startedAt.current) / 1000;
-      setRunning(false);
-      setElapsed(accumRef.current);
-    }
-  };
-  const reset = () => { setRunning(false); accumRef.current = 0; setElapsed(0); };
+  // Subscribe to ticks ONLY when this view's coffee+method owns the running
+  // timer (otherwise we'd re-render every 250ms for nothing).
+  const isMine = timer?.coffeeId === coffeeId && timer?.methodId === methodId;
+  useTimerTick(isMine ? timer : null);
+  const elapsed = isMine ? elapsedSec(timer) : 0;
+  const running = isMine && timer?.running;
 
   const ranges = steps.map((s) => parseStepTime(s.time));
   const activeIdx = ranges.findIndex(([a, b], i) => {
@@ -76,23 +59,15 @@ function BrewTimer({ steps: allSteps }) {
           </ul>
         </div>
       )}
-      <div className="timer-clock">
-        <div className="timer-display">
-          <span className="t-num">{fmtTime(elapsed)}</span>
-          {totalEnd > 0 && <span className="t-target">/ {fmtTime(totalEnd)} target</span>}
-        </div>
-        <div className="timer-bar">
-          <div className="timer-bar-fill" style={{ width: `${Math.min(100, totalEnd ? (elapsed / totalEnd) * 100 : 0)}%` }} />
-        </div>
-      </div>
-      <div className="timer-ctrls">
-        {!running ? (
-          <button className="btn btn-primary btn-sm" onClick={start}>{elapsed > 0 ? "Resume" : "Start brewing"}</button>
-        ) : (
-          <button className="btn btn-ghost btn-sm" onClick={pause}>Pause</button>
-        )}
-        <button className="btn btn-ghost btn-sm" onClick={reset} disabled={elapsed === 0 && !running}>Reset</button>
-      </div>
+      <LinearTimer
+        timer={timer}
+        coffeeId={coffeeId}
+        methodId={methodId}
+        targetSec={totalEnd > 0 ? totalEnd : null}
+        onStart={onStart}
+        onPause={onPause}
+        onReset={onReset}
+      />
       <BrewSteps steps={steps} ranges={ranges} activeIdx={running || elapsed > 0 ? activeIdx : -1} elapsed={elapsed} />
     </div>
   );
@@ -120,7 +95,7 @@ function BrewSteps({ steps, ranges, activeIdx, elapsed }) {
   );
 }
 
-export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, onDelete, requestAi, gear }) {
+export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, onDelete, requestAi, gear, timer, onTimerStart, onTimerPause, onTimerReset }) {
   const [methodId, setMethodId] = useState(coffee.method);
   const method = BREW_METHODS.find((m) => m.id === methodId) || BREW_METHODS[0];
   const baseRecipe = adjustRecipe(method, coffee);
@@ -309,7 +284,16 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
           </div>
         </div>
 
-        <BrewTimer steps={method.steps} key={method.id} />
+        <BrewTimer
+          steps={method.steps}
+          key={method.id}
+          coffeeId={coffee.id}
+          methodId={method.id}
+          timer={timer}
+          onStart={onTimerStart}
+          onPause={onTimerPause}
+          onReset={onTimerReset}
+        />
 
         <div className="brewnote">
           <div className="brewnote-head">

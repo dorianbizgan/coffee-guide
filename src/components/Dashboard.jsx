@@ -1,8 +1,20 @@
 import { useMemo, useState } from "react";
 import { Icon, MethodIcon } from "./Icons.jsx";
 import { BREW_METHODS, adjustRecipe } from "../lib/data.js";
+import { CircularTimer } from "./Timer.jsx";
 
-export function Dashboard({ coffees, onOpen, onAdd, onChangeMethod, onToggleFavorite, onSearchOnline, user }) {
+// Convert a "3:00" / "0:28" / "16:00:00" recipe time into seconds for the
+// timer's target. Lets the ring sweep around the right amount per method.
+function recipeTimeToSeconds(s) {
+  if (!s) return 180;
+  const bits = String(s).split(":").map((n) => parseInt(n, 10)).filter((n) => !isNaN(n));
+  if (bits.length === 3) return bits[0] * 3600 + bits[1] * 60 + bits[2];
+  if (bits.length === 2) return bits[0] * 60 + bits[1];
+  if (bits.length === 1) return bits[0];
+  return 180;
+}
+
+export function Dashboard({ coffees, onOpen, onAdd, onChangeMethod, onToggleFavorite, onSearchOnline, user, timer, onTimerStart, onTimerPause, onTimerReset }) {
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
 
@@ -107,6 +119,10 @@ export function Dashboard({ coffees, onOpen, onAdd, onChangeMethod, onToggleFavo
             onOpen={() => onOpen(c.id)}
             onChangeMethod={(mid) => onChangeMethod(c.id, mid)}
             onToggleFavorite={() => onToggleFavorite(c.id)}
+            timer={timer}
+            onTimerStart={onTimerStart}
+            onTimerPause={onTimerPause}
+            onTimerReset={onTimerReset}
           />
         ))}
         <button className="card-add" onClick={onAdd}>
@@ -132,20 +148,34 @@ export function Dashboard({ coffees, onOpen, onAdd, onChangeMethod, onToggleFavo
   );
 }
 
-function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite }) {
+function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite, timer, onTimerStart, onTimerPause, onTimerReset }) {
   const [openMenu, setOpenMenu] = useState(false);
   const method = BREW_METHODS.find((m) => m.id === coffee.method) || BREW_METHODS[0];
   const recipe = adjustRecipe(method, coffee);
   const stop = (e) => e.stopPropagation();
   const pick = (e, id) => { e.stopPropagation(); onChangeMethod(id); setOpenMenu(false); };
+  const targetSec = recipeTimeToSeconds(recipe.time);
 
   return (
     <article className="card" style={{ "--accent": coffee.accent, alignItems: "stretch", borderRadius: "18px" }} onClick={onOpen}>
       <div className="card-stamp">
         <span>{(coffee.stamp || "Single Origin").split(" · ").map((l, i) => <div key={i}>{l}</div>)}</span>
       </div>
-      {/* Favorite star moved out of the top-right (was overlapping the stamp)
-          and into the card foot — see card-foot block below. */}
+      {/* Circular brew timer fills the empty top-right region under the stamp.
+          State is shared with App / Detail so starting the timer here keeps
+          ticking when the user opens the full cheat sheet. */}
+      <div className="card-timer-slot" onClick={stop}>
+        <CircularTimer
+          timer={timer}
+          coffeeId={coffee.id}
+          methodId={method.id}
+          targetSec={targetSec}
+          onStart={onTimerStart}
+          onPause={onTimerPause}
+          onReset={onTimerReset}
+          size={120}
+        />
+      </div>
       <div className="card-roaster">{coffee.roaster}</div>
       <h2 className="card-name">{coffee.name}</h2>
       <div className="card-origin">

@@ -59,6 +59,34 @@ export default function App() {
   const [userMenu, setUserMenu] = useState(false);
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
 
+  // Single shared brew timer. Only ONE coffee+method runs at a time; starting
+  // a new one resets any other. Both the Dashboard card and the Detail view
+  // read from this state, so the elapsed time keeps ticking whether you're
+  // looking at the card preview or the full cheat sheet.
+  //   shape: { coffeeId, methodId, startedAt, accum, running }
+  //   elapsed (sec) = accum + (running ? (now - startedAt)/1000 : 0)
+  const [timer, setTimer] = useState({
+    coffeeId: null, methodId: null, startedAt: null, accum: 0, running: false,
+  });
+  const startTimer = useCallback((coffeeId, methodId) => {
+    setTimer((prev) => {
+      if (prev.coffeeId === coffeeId && prev.methodId === methodId && !prev.running) {
+        return { ...prev, startedAt: Date.now(), running: true };  // resume
+      }
+      return { coffeeId, methodId, startedAt: Date.now(), accum: 0, running: true };  // fresh
+    });
+  }, []);
+  const pauseTimer = useCallback(() => {
+    setTimer((prev) => {
+      if (!prev.running) return prev;
+      const accum = prev.accum + (Date.now() - prev.startedAt) / 1000;
+      return { ...prev, running: false, startedAt: null, accum };
+    });
+  }, []);
+  const resetTimer = useCallback(() => {
+    setTimer({ coffeeId: null, methodId: null, startedAt: null, accum: 0, running: false });
+  }, []);
+
   // Bind tweak data attributes onto <html>. Also keep the iOS status-bar /
   // Dynamic-Island surround colour in sync with the active theme so content
   // doesn't bleed-through when the user scrolls under the Dynamic Island.
@@ -378,6 +406,10 @@ export default function App() {
           onToggleFavorite={onToggleFavorite}
           onSearchOnline={onSearchOnline}
           user={user}
+          timer={timer}
+          onTimerStart={startTimer}
+          onTimerPause={pauseTimer}
+          onTimerReset={resetTimer}
         />
       )}
 
@@ -391,6 +423,10 @@ export default function App() {
           onDelete={onDelete}
           requestAi={requestAi}
           gear={profile.gear}
+          timer={timer}
+          onTimerStart={startTimer}
+          onTimerPause={pauseTimer}
+          onTimerReset={resetTimer}
         />
       )}
 
