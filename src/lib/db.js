@@ -136,7 +136,18 @@ export async function saveCoffee(user, coffee) {
     .upsert(row, { onConflict: "id" })
     .select()
     .single();
-  if (error) throw error;
+  if (error) {
+    // Surface diagnostics so the next reproduction shows the exact reply.
+    console.error("[db.saveCoffee] failed:", error, "row:", row);
+    // Friendlier message for the most common setup mistake.
+    if (/relation .*beans.* does not exist|table .*beans.* not found/i.test(error.message || "")) {
+      throw new Error("The 'beans' table is missing. Run supabase/migrations/0003_crema_redesign.sql in the Supabase SQL Editor.");
+    }
+    if (/permission denied|policy|rls/i.test(error.message || "")) {
+      throw new Error("Permission denied — your sign-in may have expired. Sign out and back in, then try again.");
+    }
+    throw error;
+  }
   return rowToCoffee(data);
 }
 
@@ -157,7 +168,7 @@ export async function setFavorite(user, id, favorite) {
     return;
   }
   const { error } = await supabase.from("beans").update({ favorite }).eq("id", id);
-  if (error) throw error;
+  if (error) { console.error("[db.setFavorite] failed:", error, { id, favorite }); throw error; }
 }
 
 export async function setMethod(user, id, method) {
@@ -167,7 +178,7 @@ export async function setMethod(user, id, method) {
     return;
   }
   const { error } = await supabase.from("beans").update({ method }).eq("id", id);
-  if (error) throw error;
+  if (error) { console.error("[db.setMethod] failed:", error, { id, method }); throw error; }
 }
 
 export async function appendBrewLog(user, beanId, entry) {
@@ -189,7 +200,13 @@ export async function appendBrewLog(user, beanId, entry) {
     notes_text: entry.text || "",
     settings: entry.settings || {},
   });
-  if (error) throw error;
+  if (error) {
+    console.error("[db.appendBrewLog] failed:", error, "entry:", entry);
+    if (/relation .*brew_logs.* does not exist/i.test(error.message || "")) {
+      throw new Error("The 'brew_logs' table is missing. Run supabase/migrations/0003_crema_redesign.sql in the Supabase SQL Editor.");
+    }
+    throw error;
+  }
 }
 
 export async function loadProfile(user) {

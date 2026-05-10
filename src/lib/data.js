@@ -109,13 +109,25 @@ export const BREW_METHODS = [
   },
 ];
 
+// Pick the brew method we'll default to for a freshly-added coffee.
+// Caller-supplied `intendedMethod` (e.g. AI's web-lookup result) wins outright;
+// otherwise we fall back to roast/process heuristics. The roast-level rules
+// also now treat espresso blends and dark roasts as ESPRESSO, since
+// dark/medium-dark single-origins and most blends are designed for espresso —
+// the previous default of "v60 for medium / french for dark" was sending
+// blends like Olympia Big Truck to the wrong tab.
 export function recommend(coffee) {
+  const intended = (coffee.intendedMethod || "").toLowerCase().trim();
+  if (intended && /^(espresso|v60|aeropress|french|chemex|moka|cold)$/.test(intended)) return intended;
   const r = coffee.roast || "medium";
   const proc = (coffee.process || "").toLowerCase();
+  const name = ((coffee.name || "") + " " + (coffee.roaster || "")).toLowerCase();
+  // Heuristic: anything called a "blend" (or matching well-known espresso-blend
+  // names) defaults to espresso, regardless of roast level.
+  if (/\bblend|big\s*truck|hair\s*bender|hologram|pillow\s*fight|southern\s*weather|monarch\b/.test(name)) return "espresso";
+  if (r === "dark" || r === "medium-dark") return "espresso";
   if (r === "light") return proc.includes("natural") || proc.includes("anaerob") ? "v60" : "chemex";
   if (r === "medium-light" || r === "medium") return "v60";
-  if (r === "medium-dark") return "aeropress";
-  if (r === "dark") return "french";
   return "v60";
 }
 

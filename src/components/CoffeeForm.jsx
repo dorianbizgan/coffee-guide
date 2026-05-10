@@ -69,6 +69,10 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
           variety: result.variety || d.variety,
           elevation: result.elevation || d.elevation,
           notes: notesAsString(result.notes),
+          // Honor the AI's classification so espresso blends route to
+          // espresso even when the form would otherwise default to v60.
+          brewer: result.intendedMethod || d.brewer,
+          _intendedMethod: result.intendedMethod || null,
           _search: "",
         }));
       } else {
@@ -83,7 +87,7 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
 
   const submit = () => {
     const accent = initial?.accent || ACCENTS[Math.floor(Math.random() * ACCENTS.length)];
-    const recommendedId = recommend({ roast: data.roast, process: data.process });
+    const recommendedId = recommend({ roast: data.roast, process: data.process, name: data.name, roaster: data.roaster, intendedMethod: data._intendedMethod });
     const stamp = initial?.stamp || ("Logged · " + new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }));
     onSubmit({
       ...(initial || {}),

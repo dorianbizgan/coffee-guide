@@ -18,7 +18,9 @@ import {
 } from "./components/TweaksPanel.jsx";
 
 const TWEAK_DEFAULTS = {
-  theme: "default",
+  // Dusk = the deep-forest dark palette is the brand default for the app.
+  // Users with a saved preference (crema-tweaks in localStorage) override.
+  theme: "dusk",
   voice: "editorial",
   density: "tight",
   bg: "off",
@@ -28,6 +30,17 @@ const TWEAK_DEFAULTS = {
   cardHover: "magnetic",
   loader: "ring",
   motion: "bouncy",
+};
+
+// Hex equivalents of the --paper token in each theme. iOS paints the status
+// bar (and the surround of the Dynamic Island on Pro phones) in this colour;
+// we keep it in sync so content scrolling underneath doesn't bleed-through
+// the translucent area around the Island.
+const THEME_PAPER_HEX = {
+  dusk:    "#19281f",   // oklch(0.22 0.04 155) approx
+  sunrise: "#fbf2dd",   // oklch(0.97 0.022 60) approx
+  default: "#f6efd9",   // base paper
+  pixel:   "#1a1a1a",
 };
 
 export default function App() {
@@ -46,7 +59,9 @@ export default function App() {
   const [userMenu, setUserMenu] = useState(false);
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
 
-  // Bind tweak data attributes onto <html>
+  // Bind tweak data attributes onto <html>. Also keep the iOS status-bar /
+  // Dynamic-Island surround colour in sync with the active theme so content
+  // doesn't bleed-through when the user scrolls under the Dynamic Island.
   useEffect(() => {
     const r = document.documentElement;
     r.dataset.theme = t.theme === "default" ? "" : t.theme;
@@ -59,6 +74,9 @@ export default function App() {
     r.dataset.noise = t.noise;
     r.dataset.cardhover = t.cardHover;
     r.dataset.motion = t.motion;
+    // theme-color meta — points iOS Safari's status bar fill at the page bg.
+    const meta = document.querySelector('meta[name="theme-color"]:not([media])');
+    if (meta) meta.setAttribute("content", THEME_PAPER_HEX[t.theme] || THEME_PAPER_HEX.dusk);
   }, [t.theme, t.voice, t.density, t.bg, t.iri, t.glow, t.noise, t.cardHover, t.motion]);
 
   // Hydrate user from Supabase session or guest localStorage
