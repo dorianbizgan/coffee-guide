@@ -144,19 +144,8 @@ function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite }) {
       <div className="card-stamp">
         <span>{(coffee.stamp || "Single Origin").split(" · ").map((l, i) => <div key={i}>{l}</div>)}</span>
       </div>
-      <button
-        className="card-fav"
-        onClick={(e) => { stop(e); onToggleFavorite(); }}
-        title={coffee.favorite ? "Unfavorite" : "Favorite"}
-        aria-label="Toggle favorite"
-        style={{
-          position: "absolute", top: 14, right: 14, border: 0, background: "transparent",
-          color: coffee.favorite ? "var(--amber-500)" : "var(--ink-mute)",
-          cursor: "pointer", padding: 4, lineHeight: 0, zIndex: 2,
-        }}
-      >
-        <Icon name="star" size={18} stroke={coffee.favorite ? 0 : 1.6} />
-      </button>
+      {/* Favorite star moved out of the top-right (was overlapping the stamp)
+          and into the card foot — see card-foot block below. */}
       <div className="card-roaster">{coffee.roaster}</div>
       <h2 className="card-name">{coffee.name}</h2>
       <div className="card-origin">
@@ -182,6 +171,20 @@ function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite }) {
         <div className="cheat-item"><div className="v">{recipe.time}</div><div className="l">Time</div></div>
       </div>
       <div className="card-foot">
+        <button
+          className={`card-fav ${coffee.favorite ? "is-fav" : ""}`}
+          onClick={(e) => { stop(e); onToggleFavorite(); }}
+          title={coffee.favorite ? "Unfavorite" : "Favorite"}
+          aria-label="Toggle favorite"
+          style={{
+            border: 0, background: "transparent",
+            color: coffee.favorite ? "var(--amber-500)" : "var(--ink-mute)",
+            cursor: "pointer", padding: 6, lineHeight: 0,
+            marginRight: 6,
+          }}
+        >
+          <Icon name="star" size={18} stroke={coffee.favorite ? 0 : 1.6} />
+        </button>
         <div className="method-switch" onClick={stop}>
           <button className={`method-badge-btn ${openMenu ? "open" : ""}`} onClick={(e) => { stop(e); setOpenMenu((o) => !o); }}>
             <span className="method-icon"><MethodIcon id={method.id} /></span>

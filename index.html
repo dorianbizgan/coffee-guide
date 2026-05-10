@@ -2,14 +2,40 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#ebd5a0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0" />
+  <!-- iOS paints the status bar (and the Dynamic Island surround on Pro
+       phones) in theme-color. Default = dusk paper, with media variants so
+       Safari picks the right one when the page first loads; App.jsx then
+       updates it live whenever the user flips themes. -->
+  <meta name="theme-color" content="#19281f" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fbf2dd" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#19281f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>Crema · Coffee Field Guide</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
+  <!-- Pre-paint script: applies the saved theme to <html> before React mounts
+       so the page never flashes the wrong palette. Defaults to "dusk" when
+       no preference saved. -->
+  <script>
+    (function () {
+      try {
+        var raw = localStorage.getItem("crema-tweaks");
+        var theme = "dusk";
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          if (parsed && typeof parsed.theme === "string" && parsed.theme !== "default") theme = parsed.theme;
+        }
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dusk");
+      }
+    })();
+  </script>
 </head>
 <body>
   <div id="root"></div>
