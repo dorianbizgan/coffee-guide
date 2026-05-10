@@ -3,7 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
-<meta name="theme-color" content="#ebd5a0">
+<!-- iOS paints the status bar (and the Dynamic Island region's surround) in
+     theme-color. Two stops so iOS picks the matching one per system theme,
+     then the toggleTheme() JS keeps it in sync when the user flips themes. -->
+<meta name="theme-color" id="meta-theme-color" content="oklch(0.22 0.04 155)">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="oklch(0.97 0.022 60)">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="oklch(0.22 0.04 155)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https://udzsveyedwbmygvpvxpx.supabase.co wss://udzsveyedwbmygvpvxpx.supabase.co https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://lottie.host https://*.lottiefiles.com; img-src 'self' data: https://lottie.host https://*.lottiefiles.com; font-src 'self' https://fonts.gstatic.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests;">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -15,16 +22,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!-- Set the theme on <html> as early as possible so the page never flashes
-     the wrong palette. Reads localStorage, falls back to the OS preference. -->
+     the wrong palette. Reads localStorage; defaults to "dark" (Dusk). -->
 <script>
 (function () {
   try {
     var saved = localStorage.getItem("crema-theme-v1");
-    var theme = saved === "dark" || saved === "light"
-      ? saved
-      : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    var theme = (saved === "dark" || saved === "light") ? saved : "dark";
     document.documentElement.setAttribute("data-theme", theme);
-  } catch (e) { /* localStorage may be unavailable in private mode — fine */ }
+  } catch (e) { document.documentElement.setAttribute("data-theme", "dark"); }
 })();
 </script>
 <!-- Lottie player for splash animation. Pick any animation from https://lottiefiles.com/featured (filter by free), copy its .lottie URL, and paste it into the SPLASH_LOTTIE_URL constant in the script below. -->
@@ -548,41 +553,52 @@
 
   /* Demo mode banner — pinned to the bottom so it never fights with the header.
      Body gets a small bottom padding so it doesn't cover the last card. */
-  body.demo-mode { padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
+  /* Inline guest banner — lives in the page flow, between the hero and the
+     compare bar. NOT fixed-positioned anymore (the old floating pill was
+     getting confused with a "timer" widget and was overlapping the modal
+     foot's Save button on wide desktop). */
   .demo-banner {
-    position: fixed;
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-    left: 50%; transform: translateX(-50%);
-    background: var(--paper);
-    border: 1px solid var(--line-strong);
-    border-radius: 999px;
-    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    margin: -8px auto 18px;
+    max-width: 1200px;
+    background: var(--amber-100);
+    border: 1px solid var(--amber-300);
+    border-radius: var(--radius);
     font-family: var(--font-body);
-    font-size: 12px; font-weight: 500;
-    color: var(--forest-700);
-    box-shadow: var(--shadow-card);
-    z-index: 50;
-    display: flex; align-items: center; gap: 8px;
-    max-width: calc(100vw - 32px);
-    white-space: nowrap;
+    font-size: 13px;
+    color: var(--amber-700);
   }
   .demo-banner button {
-    background: transparent; border: 0; padding: 0 0 0 10px;
+    background: transparent;
+    border: 1px solid var(--amber-300);
+    border-radius: 999px;
+    padding: 6px 14px;
     cursor: pointer;
-    color: var(--forest-700);
-    font: inherit; font-weight: 600;
-    border-left: 1px solid var(--line-strong);
-    margin-left: 4px;
+    color: var(--amber-700);
+    font: inherit;
+    font-weight: 500;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    margin-left: auto;
   }
-  .demo-banner button:hover { color: var(--amber-700); }
+  .demo-banner button:hover {
+    background: var(--amber-300);
+    color: var(--ink);
+    border-color: var(--amber-500);
+  }
   .demo-banner.hidden { display: none; }
   /* Two label flavours: long for desktop, short for mobile. */
   .demo-banner-short { display: none; }
   @media (max-width: 600px) {
-    .demo-banner { padding: 7px 14px; font-size: 11.5px; }
+    .demo-banner { padding: 9px 12px; font-size: 12px; gap: 8px; }
     .demo-banner-long { display: none; }
     .demo-banner-short { display: inline; }
+    .demo-banner button { padding: 5px 10px; font-size: 11.5px; }
   }
+  /* No more bottom-padding hack — the banner is in flow now. */
+  body.demo-mode { padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
 
   /* Brewing tip modal: pill chips, soft card with cached badge */
   .tip-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
@@ -1035,13 +1051,16 @@
       var(--line-strong) 0 4px,
       transparent 4px 8px);
   }
-  /* Action row — bottom of the card now (was overlaid on a tinted header). */
+  /* Action row — bottom of the card. Star sits on the LEFT, the three
+     icon buttons on the RIGHT, separated by a flex gap. */
   .card-actions {
     display: flex; gap: 6px;
     margin-top: 16px;
     padding-top: 14px;
     border-top: 1px solid var(--line);
+    align-items: center;
   }
+  .card-actions .card-fav-btn { margin-right: auto; position: static; }
   .card-actions button {
     background: var(--paper);
     border: 1px solid var(--line);
@@ -2101,6 +2120,10 @@
   </div>
 </section>
 
+<!-- The guest banner is moved here by JS on boot. Sits in flow, no fixed
+     positioning, so it never overlaps modal CTAs. -->
+<div id="demo-banner-slot"></div>
+
 <div class="header-row">
   <!-- Brand h1 lives in the hero now; this row keeps the toolbar (search,
        tip, add, settings, user menu). -->
@@ -2520,8 +2543,11 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- Demo / guest banner — only visible while in guest or local-only demo
-     mode. The label and CTA shrink on small screens (see CSS). -->
+
+<!-- The demo / guest banner now lives inline inside #app-root (placed by
+     JS into #demo-banner-slot below the hero). The element is created
+     declaratively here so the CSS / JS can always find it; we move it on
+     boot. Hidden by default. -->
 <div class="demo-banner hidden" id="demo-banner" role="status">
   <span class="demo-banner-label" id="demo-banner-label">☕ Guest mode</span>
   <button type="button" id="demo-exit" title="Save your account">Save account</button>
@@ -3380,7 +3406,11 @@ async function upsertCoffee(c) {
     }
   } catch (e) {
     // Migration-0002 not run yet — strip the new columns and retry once.
-    if (/column .* does not exist|favorite|custom_methods|brew_log/i.test(e.message)) {
+    // Match only the actual Postgres "column 'X' does not exist" wording so
+    // we don't silently swallow unrelated errors that happen to mention
+    // "favorite" / "brew_log" / etc in the message body (e.g. AI notes).
+    const missingColumn = /column ["']?(favorite|custom_methods|brew_log|machines|custom_brew_methods)["']? .{0,40}does not exist/i.test(e.message);
+    if (missingColumn) {
       const safeRow = { ...row };
       delete safeRow.favorite;
       delete safeRow.custom_methods;
@@ -3392,6 +3422,7 @@ async function upsertCoffee(c) {
         data = await sbFetch(`/coffees`, { method: "POST", body: safeRow });
       }
     } else {
+      console.error("[upsertCoffee] unhandled error:", e, "row:", row);
       throw e;
     }
   }
@@ -3698,9 +3729,6 @@ function render(method) {
     card.innerHTML = `
       <div class="card-header">
         ${stamp}
-        <button class="card-fav-btn ${c.favorite ? 'is-fav' : ''}" title="${c.favorite ? 'Unfavorite' : 'Favorite'}" onclick="event.stopPropagation();toggleFavorite('${escapeAttr(c.id)}')">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        </button>
         <div class="card-roaster">${escapeHtml(c.roaster)}</div>
         <h2 class="card-name">${escapeHtml(c.name)}</h2>
         <div class="card-meta">${escapeHtml(c.meta || "")}</div>
@@ -3709,6 +3737,9 @@ function render(method) {
         <div class="card-body">${settingRows}</div>
         ${d.notes ? `<div class="notes-section"><div class="notes-label">Notes</div>${escapeHtml(d.notes)}</div>` : ""}
         <div class="card-actions">
+          <button class="card-fav-btn ${c.favorite ? 'is-fav' : ''}" title="${c.favorite ? 'Unfavorite' : 'Favorite'}" onclick="event.stopPropagation();toggleFavorite('${escapeAttr(c.id)}')">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${starFill}" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </button>
           <button title="Log a brew" onclick="event.stopPropagation();openBrewLog('${escapeAttr(c.id)}', '${escapeAttr(method)}')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg></button>
           <button title="AI assist" onclick="event.stopPropagation();openAiModal('${escapeAttr(c.id)}')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 2 L13.5 8.5 L20 10 L13.5 11.5 L12 18 L10.5 11.5 L4 10 L10.5 8.5 Z"/></svg></button>
           <button title="Edit" onclick="event.stopPropagation();openEditModal('${escapeAttr(c.id)}')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
@@ -3978,7 +4009,10 @@ async function saveSettings() {
     closeModal("settings-modal");
     render(state.activeMethod);   // re-render so extra-method tabs reflect changes
     toast("Saved", "success");
-  } catch (e) { toast("Save failed: " + e.message, "error"); }
+  } catch (e) {
+    console.error("[saveSettings] failed:", e);
+    toast("Save failed: " + humanizeDbError(e), "error");
+  }
 }
 
 // ============================================================
@@ -4617,23 +4651,14 @@ function parseSearchQuery(query) {
   residue = residue.replace(/\s+/g, " ").trim();
   if (residue && residue.length >= 3) out.coffeeName = residue;
 
-  // Defaults for ambiguous queries:
-  //  - If the user's profile lists an espresso machine, assume espresso when
-  //    no method is detected. Otherwise V60 (most common pourover).
-  //  - If the user's profile lists a grinder, surface it as a default — even
-  //    if the query didn't mention one.
-  if (!out.method) {
-    const eq = (state.data && state.data.equipment) || {};
-    out.methodInferred = true;
-    out.method = eq.machine ? "espresso" : "v60";
-  }
-  if (!out.grinder) {
-    const eq = (state.data && state.data.equipment) || {};
-    if (eq.grinder) {
-      out.grinder = eq.grinder + (eq.burrs ? " (" + eq.burrs + ")" : "");
-      out.grinderInferred = true;
-    }
-  }
+  // (No method/grinder inference. Earlier we defaulted to V60 when the query
+  // didn't specify a method, which forced espresso blends like "Olympia
+  // Coffee Big Truck" into V60 even though they're meant for espresso. Let
+  // the AI decide based on what the coffee actually is — it's better at
+  // recognising whether something is a single-origin filter coffee or an
+  // espresso blend than our regex was.)
+  out.methodInferred = false;
+  out.grinderInferred = false;
 
   // Quick signal check — at least one of these makes the query worth searching
   const hasUsefulSignal = !!(out.roaster || out.coffeeName || query.trim().length >= 4);
@@ -4682,6 +4707,13 @@ function recipeSystemPrompt(prefs, { grounded = false, parsedQuery = null } = {}
 
   const baseLines = [
     "You are a home-barista expert. Identify the coffee" + (grounded ? " (search the web)" : "") + " and return a starter recipe for all three brew methods.",
+    "",
+    "PRIMARY METHOD — match the coffee's intended use:",
+    "- ESPRESSO BLENDS (e.g. Olympia Big Truck, Onyx Southern Weather, Counter Culture Hologram, Stumptown Hair Bender, comfort blends, dark/medium-dark roasts marketed for milk drinks) → primary method is ESPRESSO. Make the espresso recipe the most thorough; v60 + aeropress recipes are still included but with a brief 'Primarily an espresso blend' note.",
+    "- SINGLE-ORIGIN LIGHT ROASTS (washed/natural Ethiopias, Kenyas, Colombian Pink Bourbons, Geishas) → primary method is V60. Espresso is included but called out as 'Light-roast filter coffee — espresso pull will be bright'.",
+    "- MEDIUM ROAST SINGLE ORIGINS → V60 primary unless explicitly described as 'omni' or 'espresso roast'.",
+    "- DARK ROASTS → primary method is ESPRESSO.",
+    "Honor any brew-method emphasis from the user's query, but the coffee's intended use takes precedence on ambiguous inputs.",
     "",
     "Grind hints by grinder (numeric where applicable):",
     "Acaia Orbit SSP V3: espresso 1.0–2.0 (lighter roast=lower); Niche Zero: 10–25; DF64: 1.5–3.5; Fellow Ode/Opus: 4–7; Comandante: 22–32 clicks; 1Zpresso J-max/J-Pro: 0.6–1.4. Unknown grinder → descriptive (fine/medium/coarse).",
@@ -5431,6 +5463,29 @@ async function aiSearchOnline(query) {
   }
 }
 
+// Pick the most-likely-intended brew method for a freshly-saved coffee.
+// We look at:
+//   1. Tags / meta — "espresso", "blend", "espresso roast", "filter", "pourover"
+//      give a strong steer.
+//   2. Setting count per method — the AI is told to write the most thorough
+//      recipe for the primary method, so the one with the most populated
+//      setting fields wins.
+// Defaults to whatever the user is currently viewing if everything ties.
+function pickPrimaryMethod(coffee) {
+  const blob = ((coffee.tags || []).join(" ") + " " + (coffee.meta || "") + " " + (coffee.name || "")).toLowerCase();
+  if (/\b(espresso|blend|espresso roast|comfort|milk drink|dark roast)\b/.test(blob)) return "espresso";
+  if (/\b(pour-?over|filter|chemex|kalita|v60)\b/.test(blob)) return "v60";
+  // Heuristic: the method with the most populated settings is usually the one
+  // the AI wrote most thoroughly.
+  const counts = ["espresso", "v60", "aeropress"].map(m => ({
+    m,
+    c: Object.keys(coffee[m]?.settings || {}).filter(k => coffee[m].settings[k] && String(coffee[m].settings[k]).trim()).length
+  }));
+  counts.sort((a, b) => b.c - a.c);
+  if (counts[0].c > counts[1].c) return counts[0].m;
+  return state.activeMethod || "espresso";
+}
+
 async function autoSaveSearchedCoffee() {
   const s = state.searchOnlineState;
   if (!s?.recipe) return;
@@ -5477,6 +5532,9 @@ async function autoSaveSearchedCoffee() {
     // Clear the search and re-render so the new coffee appears in the grid with the fresh-pour animation
     state.searchTerm = "";
     document.getElementById("search-input").value = "";
+    // Pick the active tab based on which method the AI provided the most
+    // detail for. Espresso blends → espresso; light single-origins → v60.
+    state.activeMethod = pickPrimaryMethod(saved);
     render(state.activeMethod);
     // Re-render the search card on top (render() resets visibility, but our state is preserved)
     renderSearchOnlineCard();
@@ -5866,7 +5924,10 @@ async function applyAiSuggestion() {
     closeModal("ai-modal");
     render(state.activeMethod);
     toast("Applied", "success");
-  } catch (e) { toast("Save failed: " + e.message, "error"); }
+  } catch (e) {
+    console.error("[applyAiSuggestion] failed:", e, "coffee:", c);
+    toast("Save failed: " + humanizeDbError(e), "error");
+  }
 }
 
 // ============================================================
@@ -6024,7 +6085,10 @@ async function saveBrewLog() {
     closeModal("brewlog-modal");
     render(state.activeMethod);
     toast("Brew logged", "success");
-  } catch (e) { toast("Save failed: " + e.message, "error"); }
+  } catch (e) {
+    console.error("[saveBrewLog] failed:", e, "row:", c);
+    toast("Save failed: " + humanizeDbError(e), "error");
+  }
 }
 
 // Save the brew log AND ask the AI for a dial-in suggestion based on the
@@ -6109,11 +6173,22 @@ function toast(msg, kind = "") {
 // future visits skip the system-preference fallback. Updates aria-label so
 // screen readers announce what the next press will do. The pre-paint
 // inline <script> in <head> handles initial theme assignment.
+// theme-color values (kept in sync with the CSS --paper token for each mode)
+// so the iOS status bar / Dynamic Island surround paints in the page bg.
+const META_THEME_COLOR = {
+  light: "oklch(0.97 0.022 60)",
+  dark:  "oklch(0.22 0.04 155)"
+};
+function applyMetaThemeColor(theme) {
+  const m = document.getElementById("meta-theme-color");
+  if (m) m.setAttribute("content", META_THEME_COLOR[theme] || META_THEME_COLOR.dark);
+}
 function toggleTheme() {
   const html = document.documentElement;
   const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
   html.setAttribute("data-theme", next);
   try { localStorage.setItem("crema-theme-v1", next); } catch (e) {}
+  applyMetaThemeColor(next);
   const btn = document.getElementById("theme-toggle");
   if (btn) btn.setAttribute("aria-label", next === "dark" ? "Switch to light theme" : "Switch to dark theme");
 }
@@ -6123,10 +6198,16 @@ function bindEvents() {
   const themeBtn = document.getElementById("theme-toggle");
   if (themeBtn) {
     themeBtn.addEventListener("click", toggleTheme);
-    // Sync the initial aria-label to whatever the inline-head script picked.
-    const cur = document.documentElement.getAttribute("data-theme");
+    const cur = document.documentElement.getAttribute("data-theme") || "dark";
     themeBtn.setAttribute("aria-label", cur === "dark" ? "Switch to light theme" : "Switch to dark theme");
+    applyMetaThemeColor(cur);
   }
+  // Move the guest banner into its in-flow slot under the hero (was
+  // previously fixed-position at the bottom of the viewport, which made it
+  // overlap modal CTAs and read like a floating widget).
+  const slot = document.getElementById("demo-banner-slot");
+  const banner = document.getElementById("demo-banner");
+  if (slot && banner && banner.parentNode !== slot) slot.appendChild(banner);
   // Gradient picker — any of its three inputs rebuilds the hidden value
   ["ed-color-start", "ed-color-end", "ed-color-angle"].forEach(id => {
     const el = document.getElementById(id);
