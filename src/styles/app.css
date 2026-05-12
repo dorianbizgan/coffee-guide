@@ -2678,38 +2678,59 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
 /* responsive */
 @media (max-width: 1100px) {
   .hero { grid-template-columns: 1fr; gap: 28px; }
-  .detail { grid-template-columns: 1fr; gap: 32px; }
+  /* minmax(0, 1fr) — NOT 1fr — so grid items with wide intrinsic content
+     (sliders, scrolling method-tabs) can't force the column wider than
+     the container. Without the 0 floor the detail page renders ~709px on
+     a 440px iPhone and Safari shrink-to-fits the entire viewport. */
+  .detail { grid-template-columns: minmax(0, 1fr); gap: 32px; }
   .sidebar { position: static; }
 }
 @media (max-width: 720px) {
   .shell { padding: 0 16px; }
   .nav { padding: 14px 16px; }
   .nav-links { display: none; }
-  .recipe-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .recipe-cell { padding: 14px; }
+  .recipe-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .recipe-cell { padding: 14px; min-width: 0; }
   .recipe-cell .v { font-size: 30px; }
   .form-row { grid-template-columns: 1fr; }
   .modal { padding: 28px 24px; }
-  .card-cheat { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .card-cheat { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
   /* Detail view: shrink the headline and tighten gaps so 393px-wide phones
      don't get a 800px-wide layout. */
   .detail { padding-top: 16px; padding-bottom: 48px; }
   .detail-name { font-size: clamp(32px, 9vw, 48px); }
-  .detail-meta { gap: 12px; }
+  .detail-meta { gap: 12px; flex-wrap: wrap; }
   .meta-item { min-width: 0; }
-  .step { grid-template-columns: 36px 1fr; gap: 12px; padding: 14px 0; }
+  .step { grid-template-columns: 36px minmax(0, 1fr); gap: 12px; padding: 14px 0; }
   .step-n { font-size: 24px; }
   .step-time { grid-column: 2 / 3; padding-top: 0; }
-  .method-tabs { padding: 4px; }
-  .method-tab { padding: 8px 12px; font-size: 12px; }
+  /* Brew method tabs: let them scroll horizontally inside the panel
+     INSTEAD of bursting the page sideways. */
+  .method-tabs { padding: 4px; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  .method-tabs::-webkit-scrollbar { display: none; }
+  .method-tab { padding: 8px 12px; font-size: 12px; flex-shrink: 0; }
   .timer { padding: 18px; }
   .timer-display .t-num { font-size: 44px; }
   .dial { padding: 18px; }
   .dial-title { font-size: 18px; }
+  .dial-row { min-width: 0; }
+  .dial-row .slider { min-width: 0; width: 100%; }
   .hero h1 { font-size: clamp(36px, 8vw, 56px); }
 }
-/* Hard guard: never let a long word push the page wider than its viewport. */
+/* Hard guard: never let a long word push the page wider than its viewport.
+   We constrain to 100vw so a child can't exceed the screen even if a
+   parent grid mis-resolves its column width. min-width: 0 on flex/grid
+   items lets them shrink below their min-content. */
 @media (max-width: 720px) {
-  body, #root, .shell, .detail, .detail-head, .recipe-grid, .recipe-cell, .step, .timer, .dial { max-width: 100%; }
-  .detail-name, .step-body .d, .recipe-cell .v { overflow-wrap: anywhere; word-break: break-word; }
+  html, body, #root { max-width: 100vw; overflow-x: hidden; }
+  .shell, .detail, .detail-head, .recipe-grid, .recipe-cell, .step, .timer, .dial, .panel, .tip, .sidebar, .notes, .brewnote, .method-tabs, .method-row {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .detail-name, .step-body .d, .recipe-cell .v, .detail-roaster, .meta-item { overflow-wrap: anywhere; word-break: break-word; }
+  /* Stars/rating row — wrap instead of pushing sideways */
+  .rating, .rating-row, .chips, .tag-list { flex-wrap: wrap; }
+  /* Bag info / setup rows */
+  .info-row, .setup-row { min-width: 0; max-width: 100%; }
+  .info-row > *, .setup-row > * { min-width: 0; }
 }
