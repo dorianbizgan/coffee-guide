@@ -72,6 +72,78 @@ export function activeStepIndex(steps, elapsed) {
   });
 }
 
+// SVG arc geometry helpers. `deg` is 0 at 12 o'clock, increasing clockwise.
+function polarToCart(cx, cy, r, deg) {
+  const rad = ((deg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+function arcPath(cx, cy, r, startDeg, endDeg) {
+  // Guard against degenerate / full-circle paths (the latter would render
+  // as a zero-length 'A' arc).
+  const span = endDeg - startDeg;
+  if (span <= 0.01) return "";
+  const safeEnd = span >= 360 ? startDeg + 359.99 : endDeg;
+  const start = polarToCart(cx, cy, r, startDeg);
+  const end = polarToCart(cx, cy, r, safeEnd);
+  const largeArc = safeEnd - startDeg > 180 ? 1 : 0;
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+}
+
+// Given the method's `steps` and current elapsed seconds, build one entry
+// per brewing step describing:
+//   - path:    the SVG `d` for the step's full arc (track)
+//   - fillPath: the SVG `d` for the currently-filled portion of that arc
+//   - state:   'done' | 'active' | 'pending'
+//   - startX/Y: the start vertex (used for the divider notches)
+// Returns null if the steps don't have parseable durations (caller falls
+// back to a single continuous arc).
+function buildSegments(steps, elapsed, r, c, circumference) {
+  if (!steps || steps.length === 0) return null;
+  const brewing = steps.filter((s) => !s.prep);
+  if (brewing.length === 0) return null;
+  const ranges = brewing.map((s) => parseStepTime(s.time));
+  // Resolve each step's duration. If the step has no explicit end, infer
+  // it from the next step's start (or +60s as a last-resort fallback).
+  const durations = ranges.map(([a, b], i) => {
+    if (a == null) return null;
+    if (b != null && b > a) return b - a;
+    const next = ranges[i + 1];
+    return next && next[0] != null ? next[0] - a : 60;
+  });
+  if (durations.some((d) => d == null || d <= 0)) return null;
+  const totalDur = durations.reduce((s, d) => s + d, 0);
+  if (totalDur <= 0) return null;
+
+  // Visual gap between segments (in degrees). Keep small so short steps
+  // don't disappear.
+  const GAP_DEG = brewing.length > 1 ? 2 : 0;
+
+  let cumDur = 0;
+  return brewing.map((step, i) => {
+    const dur = durations[i];
+    const startDeg = (cumDur / totalDur) * 360;
+    const endDegRaw = ((cumDur + dur) / totalDur) * 360;
+    const endDeg = Math.max(startDeg + 1, endDegRaw - GAP_DEG);
+    cumDur += dur;
+
+    const elapsedInStep = Math.max(0, Math.min(dur, elapsed - (cumDur - dur)));
+    const fillPct = dur > 0 ? elapsedInStep / dur : 0;
+    const fillEndDeg = startDeg + (endDeg - startDeg) * fillPct;
+
+    const state = elapsed >= cumDur ? "done" : elapsedInStep > 0 ? "active" : "pending";
+
+    const startPt = polarToCart(c, c, r, startDeg);
+
+    return {
+      path: arcPath(c, c, r, startDeg, endDeg),
+      fillPath: arcPath(c, c, r, startDeg, fillEndDeg),
+      state,
+      startX: startPt.x,
+      startY: startPt.y,
+    };
+  });
+}
+
 // Compact circular timer for the dashboard card. ~120px square. Click the
 // big ring to start/pause; the small Reset button under the ring discards
 // the run. When `steps` is supplied, the centre shows the active step's
@@ -126,6 +198,12 @@ export function CircularTimer({
   const VCIRC = 2 * Math.PI * VR;
   const VOFF = VCIRC * (1 - pct);
 
+  // Build per-step arc segments from the recipe so the user can see at a
+  // glance how long each step takes. `null` if steps don't have parseable
+  // time ranges — in that case we fall back to the single continuous
+  // progress arc.
+  const segs = buildSegments(steps, e, VR, VC, VCIRC);
+
   return (
     <div className="ctimer" onClick={stop} style={{ "--ctimer-size": `${size}px` }}>
       <button
@@ -136,19 +214,65 @@ export function CircularTimer({
         aria-label={running ? "Pause timer" : "Start timer"}
       >
         <svg viewBox={`0 0 ${VBOX} ${VBOX}`} aria-hidden="true" preserveAspectRatio="xMidYMid meet">
-          {/* Track */}
-          <circle cx={VC} cy={VC} r={VR} fill="none" stroke="var(--line-strong)" strokeWidth={stroke} opacity="0.4" />
-          {/* Progress (rotated −90deg so it starts at 12 o'clock) */}
-          <circle
-            cx={VC} cy={VC} r={VR}
-            fill="none"
-            stroke={past ? "var(--amber-500)" : "var(--forest-700)"}
-            strokeWidth={stroke}
-            strokeDasharray={VCIRC}
-            strokeDashoffset={VOFF}
-            strokeLinecap="round"
-            style={{ transformOrigin: "50% 50%", transform: "rotate(-90deg)", transition: running ? "stroke-dashoffset 0.25s linear" : "stroke-dashoffset 0.18s ease" }}
-          />
+          {segs ? (
+            <>
+              {/* Per-step track arcs. Each step gets a slice of the ring
+                  proportional to its duration. Tiny gap between segments
+                  makes the divisions visible. */}
+              {segs.map((s, i) => (
+                <path
+                  key={`t-${i}`}
+                  d={s.path}
+                  fill="none"
+                  stroke="var(--line-strong)"
+                  strokeWidth={stroke}
+                  strokeLinecap="butt"
+                  opacity="0.35"
+                />
+              ))}
+              {/* Filled portion: done segments fully, active partially. */}
+              {segs.map((s, i) => {
+                if (s.state === "pending") return null;
+                return (
+                  <path
+                    key={`f-${i}`}
+                    d={s.state === "done" ? s.path : s.fillPath}
+                    fill="none"
+                    stroke={past ? "var(--amber-500)" : "var(--forest-700)"}
+                    strokeWidth={stroke}
+                    strokeLinecap="butt"
+                    opacity={s.state === "done" ? 0.85 : 1}
+                    style={{
+                      transition: running ? "d 0.25s linear" : "d 0.18s ease",
+                    }}
+                  />
+                );
+              })}
+              {/* Tiny notch dots on each segment boundary (small visual
+                  anchor so the divisions read clearly even at 92px). */}
+              {segs.map((s, i) =>
+                i === 0 ? null : (
+                  <circle key={`n-${i}`} cx={s.startX} cy={s.startY} r={1.1} fill="var(--paper-2)" />
+                ),
+              )}
+            </>
+          ) : (
+            <>
+              {/* Fallback: single continuous arc (used when the method's
+                  step times can't be parsed into durations). */}
+              <circle cx={VC} cy={VC} r={VR} fill="none" stroke="var(--line-strong)" strokeWidth={stroke} opacity="0.4" />
+              <circle
+                cx={VC} cy={VC} r={VR}
+                fill="none"
+                stroke={past ? "var(--amber-500)" : "var(--forest-700)"}
+                strokeWidth={stroke}
+                strokeDasharray={VCIRC}
+                strokeDashoffset={VOFF}
+                strokeLinecap="round"
+                style={{ transformOrigin: "50% 50%", transform: "rotate(-90deg)", transition: running ? "stroke-dashoffset 0.25s linear" : "stroke-dashoffset 0.18s ease" }}
+              />
+            </>
+          )}
         </svg>
         <div className="ctimer-center">
           <div className="ctimer-num">{fmtTimerTime(e)}</div>
