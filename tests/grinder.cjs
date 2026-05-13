@@ -129,6 +129,61 @@ async function withGrinder(page, grinderName) {
     JSON.stringify(comandanteSlider),
   );
 
+  // === Mobile UI flow ===
+  // The "global grinder setting" lives on the Gear page. On iPhone widths
+  // the desktop .nav-links bar is display:none, so the hamburger menu is
+  // the only path to Gear. Verify that path works and that the chosen
+  // grinder propagates into the Detail dial.
+  // Start fresh: clear the seeded profile so we can simulate a user who
+  // typed their grinder from scratch via the UI.
+  await page.evaluate(() => {
+    localStorage.removeItem("crema-guest-profile");
+  });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForSelector("article.card");
+  await page.waitForTimeout(300);
+
+  const burgerVisible = await page.locator(".nav-burger").isVisible();
+  record("mobile hamburger button is visible on phone widths", burgerVisible);
+
+  await page.locator(".nav-burger").click();
+  await page.waitForTimeout(200);
+  const menuLabels = await page.locator(".nav-burger-menu .nav-burger-item").allTextContents();
+  record(
+    "hamburger menu contains Gear/Brew log/Shelf links",
+    menuLabels.some((l) => /gear/i.test(l)) &&
+      menuLabels.some((l) => /brew log/i.test(l)) &&
+      menuLabels.some((l) => /shelf/i.test(l)),
+    menuLabels.join(" | "),
+  );
+
+  await page.locator(".nav-burger-item", { hasText: /Gear/i }).click();
+  await page.waitForTimeout(400);
+  const reachedGear = (await page.locator("input[placeholder*='Comandante']").count()) > 0;
+  record("hamburger → Gear navigates to the preferences page", reachedGear);
+
+  await page.locator("input[placeholder*='Comandante']").fill("Acaia Orbit (Lab Sweet V3)");
+  await page.getByRole("button", { name: /Save preferences/i }).click();
+  await page.waitForTimeout(600);
+
+  // Hamburger back to shelf
+  await page.locator(".nav-burger").click();
+  await page.waitForTimeout(200);
+  await page.locator(".nav-burger-item", { hasText: /shelf/i }).click();
+  await page.waitForTimeout(400);
+  await page.waitForSelector("article.card");
+
+  await page.locator("article.card").first().locator(".card-name").click();
+  await page.waitForTimeout(500);
+  const finalSlider = await page.locator(".dial .slider").nth(1).evaluate((el) => ({
+    min: parseFloat(el.min), max: parseFloat(el.max), step: parseFloat(el.step),
+  }));
+  record(
+    "saving grinder via the mobile hamburger → Gear flow applies on Detail",
+    finalSlider.min === 0 && finalSlider.max === 10 && Math.abs(finalSlider.step - 0.1) < 0.001,
+    JSON.stringify(finalSlider),
+  );
+
   await browser.close();
   const passes = results.filter((r) => r.ok).length;
   const fails = results.filter((r) => !r.ok).length;

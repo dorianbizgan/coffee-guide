@@ -2746,3 +2746,97 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
   .info-row, .setup-row { min-width: 0; max-width: 100%; }
   .info-row > *, .setup-row > * { min-width: 0; }
 }
+
+/* === Mobile nav hamburger ============================================
+   Shown only at <=720px (see media query above). On desktop the nav-
+   links are visible and this stays hidden.  The menu is anchored to
+   the top-right corner, slides in below the nav. */
+.nav-burger {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  cursor: pointer;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--ink);
+}
+.nav-burger:hover { background: var(--paper-2); }
+.nav-burger:focus-visible { outline: 2px solid var(--amber-500); outline-offset: 2px; }
+.nav-burger span {
+  display: block;
+  width: 18px;
+  height: 1.6px;
+  background: currentColor;
+  border-radius: 2px;
+}
+.nav-burger-bg {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 40;
+}
+.nav-burger-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 16px;
+  min-width: 240px;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.22);
+  padding: 6px;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav-burger-h {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
+}
+.nav-burger-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+.nav-burger-email {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.nav-burger-item {
+  background: transparent;
+  border: 0;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  padding: 12px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav-burger-item:hover { background: var(--paper-2); }
+.nav-burger-item.amber { color: var(--amber-700); }
+.nav-burger-sep {
+  height: 1px;
+  background: var(--line);
+  margin: 6px 8px;
+}
+/* Visibility toggle lives at the END of the file — placed after the
+   base `.nav-burger { display: none }` rule so source-order cascade
+   gives the media-query override the win on phones. */
+@media (max-width: 720px) {
+  .nav-burger { display: flex; }
+}

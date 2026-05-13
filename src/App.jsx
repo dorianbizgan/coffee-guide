@@ -58,6 +58,7 @@ export default function App() {
   const [adding, setAdding] = useState(false);
   const [prefillSearch, setPrefillSearch] = useState("");
   const [userMenu, setUserMenu] = useState(false);
+  const [navMenu, setNavMenu] = useState(false);  // mobile hamburger menu
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
 
   // Single shared brew timer. Only ONE coffee+method runs at a time; starting
@@ -417,6 +418,38 @@ export default function App() {
             )}
           </div>
         </nav>
+
+        {/* Mobile-only hamburger. The .nav-links above are display:none on
+            phones, which used to leave the Gear / Brew log / Preferences /
+            Sign out pages unreachable on iPhone. This menu is the mobile
+            replacement. */}
+        <button
+          className="nav-burger"
+          aria-label="Open menu"
+          aria-expanded={navMenu}
+          onClick={() => setNavMenu((o) => !o)}
+        >
+          <span /><span /><span />
+        </button>
+        {navMenu && (
+          <>
+            <div className="nav-burger-bg" onClick={() => setNavMenu(false)} />
+            <div className="nav-burger-menu" role="menu">
+              <div className="nav-burger-h">
+                <div className="nav-burger-name">{user.name || "Crema"}</div>
+                <div className="nav-burger-email">{user.email || "Local device only"}</div>
+              </div>
+              <button className="nav-burger-item" onClick={() => { setNavMenu(false); setView({ name: "dashboard" }); }}>The shelf</button>
+              <button className="nav-burger-item" onClick={() => { setNavMenu(false); setView({ name: "log" }); }}>Brew log</button>
+              <button className="nav-burger-item" onClick={() => { setNavMenu(false); setView({ name: "gear" }); }}>Gear &amp; preferences</button>
+              <button className="nav-burger-item amber" onClick={() => { setNavMenu(false); setEditing(null); setAdding(true); }}>+ New brew</button>
+              <div className="nav-burger-sep" />
+              <button className="nav-burger-item" onClick={() => { setNavMenu(false); signOut(); }}>
+                {user.mode === "guest" ? "Exit guest mode" : "Sign out"}
+              </button>
+            </div>
+          </>
+        )}
       </header>
 
       {user.mode === "guest" && (
