@@ -170,6 +170,7 @@ function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite, timer, o
           coffeeId={coffee.id}
           methodId={method.id}
           targetSec={targetSec}
+          steps={method.steps}
           onStart={onTimerStart}
           onPause={onTimerPause}
           onReset={onTimerReset}

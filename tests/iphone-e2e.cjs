@@ -110,6 +110,14 @@ function record(name, ok, info = "") {
   );
 
   // === Start timer on first card ===
+  // First, snapshot the initial caption — should read "Start brewing"
+  const captionBefore = (await firstRing.locator(".ctimer-step").textContent()) || "";
+  record(
+    "ring caption before start says 'Start brewing'",
+    /start brewing/i.test(captionBefore),
+    `caption="${captionBefore}"`,
+  );
+
   await firstRing.click();
   await page.waitForTimeout(1300);
   let timerText = (await firstRing.locator(".ctimer-num").textContent()) || "";
@@ -118,6 +126,27 @@ function record(name, ok, info = "") {
     /^0:0[1-9]|^0:[1-5]\d/.test(timerText),
     `text="${timerText}"`,
   );
+
+  // Step caption: should now be the active brewing step name
+  // (e.g. "Bloom" for V60). Verify it's NOT the "Start brewing" hint.
+  const captionRunning = (await firstRing.locator(".ctimer-step").textContent()) || "";
+  record(
+    "ring caption shows the active brewing step when running",
+    captionRunning.length > 0 && !/start brewing/i.test(captionRunning),
+    `caption="${captionRunning}"`,
+  );
+
+  // Caption must fit inside the ring (no horizontal overflow). Compare
+  // the caption's box width to the ring's box width.
+  const captionFits = await page.evaluate(() => {
+    const step = document.querySelector(".ctimer-step");
+    const ring = document.querySelector(".ctimer-ring");
+    if (!step || !ring) return false;
+    const sr = step.getBoundingClientRect();
+    const rr = ring.getBoundingClientRect();
+    return sr.left >= rr.left && sr.right <= rr.right;
+  });
+  record("ring caption stays inside the ring's bounding box", captionFits);
 
   // === Open detail of the same card — timer should keep ticking ===
   // The ring stops propagation, so click on the card name instead
@@ -138,6 +167,55 @@ function record(name, ok, info = "") {
   await page.screenshot({ path: "/tmp/e2e-detail.png", fullPage: false });
   await page.screenshot({ path: "/tmp/e2e-detail-full.png", fullPage: true });
 
+  // === Dial-override persistence ===
+  // (a) Drag the temp slider, (b) navigate away, (c) come back, (d) verify
+  // the dial still shows the changed value.
+  // Identify the first slider (temperature in detail) and set a custom value.
+  // Note: React 16+ wraps inputs with _valueTracker, so naively assigning
+  // `.value` won't trigger onChange. Use the native setter via the
+  // prototype descriptor so React notices the diff.
+  const tempSlider = page.locator(".dial .slider").first();
+  if (await tempSlider.count()) {
+    await tempSlider.evaluate((el) => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+      setter.call(el, "85");
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await page.waitForTimeout(500); // wait for the 350ms debounced write
+    const persisted = await page.evaluate(() => {
+      const k = Object.keys(localStorage).find((x) => x.startsWith("cb_dial_"));
+      if (!k) return null;
+      try { return JSON.parse(localStorage.getItem(k)); } catch { return null; }
+    });
+    record(
+      "dial change writes localStorage override",
+      persisted && persisted.temp === 85,
+      `persisted=${JSON.stringify(persisted)}`,
+    );
+
+    // Go back to dashboard
+    const back1 = page.getByRole("button", { name: /Back to shelf|Back|←/i }).first();
+    if (await back1.count()) {
+      await back1.click();
+      await page.waitForTimeout(400);
+    }
+    // Re-open same coffee
+    await page.locator("article.card").first().locator(".card-name").click();
+    await page.waitForTimeout(500);
+
+    const hydratedTemp = await page.evaluate(() => {
+      const s = document.querySelector(".dial .slider");
+      return s ? parseInt(s.value, 10) : null;
+    });
+    record(
+      "dial override hydrates on re-entering detail",
+      hydratedTemp === 85,
+      `slider value=${hydratedTemp}`,
+    );
+  } else {
+    record("dial slider present in detail", false);
+  }
+
   // === Change brew method via the detail-page tabs ===
   const methodTabs = page.locator(".method-tab");
   const tabCount = await methodTabs.count();
@@ -148,6 +226,17 @@ function record(name, ok, info = "") {
   } else {
     record("can switch brew method from detail tabs", false, `only ${tabCount} tabs`);
   }
+  // After switching methods, the dial should NOT carry over the temp=85
+  // from the previous method (overrides are scoped per-method).
+  const tempAfterSwitch = await page.evaluate(() => {
+    const s = document.querySelector(".dial .slider");
+    return s ? parseInt(s.value, 10) : null;
+  });
+  record(
+    "switching method gives a fresh dial (per-method overrides)",
+    tempAfterSwitch !== 85 && tempAfterSwitch != null,
+    `slider value=${tempAfterSwitch}`,
+  );
   await audit("detail-after-method-switch");
 
   // === Back to dashboard ===

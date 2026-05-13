@@ -4,8 +4,13 @@
 //     the timer is running, so the displayed elapsed value updates.
 //   - elapsedSec(timer): pure helper, total elapsed including the current
 //     run segment.
+//   - parseStepTime("0:45 — 1:30"): turns a recipe step's time-range
+//     string into [startSec, endSec], so the timer can highlight which
+//     step is currently active.
 //   - <CircularTimer>: compact ring + numeric readout for the dashboard
-//     card. Click to start/pause; long-press resets.
+//     card. Click to start/pause; long-press resets. When a `steps`
+//     prop is supplied, the centre shows the active step's name as the
+//     clock ticks (with ellipsis if it doesn't fit).
 //   - <LinearTimer>: detail-view variant. Wider readout + horizontal
 //     progress bar + start/pause/reset trio.
 //
@@ -36,11 +41,43 @@ export function fmtTimerTime(sec) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+// "0:45 — 1:30" → [45, 90].  "0:28" → [28, 28].  Bad input → [null, null].
+export function parseStepTime(s) {
+  if (!s) return [null, null];
+  const parts = String(s).split("—").map((x) => x.trim());
+  const toSec = (str) => {
+    const bits = str.split(":").map((n) => parseInt(n, 10));
+    if (bits.some(isNaN)) return null;
+    if (bits.length === 3) return bits[0] * 3600 + bits[1] * 60 + bits[2];
+    if (bits.length === 2) return bits[0] * 60 + bits[1];
+    return bits[0];
+  };
+  const a = toSec(parts[0]);
+  const b = parts[1] ? toSec(parts[1]) : a;
+  return [a, b];
+}
+
+// Given a method's `steps` array and an elapsed-second count, return the
+// index of the brewing step that's currently active (or -1 if before/
+// after the brew window). Prep steps (s.prep === true) are excluded.
+export function activeStepIndex(steps, elapsed) {
+  if (!steps || steps.length === 0) return -1;
+  const brewing = steps.filter((s) => !s.prep);
+  const ranges = brewing.map((s) => parseStepTime(s.time));
+  return ranges.findIndex(([a, b], i) => {
+    if (a == null) return false;
+    const next = ranges[i + 1];
+    const upper = b != null && b > a ? b : next && next[0] != null ? next[0] : a + 60;
+    return elapsed >= a && elapsed < upper;
+  });
+}
+
 // Compact circular timer for the dashboard card. ~120px square. Click the
 // big ring to start/pause; the small Reset button under the ring discards
-// the run.
+// the run. When `steps` is supplied, the centre shows the active step's
+// title once the timer is running.
 export function CircularTimer({
-  timer, coffeeId, methodId, targetSec, onStart, onPause, onReset, size = 116,
+  timer, coffeeId, methodId, targetSec, steps, onStart, onPause, onReset, size = 116,
 }) {
   // Tick only when this card's timer is running (avoids 4Hz re-renders
   // across the whole grid).
@@ -54,13 +91,23 @@ export function CircularTimer({
   const past = isMine && target > 0 && e >= target;
   const running = isMine && timer?.running;
 
-  // SVG geometry: a stroked circle with stroke-dasharray driving the fill.
-  const stroke = 6;
-  const r = (size - stroke * 2) / 2;
-  const cx = size / 2;
-  const cy = size / 2;
-  const circumference = 2 * Math.PI * r;
-  const dashOffset = circumference * (1 - pct);
+  // Decide the small caption under the time:
+  //   - not running, no time yet → "Start brewing"
+  //   - running before any step  → first step's name (so it reads "Bloom"
+  //     as soon as the user taps Start, even at 0:00)
+  //   - running inside a step    → that step's name
+  //   - after the last step      → "Done"
+  //   - paused with time on it   → "Paused"
+  let caption = "Start brewing";
+  if (running || (isMine && e > 0)) {
+    const brewing = (steps || []).filter((s) => !s.prep);
+    const idx = activeStepIndex(steps || [], e);
+    if (idx >= 0) caption = brewing[idx].t;
+    else if (brewing.length && e === 0) caption = brewing[0].t;
+    else if (past) caption = "Done";
+    else if (brewing.length) caption = brewing[brewing.length - 1].t;
+    if (!running && e > 0) caption = "Paused";
+  }
 
   const stop = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
   const onMainClick = (ev) => {
@@ -72,6 +119,7 @@ export function CircularTimer({
   // Use a 100×100 viewBox so the SVG scales with the container's CSS size.
   // Sizing comes from --ctimer-size on .ctimer (so a media query can shrink
   // it on phones without us passing different `size` props).
+  const stroke = 6;
   const VBOX = 100;
   const VR = (VBOX - stroke * 2) / 2;
   const VC = VBOX / 2;
@@ -104,7 +152,10 @@ export function CircularTimer({
         </svg>
         <div className="ctimer-center">
           <div className="ctimer-num">{fmtTimerTime(e)}</div>
-          <div className="ctimer-target">{running || e > 0 ? `/ ${fmtTimerTime(target)}` : "Start brewing"}</div>
+          {/* Single-line, ellipsis-clipped step label. Width is constrained
+              by CSS so even long names like "Pre-heat water" stay inside
+              the ring on the 92px phone variant. */}
+          <div className="ctimer-step" title={caption}>{caption}</div>
         </div>
         {running && <span className="ctimer-pulse" aria-hidden="true" />}
       </button>

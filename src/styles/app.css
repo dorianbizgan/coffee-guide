@@ -2579,8 +2579,8 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
 @media (max-width: 480px) {
   .card-timer-slot { top: 52px; right: 12px; }
   .card-timer-slot .ctimer { --ctimer-size: 92px; }
-  .card-timer-slot .ctimer-num { font-size: 20px; }
-  .card-timer-slot .ctimer-target { font-size: 8px; letter-spacing: 0.14em; }
+  .card-timer-slot .ctimer-num { font-size: 18px; }
+  .card-timer-slot .ctimer-step { font-size: 8px; letter-spacing: 0.14em; margin-top: 3px; }
   .card-name { padding-right: 104px; }
 }
 
@@ -2630,22 +2630,34 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
 }
 .ctimer-num {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 24px;
   line-height: 1;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
-.ctimer-target {
+/* Step caption inside the ring. Lives in a fixed-width box so long step
+   names ("Pre-heat water", "Second pour") get ellipsis-clipped rather
+   than pushing the ring's circular silhouette out of shape. Width is set
+   relative to the ring's CSS variable so the mobile (92px) variant
+   shrinks the caption box proportionally. */
+.ctimer-step {
   font-family: var(--font-mono);
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.18em;
   color: var(--ink-mute);
-  margin-top: 4px;
+  margin-top: 5px;
+  max-width: calc(var(--ctimer-size, 116px) - 36px);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ctimer-ring.is-running .ctimer-num { color: var(--forest-700); }
+.ctimer-ring.is-running .ctimer-step { color: var(--forest-700); }
 .ctimer-ring.is-past   .ctimer-num { color: var(--amber-500); }
+.ctimer-ring.is-past   .ctimer-step { color: var(--amber-500); }
 .ctimer-ring.is-mine   .ctimer-num { /* slight up-bump when this card owns the running timer */ }
 .ctimer-pulse {
   position: absolute; inset: -3px;

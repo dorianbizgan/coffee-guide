@@ -1,27 +1,39 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon, MethodIcon } from "./Icons.jsx";
 import { BREW_METHODS, adjustRecipe, recommend } from "../lib/data.js";
-import { LinearTimer, elapsedSec, useTimerTick, fmtTimerTime } from "./Timer.jsx";
+import { LinearTimer, elapsedSec, useTimerTick, fmtTimerTime, parseStepTime } from "./Timer.jsx";
 
-function parseStepTime(s) {
-  if (!s) return [null, null];
-  const parts = s.split("—").map((x) => x.trim());
-  const toSec = (str) => {
-    const bits = str.split(":").map((n) => parseInt(n, 10));
-    if (bits.some(isNaN)) return null;
-    if (bits.length === 3) return bits[0] * 3600 + bits[1] * 60 + bits[2];
-    if (bits.length === 2) return bits[0] * 60 + bits[1];
-    return bits[0];
-  };
-  const a = toSec(parts[0]);
-  const b = parts[1] ? toSec(parts[1]) : a;
-  return [a, b];
-}
 function fmtTime(sec) {
   if (sec < 0) sec = 0;
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+// localStorage key for the user's per-coffee+method dial overrides.
+// Stores { temp, clicks, savedAt }. Hydrated whenever the user lands on
+// the detail page (or switches methods), written back automatically when
+// the user drags a slider or applies an AI suggestion.
+const dialKey = (coffeeId, methodId) => `cb_dial_${coffeeId}_${methodId}`;
+function readDialOverride(coffeeId, methodId) {
+  try {
+    const raw = localStorage.getItem(dialKey(coffeeId, methodId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed.temp !== "number" || typeof parsed.clicks !== "number") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+function writeDialOverride(coffeeId, methodId, value) {
+  try {
+    if (value == null) {
+      localStorage.removeItem(dialKey(coffeeId, methodId));
+    } else {
+      localStorage.setItem(dialKey(coffeeId, methodId), JSON.stringify({ ...value, savedAt: new Date().toISOString() }));
+    }
+  } catch {}
 }
 
 function BrewTimer({ steps: allSteps, coffeeId, methodId, timer, onStart, onPause, onReset }) {
@@ -108,9 +120,36 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
   const baseClicks = parseClicks(baseRecipe.grind);
   const baseTemp = baseRecipe.temp;
 
-  const [temp, setTemp] = useState(baseTemp);
-  const [clicks, setClicks] = useState(baseClicks);
-  useEffect(() => { setTemp(baseTemp); setClicks(baseClicks); /* eslint-disable-next-line */ }, [methodId]);
+  // Hydrate the dial from any saved override (per coffee + method). The
+  // override is bumped automatically whenever the user drags a slider or
+  // taps "Apply to dial" on an AI suggestion (see the effect below) so
+  // changes persist without requiring the user to save a brew note.
+  const hydrated = readDialOverride(coffee.id, methodId);
+  const [temp, setTemp] = useState(hydrated?.temp ?? baseTemp);
+  const [clicks, setClicks] = useState(hydrated?.clicks ?? baseClicks);
+  // Re-hydrate when the user switches methods or coffees. Skip the very
+  // first run (already covered by useState's initial value).
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) { firstRun.current = false; return; }
+    const ov = readDialOverride(coffee.id, methodId);
+    setTemp(ov?.temp ?? baseTemp);
+    setClicks(ov?.clicks ?? baseClicks);
+    /* eslint-disable-next-line */
+  }, [methodId, coffee.id]);
+  // Auto-persist dial overrides. Debounced so dragging the slider doesn't
+  // hit localStorage every pixel. Clears the override when both values
+  // return to the recipe baseline (no point storing the default).
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if (temp === baseTemp && clicks === baseClicks) {
+        writeDialOverride(coffee.id, methodId, null);
+      } else {
+        writeDialOverride(coffee.id, methodId, { temp, clicks });
+      }
+    }, 350);
+    return () => clearTimeout(id);
+  }, [temp, clicks, baseTemp, baseClicks, coffee.id, methodId]);
 
   const grindDescriptor = (n) => {
     if (n <= 12) return "fine — espresso territory";
