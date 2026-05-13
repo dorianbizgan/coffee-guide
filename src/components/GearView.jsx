@@ -13,12 +13,12 @@ const GEAR_FIELDS = [
 export function GearView({ profile, onSaveProfile, busy }) {
   const [gear, setGear] = useState(profile?.gear || {});
   const [taste, setTaste] = useState(profile?.tastePreferences || "");
-  const [aiProvider, setAiProvider] = useState(profile?.aiProvider || "anthropic");
+  const [aiProvider, setAiProvider] = useState(profile?.aiProvider || "google");
   const set = (k, v) => setGear((g) => ({ ...g, [k]: v }));
   const dirty =
     JSON.stringify(gear) !== JSON.stringify(profile?.gear || {}) ||
     taste !== (profile?.tastePreferences || "") ||
-    aiProvider !== (profile?.aiProvider || "anthropic");
+    aiProvider !== (profile?.aiProvider || "google");
 
   const save = async () => {
     await onSaveProfile({
@@ -80,9 +80,9 @@ export function GearView({ profile, onSaveProfile, busy }) {
         </p>
         <div className="choice-grid" style={{ marginTop: 10 }}>
           {[
+            { k: "google", l: "Google Gemini  ·  free tier" },
             { k: "anthropic", l: "Anthropic Claude" },
             { k: "openai", l: "OpenAI GPT-4o" },
-            { k: "google", l: "Google Gemini" },
           ].map((p) => (
             <div key={p.k} className={`choice ${aiProvider === p.k ? "active" : ""}`} onClick={() => setAiProvider(p.k)}>
               {p.l}

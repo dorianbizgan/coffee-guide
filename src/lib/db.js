@@ -34,7 +34,7 @@ function readGuestProfile() {
     const raw = localStorage.getItem(GUEST_PROFILE_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
-  return { gear: {}, tastePreferences: "", aiProvider: "anthropic" };
+  return { gear: {}, tastePreferences: "", aiProvider: "google" };
 }
 function writeGuestProfile(p) {
   try { localStorage.setItem(GUEST_PROFILE_KEY, JSON.stringify(p)); } catch {}
@@ -219,11 +219,11 @@ export async function loadProfile(user) {
   if (error && error.code !== "PGRST116") {
     console.warn("[db] loadProfile:", error.message);
   }
-  if (!data) return { gear: {}, tastePreferences: "", aiProvider: "anthropic" };
+  if (!data) return { gear: {}, tastePreferences: "", aiProvider: "google" };
   return {
     gear: data.gear || {},
     tastePreferences: data.taste_preferences || "",
-    aiProvider: data.ai_provider || "anthropic",
+    aiProvider: data.ai_provider || "google",
     aiModel: data.ai_model || null,
     machines: data.machines || [],
     customMethods: data.custom_methods || [],
@@ -239,7 +239,7 @@ export async function saveProfile(user, profile) {
     user_id: user.id,
     gear: profile.gear || {},
     taste_preferences: profile.tastePreferences || "",
-    ai_provider: profile.aiProvider || "anthropic",
+    ai_provider: profile.aiProvider || "google",
     ai_model: profile.aiModel || null,
     machines: profile.machines || [],
     custom_methods: profile.customMethods || [],

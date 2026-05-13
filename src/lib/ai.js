@@ -1,6 +1,14 @@
 // Thin client over /api/ai. Always sends the current Supabase access token
 // so the server-side proxy can authorize the call.
+//
+// Provider selection: the user picks their AI provider in Gear →
+// Preferences. We default to Google Gemini because it's the only one with
+// a usable free tier — the others require the deployer to have paid keys.
+// The choice is threaded through every aiPost so the server doesn't have
+// to guess.
 import { supabase } from "./supabase.js";
+
+const DEFAULT_PROVIDER = "google";
 
 async function bearerToken() {
   const { data } = await supabase.auth.getSession();
@@ -9,17 +17,30 @@ async function bearerToken() {
 
 async function aiPost(payload) {
   const token = await bearerToken();
+  // If the caller didn't pin a provider, fall back to the saved profile
+  // preference; if that's missing too, use the default. We avoid making
+  // every callsite read profile, so we cache it on a module-level slot
+  // that `setAiProvider` updates whenever the profile loads.
+  const body = { provider: payload.provider || _provider || DEFAULT_PROVIDER, ...payload };
   const res = await fetch("/api/ai", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error || `AI call failed (${res.status})`);
   return json;
+}
+
+// Module-level "current user preference". Set from App when the profile
+// loads / changes. This lets every aiPost honour the user's pick without
+// having to plumb the profile through every call signature.
+let _provider = null;
+export function setAiProvider(p) {
+  _provider = p || null;
 }
 
 export async function aiStatus() {

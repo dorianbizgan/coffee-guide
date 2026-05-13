@@ -197,10 +197,34 @@ module.exports = async function handler(req, res) {
   try { body = await readBody(req); }
   catch { return jsonResponse(res, 400, { error: "Bad JSON body" }); }
 
-  const provider =
-    body.provider === "openai" ? "openai" :
-    body.provider === "google" ? "google" :
-    "anthropic";
+  // Resolve which provider to call. Order of preference:
+  //   1. Whatever the client asked for, IF its API key is configured.
+  //   2. Otherwise, the first provider that IS configured, in this
+  //      priority order: google (free tier) → anthropic → openai. This
+  //      means a deploy with only GEMINI_API_KEY set still serves
+  //      requests that arrived asking for Claude — and the response
+  //      includes the actual provider it used.
+  const requested =
+    body.provider === "openai"    ? "openai" :
+    body.provider === "anthropic" ? "anthropic" :
+    body.provider === "google"    ? "google" :
+    "google";
+  const available = {
+    google:    !!process.env.GEMINI_API_KEY,
+    anthropic: !!process.env.ANTHROPIC_API_KEY,
+    openai:    !!process.env.OPENAI_API_KEY,
+  };
+  let provider = requested;
+  if (!available[provider]) {
+    // Fallback chain — pick the first configured provider.
+    provider = (["google", "anthropic", "openai"].find((k) => available[k])) || requested;
+  }
+  if (!available[provider]) {
+    // Nothing is configured. Tell the client which envs need to be set.
+    return jsonResponse(res, 503, {
+      error: "No AI provider configured on the server. Set GEMINI_API_KEY (free, recommended), ANTHROPIC_API_KEY, or OPENAI_API_KEY in your deployment environment.",
+    });
+  }
   const system = String(body.system || "");
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const userPrompt = messages[0]?.content || body.userPrompt || "";

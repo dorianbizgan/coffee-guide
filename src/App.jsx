@@ -4,7 +4,7 @@ import {
   loadCoffees, saveCoffee, deleteCoffee, setFavorite, setMethod,
   appendBrewLog, loadProfile, saveProfile, loadAllBrewLogs,
 } from "./lib/db.js";
-import { suggestDialTweak, lookupBeanOnline } from "./lib/ai.js";
+import { suggestDialTweak, lookupBeanOnline, setAiProvider } from "./lib/ai.js";
 import { Icon, BrandMark } from "./components/Icons.jsx";
 import { EffectsHost } from "./components/Effects.jsx";
 import { Login } from "./components/Login.jsx";
@@ -51,7 +51,7 @@ export default function App() {
   const [coffees, setCoffees] = useState([]);
   const [coffeesLoaded, setCoffeesLoaded] = useState(false);
   const [logs, setLogs] = useState([]);
-  const [profile, setProfileState] = useState({ gear: {}, tastePreferences: "", aiProvider: "anthropic" });
+  const [profile, setProfileState] = useState({ gear: {}, tastePreferences: "", aiProvider: "google" });
   const [profileBusy, setProfileBusy] = useState(false);
   const [editing, setEditing] = useState(null);
   const [adding, setAdding] = useState(false);
@@ -167,6 +167,7 @@ export default function App() {
       if (cancelled) return;
       setCoffees(shelf);
       setProfileState(prof);
+      setAiProvider(prof.aiProvider);  // keep the AI client in sync with user's pick
       setLogs(allLogs);
       setCoffeesLoaded(true);
     })();
@@ -292,6 +293,7 @@ export default function App() {
     try {
       await saveProfile(user, next);
       setProfileState(next);
+      setAiProvider(next.aiProvider);  // takes effect on the very next AI call
     } catch (e) {
       alert("Couldn't save preferences: " + (e.message || e));
     } finally {
