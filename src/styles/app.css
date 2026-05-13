@@ -2424,6 +2424,11 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
 }
 .bn-label .bn-hint { text-transform: none; letter-spacing: 0; font-style: italic; opacity: 0.8; }
 .tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Brew-note "Overall" tag chips ("Best yet", "Balanced", "Sour"…) toggle
+   the `.on` class when the user picks them. Without an explicit rule
+   the click did nothing visible — the user reasonably read that as
+   "the buttons don't work". */
+.chip.on { background: var(--forest-700); color: var(--paper); border-color: var(--forest-700); }
 .chip.flavor.on { background: var(--amber-500); color: var(--paper); border-color: var(--amber-500); }
 .brewnote-text {
   width: 100%; box-sizing: border-box;

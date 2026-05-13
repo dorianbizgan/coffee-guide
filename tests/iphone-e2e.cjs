@@ -167,6 +167,36 @@ function record(name, ok, info = "") {
   await page.screenshot({ path: "/tmp/e2e-detail.png", fullPage: false });
   await page.screenshot({ path: "/tmp/e2e-detail-full.png", fullPage: true });
 
+  // === Brewnote chip toggle (visual feedback) ===
+  // The "Overall" tag chips and the "Flavors you tasted" chips both
+  // toggle a class on click. Without the .chip.on CSS rule the click
+  // had no visual effect — verify the background actually changes.
+  await page.evaluate(() => document.querySelector(".brewnote")?.scrollIntoView({ behavior: "instant", block: "start" }));
+  await page.waitForTimeout(150);
+  const overallChip = page.locator(".bn-section").first().locator(".chip").nth(2);
+  const overallBefore = await overallChip.evaluate((el) => getComputedStyle(el).backgroundColor);
+  await overallChip.click();
+  await page.waitForTimeout(150);
+  const overallAfter = await overallChip.evaluate((el) => getComputedStyle(el).backgroundColor);
+  record(
+    "Overall tag chip's background visibly changes on click",
+    overallBefore !== overallAfter,
+    `${overallBefore} → ${overallAfter}`,
+  );
+
+  const flavorChip = page.locator(".chip.flavor").first();
+  if (await flavorChip.count()) {
+    const fBefore = await flavorChip.evaluate((el) => getComputedStyle(el).backgroundColor);
+    await flavorChip.click();
+    await page.waitForTimeout(150);
+    const fAfter = await flavorChip.evaluate((el) => getComputedStyle(el).backgroundColor);
+    record(
+      "Flavor chip's background visibly changes on click",
+      fBefore !== fAfter,
+      `${fBefore} → ${fAfter}`,
+    );
+  }
+
   // === Dial-override persistence ===
   // (a) Drag the temp slider, (b) navigate away, (c) come back, (d) verify
   // the dial still shows the changed value.

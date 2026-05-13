@@ -156,9 +156,27 @@ Return ONLY valid JSON with this exact shape, no prose, no markdown fences:
     jsonMode: true,
     max_tokens: 600,
   });
+  // Defensive parse: AI replies occasionally arrive truncated or wrapped
+  // in prose despite the prompt asking for JSON only. Surface a friendly
+  // error to the UI in that case rather than letting a raw "Unexpected
+  // token" propagate up to the user.
   const cleaned = (json.text || "").replace(/```json|```/g, "").trim();
   const match = cleaned.match(/\{[\s\S]*\}/);
-  return JSON.parse(match ? match[0] : cleaned);
+  if (!match) {
+    return { error: "The AI didn't return a usable suggestion. Try again in a moment." };
+  }
+  try {
+    const parsed = JSON.parse(match[0]);
+    if (
+      typeof parsed.tempC !== "number" ||
+      typeof parsed.clicks !== "number"
+    ) {
+      return { error: "The AI's reply was missing temp/clicks. Try again." };
+    }
+    return parsed;
+  } catch {
+    return { error: "Couldn't parse the AI's reply. Try again in a moment." };
+  }
 }
 
 // Lookup an unknown bean online. Returns a partial bean profile we can prefill
