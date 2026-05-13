@@ -49,11 +49,74 @@ export async function aiStatus() {
   return res.json().catch(() => ({ anthropic: false, openai: false, google: false }));
 }
 
+// Look up the click/setting range for a coffee grinder the app doesn't
+// know about. Returns { name, min, max, step, fmt } or null. Called once
+// per unknown grinder; the App caches the result on the user's profile so
+// repeat visits don't re-burn tokens.
+export async function lookupGrinderScale(grinderName) {
+  if (!grinderName || !grinderName.trim()) return null;
+  const userPrompt = `What is the burr-adjustment scale of the coffee grinder "${grinderName}"?
+Return ONLY valid JSON with this exact shape — no prose, no markdown fences:
+{
+  "name": "<canonical product name>",
+  "min": <number, value at finest>,
+  "max": <number, value at coarsest>,
+  "step": <number, smallest increment: 1 for click grinders, 0.1 for stepless dials, etc.>,
+  "fmt": "<integer | decimal-1 | decimal-2>"
+}
+Examples:
+- Comandante C40 → {"name":"Comandante C40","min":6,"max":36,"step":1,"fmt":"integer"}
+- Acaia Orbit with Lab Sweet V3 burrs → {"name":"Acaia Orbit (Lab Sweet V3)","min":0,"max":10,"step":0.1,"fmt":"decimal-1"}
+- 1Zpresso K-Max → {"name":"1Zpresso K-Max","min":0,"max":90,"step":1,"fmt":"integer"}
+If the grinder is genuinely unknown or doesn't exist, return {"unknown": true}.`;
+  try {
+    const json = await aiPost({
+      system: "You are a coffee grinder catalog. Return only valid JSON.",
+      messages: [{ role: "user", content: userPrompt }],
+      jsonMode: true,
+      max_tokens: 200,
+    });
+    const cleaned = (json.text || "").replace(/```json|```/g, "").trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const parsed = JSON.parse(match[0]);
+    if (parsed.unknown) return null;
+    if (
+      typeof parsed.min !== "number" ||
+      typeof parsed.max !== "number" ||
+      typeof parsed.step !== "number" ||
+      parsed.max <= parsed.min
+    ) return null;
+    const fmt = ["integer", "decimal-1", "decimal-2"].includes(parsed.fmt) ? parsed.fmt : "integer";
+    return {
+      name: parsed.name || grinderName,
+      min: parsed.min,
+      max: parsed.max,
+      step: parsed.step,
+      fmt,
+      source: "ai",
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Dial-tweak suggestion based on what the user just tasted.
 // Returns { tempC, clicks, advice } or { error }.
-export async function suggestDialTweak({ coffee, method, recipe, temp, clicks, tags, tasted, note, preferences }) {
+// `grinder` is the user's resolved grinder scale ({ name, min, max, step,
+// fmt }). The AI is told that scale explicitly and asked to reply with
+// clicks in the user's units — so an Acaia Orbit user gets "6.4" back,
+// not "22 on a Comandante" that the UI then has to translate.
+export async function suggestDialTweak({ coffee, method, recipe, temp, clicks, tags, tasted, note, preferences, grinder }) {
+  const grinderName = grinder?.name || "Comandante C40";
+  const gMin = grinder?.min ?? 6;
+  const gMax = grinder?.max ?? 36;
+  const gStep = grinder?.step ?? 1;
+  const stepHint =
+    gStep < 1 ? `in increments of ${gStep} (decimals allowed)` : `as whole numbers`;
   const userPrompt = `You are a coffee brewing coach. The user is brewing ${coffee.name} from ${coffee.roaster} (${coffee.origin}, ${coffee.process}, ${coffee.roast} roast) using ${method.name}.
-Current dial: ${temp}°C water, ${clicks} clicks on a Comandante C40 (or similar 30-click hand grinder), ${recipe.dose}g dose, 1:${recipe.ratio} ratio, ${recipe.time} total.
+Grinder: ${grinderName}. Its adjustment scale runs from ${gMin} (finest) to ${gMax} (coarsest), ${stepHint}.
+Current dial: ${temp}°C water, ${clicks} on the grinder, ${recipe.dose}g dose, 1:${recipe.ratio} ratio, ${recipe.time} total.
 Bean's expected notes: ${(coffee.notes || []).join(", ")}.
 What the user tasted this brew: ${tasted?.length ? tasted.join(", ") : "—"}.
 Issues/feedback: ${tags?.length ? tags.join(", ") : "—"}.
@@ -61,7 +124,7 @@ Their freeform note: ${note || "—"}
 ${preferences ? `\nThe user's overall taste preferences: ${preferences}` : ""}
 
 Return ONLY valid JSON with this exact shape, no prose, no markdown fences:
-{"tempC": <number 80-99>, "clicks": <number 6-36>, "advice": "<one or two short sentences explaining the change and what to look for next brew>"}`;
+{"tempC": <number 80-99>, "clicks": <number between ${gMin} and ${gMax} on the ${grinderName} scale>, "advice": "<one or two short sentences explaining the change and what to look for next brew. Reference the user's grinder by name and use its actual scale numbers.>"}`;
 
   const json = await aiPost({
     system: "You are a precise coffee brewing coach. Always reply with valid JSON only when asked.",

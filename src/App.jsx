@@ -4,7 +4,8 @@ import {
   loadCoffees, saveCoffee, deleteCoffee, setFavorite, setMethod,
   appendBrewLog, loadProfile, saveProfile, loadAllBrewLogs,
 } from "./lib/db.js";
-import { suggestDialTweak, lookupBeanOnline, setAiProvider } from "./lib/ai.js";
+import { suggestDialTweak, lookupBeanOnline, setAiProvider, lookupGrinderScale } from "./lib/ai.js";
+import { findKnownGrinder } from "./lib/grinders.js";
 import { Icon, BrandMark } from "./components/Icons.jsx";
 import { EffectsHost } from "./components/Effects.jsx";
 import { Login } from "./components/Login.jsx";
@@ -173,6 +174,40 @@ export default function App() {
     })();
     return () => { cancelled = true; };
   }, [user]);
+
+  // When the user names a grinder that's not in our preset list AND we
+  // don't have an AI-looked-up scale cached for that exact name yet, ask
+  // Gemini what its scale is and stash the result on the profile. Runs
+  // once per fresh grinder string; subsequent loads short-circuit because
+  // the cache matches.
+  useEffect(() => {
+    if (!user) return;
+    const name = (profile?.gear?.grinder || "").trim();
+    if (!name) return;
+    // Already in the curated dataset → nothing to look up.
+    if (findKnownGrinder(name)) return;
+    // Already cached for this exact name → nothing to look up.
+    const cached = profile?.gear?.grinderScale;
+    if (
+      cached &&
+      cached.name &&
+      cached.name.toLowerCase().trim() === name.toLowerCase()
+    ) return;
+    let cancelled = false;
+    (async () => {
+      const scale = await lookupGrinderScale(name);
+      if (cancelled || !scale) return;
+      const nextProfile = {
+        ...profile,
+        gear: { ...(profile.gear || {}), grinderScale: scale },
+      };
+      setProfileState(nextProfile);
+      try { await saveProfile(user, nextProfile); } catch (e) { console.warn("saveProfile (grinderScale)", e.message); }
+    })();
+    return () => { cancelled = true; };
+    // We only want this to re-run when the grinder name itself changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, profile?.gear?.grinder]);
 
   const signIn = async ({ mode, name, email, password }) => {
     setAuthBusy(true); setAuthError(null);
@@ -408,6 +443,7 @@ export default function App() {
           onToggleFavorite={onToggleFavorite}
           onSearchOnline={onSearchOnline}
           user={user}
+          gear={profile.gear}
           timer={timer}
           onTimerStart={startTimer}
           onTimerPause={pauseTimer}

@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:e2e": "node tests/iphone-e2e.cjs",
-    "test:overflow": "node tests/iphone-audit.cjs"
+    "test:overflow": "node tests/iphone-audit.cjs",
+    "test:grinder": "node tests/grinder.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

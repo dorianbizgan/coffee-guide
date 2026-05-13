@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Icon, MethodIcon } from "./Icons.jsx";
 import { BREW_METHODS, adjustRecipe } from "../lib/data.js";
 import { CircularTimer } from "./Timer.jsx";
+import { resolveGrinder, convertClicks, formatClicks } from "../lib/grinders.js";
 
 // Convert a "3:00" / "0:28" / "16:00:00" recipe time into seconds for the
 // timer's target. Lets the ring sweep around the right amount per method.
@@ -14,7 +15,10 @@ function recipeTimeToSeconds(s) {
   return 180;
 }
 
-export function Dashboard({ coffees, onOpen, onAdd, onChangeMethod, onToggleFavorite, onSearchOnline, user, timer, onTimerStart, onTimerPause, onTimerReset }) {
+export function Dashboard({ coffees, onOpen, onAdd, onChangeMethod, onToggleFavorite, onSearchOnline, user, gear, timer, onTimerStart, onTimerPause, onTimerReset }) {
+  // Resolve once per render. Cards inherit it via a closure rather than
+  // each running its own resolution.
+  const grinderScale = resolveGrinder(gear?.grinder, gear?.grinderScale);
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
 
@@ -119,6 +123,7 @@ export function Dashboard({ coffees, onOpen, onAdd, onChangeMethod, onToggleFavo
             onOpen={() => onOpen(c.id)}
             onChangeMethod={(mid) => onChangeMethod(c.id, mid)}
             onToggleFavorite={() => onToggleFavorite(c.id)}
+            grinderScale={grinderScale}
             timer={timer}
             onTimerStart={onTimerStart}
             onTimerPause={onTimerPause}
@@ -148,13 +153,15 @@ export function Dashboard({ coffees, onOpen, onAdd, onChangeMethod, onToggleFavo
   );
 }
 
-function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite, timer, onTimerStart, onTimerPause, onTimerReset }) {
+function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite, grinderScale, timer, onTimerStart, onTimerPause, onTimerReset }) {
   const [openMenu, setOpenMenu] = useState(false);
   const method = BREW_METHODS.find((m) => m.id === coffee.method) || BREW_METHODS[0];
   const recipe = adjustRecipe(method, coffee);
   const stop = (e) => e.stopPropagation();
   const pick = (e, id) => { e.stopPropagation(); onChangeMethod(id); setOpenMenu(false); };
   const targetSec = recipeTimeToSeconds(recipe.time);
+  // Translate recipe's Comandante-reference clicks to the user's grinder.
+  const displayClicks = grinderScale ? convertClicks(recipe.clicks, grinderScale) : recipe.clicks;
 
   return (
     <article className="card" style={{ "--accent": coffee.accent, alignItems: "stretch", borderRadius: "18px" }} onClick={onOpen}>
@@ -191,8 +198,12 @@ function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite, timer, o
       <div className="card-divider" />
       <div className="card-grind">
         <div className="card-grind-main">
-          <div className="l">Grind · Comandante C40</div>
-          <div className="v">{recipe.clicks}<span className="u"> clicks</span> <span className="grind-desc">· {recipe.grind}</span></div>
+          <div className="l">Grind · {grinderScale?.name || "Comandante C40"}</div>
+          <div className="v">
+            {formatClicks(displayClicks, grinderScale)}
+            {grinderScale?.fmt === "decimal-1" ? null : <span className="u"> clicks</span>}
+            <span className="grind-desc"> · {recipe.grind}</span>
+          </div>
         </div>
       </div>
       <div className="card-cheat">
