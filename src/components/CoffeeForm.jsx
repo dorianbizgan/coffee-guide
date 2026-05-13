@@ -19,7 +19,7 @@ function notesAsString(value) {
   return value || "";
 }
 
-export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add", prefillSearch = "" }) {
+export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add", prefillSearch = "", defaultGrinder = "" }) {
   const [step, setStep] = useState(0);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState(null);
@@ -34,7 +34,11 @@ export function CoffeeForm({ onClose, onSubmit, onAiLookup, initial, mode = "add
     variety: initial?.variety || "",
     bagSize: initial?.bagSize || "250g",
     roastDate: initial?.roastDate || new Date().toISOString().slice(0, 10),
-    grinder: initial?.grinder || "Comandante C40",
+    // Default to the user's global grinder if set — falling back to the
+    // recipe reference (Comandante C40) only when no global is configured
+    // yet. This keeps the add-coffee form consistent with what the user
+    // sees on Detail's dial.
+    grinder: initial?.grinder || defaultGrinder || "Comandante C40",
     brewer: initial?.method || "v60",
     _search: prefillSearch || "",
   }));

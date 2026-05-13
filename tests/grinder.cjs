@@ -184,6 +184,136 @@ async function withGrinder(page, grinderName) {
     JSON.stringify(finalSlider),
   );
 
+  // === Anchor-based conversion accuracy ===
+  // V60's recipe stores 22 (Comandante reference). On Acaia the V60
+  // anchor is 6.5, so the dial should land at 6.5 (NOT the linear
+  // 5.3 it used to land at).
+  await page.evaluate(() => {
+    localStorage.removeItem("crema-guest-profile");
+    const p = { gear: { grinder: "Acaia Orbit (Lab Sweet V3)" }, aiProvider: "google", tastePreferences: "" };
+    localStorage.setItem("crema-guest-profile", JSON.stringify(p));
+    // Clear any leftover dial overrides
+    Object.keys(localStorage).filter((k) => k.startsWith("cb_dial_")).forEach((k) => localStorage.removeItem(k));
+  });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForSelector("article.card");
+  await page.waitForTimeout(300);
+  // Pick a coffee whose default method is V60 AND whose roast doesn't
+  // trigger adjustRecipe's click shifts. Sample data:
+  //   c0 Kayon Mountain    light       V60   (-2 clicks)
+  //   c1 Finca La Esperanza medium-light V60  (no shift)  ← use this
+  //   c2 Camp Blend Nº 4   medium-dark Aeropress
+  //   c3 Hambela Hararsu   light       V60   (-2 clicks)
+  await page.locator("article.card").nth(1).locator(".card-name").click();
+  await page.waitForTimeout(400);
+  const baseAcaiaV60 = await page.locator(".dial .slider").nth(1).evaluate((el) => parseFloat(el.value));
+  record(
+    "anchor-based: V60 on Acaia lands at the V60 anchor (6.5), not linear-mapped 5.3",
+    Math.abs(baseAcaiaV60 - 6.5) < 0.01,
+    `value=${baseAcaiaV60} (was 5.3 under the old linear mapping)`,
+  );
+
+  // Also assert: Camp Blend's AeroPress recipe lands at the AeroPress
+  // anchor (5.5 on Acaia), proving the conversion uses the right brew-
+  // method bracket and not the V60 one.
+  // Back out → open Camp Blend.
+  await page.locator("button.back-btn, .back-btn").first().click();
+  await page.waitForTimeout(400);
+  await page.locator("article.card").nth(2).locator(".card-name").click();
+  await page.waitForTimeout(400);
+  const baseAcaiaAero = await page.locator(".dial .slider").nth(1).evaluate((el) => parseFloat(el.value));
+  record(
+    "anchor-based: AeroPress recipe on Acaia lands at the AeroPress anchor (5.5)",
+    Math.abs(baseAcaiaAero - 5.5) < 0.05,
+    `value=${baseAcaiaAero}`,
+  );
+
+  // Switch to Espresso method via tabs on the currently-open Camp Blend
+  // → should land at Acaia's espresso anchor (2.5).
+  const tabs = page.locator(".method-tab");
+  const tabCount = await tabs.count();
+  let espressoTab = null;
+  for (let i = 0; i < tabCount; i++) {
+    const t = await tabs.nth(i).textContent();
+    if (/Espresso/i.test(t || "")) { espressoTab = tabs.nth(i); break; }
+  }
+  if (espressoTab) {
+    await espressoTab.click();
+    await page.waitForTimeout(400);
+    const acaiaEsp = await page.locator(".dial .slider").nth(1).evaluate((el) => parseFloat(el.value));
+    record(
+      "anchor-based: Espresso on Acaia lands near the espresso anchor (~2.5)",
+      Math.abs(acaiaEsp - 2.5) < 0.05,
+      `value=${acaiaEsp}`,
+    );
+  }
+
+  // === Migration prompt + flow ===
+  // Set a dial override on the currently-open coffee + method, then go
+  // to Gear and swap to Comandante. The confirm modal should appear with
+  // both options; choose "Update Scale for All Recipes" and verify the
+  // override now reflects the new scale.
+  await page.locator(".dial .slider").nth(1).evaluate((el) => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+    setter.call(el, "5");
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForTimeout(500);
+  const overrideOnAcaia = await page.evaluate(() => {
+    const k = Object.keys(localStorage).find((x) => x.startsWith("cb_dial_"));
+    return k ? JSON.parse(localStorage.getItem(k)) : null;
+  });
+  record(
+    "override saved on Acaia stamps the grinder name",
+    overrideOnAcaia?.clicks === 5 && overrideOnAcaia?.grinder === "Acaia Orbit (Lab Sweet V3)",
+    JSON.stringify(overrideOnAcaia),
+  );
+
+  // Open Gear via hamburger (mobile path)
+  await page.locator(".nav-burger").click();
+  await page.waitForTimeout(200);
+  await page.locator(".nav-burger-item", { hasText: /Gear/i }).click();
+  await page.waitForTimeout(400);
+
+  // Change grinder back to Comandante + Save
+  const grinderField = page.locator("input[placeholder*='Comandante']").first();
+  await grinderField.fill("Comandante C40");
+  await page.getByRole("button", { name: /Save preferences/i }).click();
+  await page.waitForTimeout(400);
+
+  // Confirm modal should appear
+  const modalVisible = await page.locator(".grinder-swap-modal").isVisible();
+  record("grinder change prompts the confirm modal", modalVisible);
+
+  const hasUpdateBtn = (await page
+    .locator(".grinder-swap-modal button", { hasText: /Update Scale for All Recipes/i })
+    .count()) > 0;
+  const hasKeepBtn = (await page
+    .locator(".grinder-swap-modal button", { hasText: /Keep saved recipes/i })
+    .count()) > 0;
+  record(
+    "modal offers both 'Update Scale' and 'Keep saved recipes' options",
+    hasUpdateBtn && hasKeepBtn,
+  );
+
+  // Click "Update Scale for All Recipes"
+  await page.locator(".grinder-swap-modal button", { hasText: /Update Scale for All Recipes/i }).click();
+  await page.waitForTimeout(600);
+
+  // Verify the override was migrated. 5 on Acaia is between espresso (2.5)
+  // and v60 (6.5); position is (5-2.5)/(6.5-2.5) = 0.625. On Comandante
+  // between espresso (8) and v60 (22): 8 + 0.625 * 14 = 16.75 → snaps to 17.
+  // (V60-method override → uses V60 anchor; pct in espresso↔v60 bracket).
+  const migrated = await page.evaluate(() => {
+    const k = Object.keys(localStorage).find((x) => x.startsWith("cb_dial_"));
+    return k ? JSON.parse(localStorage.getItem(k)) : null;
+  });
+  record(
+    "after Update Scale: override clicks translated through anchors",
+    migrated?.grinder === "Comandante C40" && migrated?.clicks >= 14 && migrated?.clicks <= 20,
+    JSON.stringify(migrated),
+  );
+
   await browser.close();
   const passes = results.filter((r) => r.ok).length;
   const fails = results.filter((r) => !r.ok).length;

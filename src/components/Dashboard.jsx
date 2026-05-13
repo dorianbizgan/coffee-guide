@@ -160,8 +160,9 @@ function CoffeeCard({ coffee, onOpen, onChangeMethod, onToggleFavorite, grinderS
   const stop = (e) => e.stopPropagation();
   const pick = (e, id) => { e.stopPropagation(); onChangeMethod(id); setOpenMenu(false); };
   const targetSec = recipeTimeToSeconds(recipe.time);
-  // Translate recipe's Comandante-reference clicks to the user's grinder.
-  const displayClicks = grinderScale ? convertClicks(recipe.clicks, grinderScale) : recipe.clicks;
+  // Translate recipe's Comandante-reference clicks to the user's grinder
+  // using the brew method's anchor for accuracy.
+  const displayClicks = grinderScale ? convertClicks(recipe.clicks, grinderScale, method.id) : recipe.clicks;
 
   return (
     <article className="card" style={{ "--accent": coffee.accent, alignItems: "stretch", borderRadius: "18px" }} onClick={onOpen}>

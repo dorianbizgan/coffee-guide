@@ -5,7 +5,34 @@ import {
   appendBrewLog, loadProfile, saveProfile, loadAllBrewLogs,
 } from "./lib/db.js";
 import { suggestDialTweak, lookupBeanOnline, setAiProvider, lookupGrinderScale } from "./lib/ai.js";
-import { findKnownGrinder } from "./lib/grinders.js";
+import { findKnownGrinder, resolveGrinder, convertClicksBetween } from "./lib/grinders.js";
+
+// Walk every `cb_dial_${coffeeId}_${methodId}` override and translate
+// its clicks from `fromScale` to `toScale`. We honour the methodId baked
+// into the key so each override gets converted through the right brew-
+// method anchor bracket. Overrides that already stamp `grinder` matching
+// `toScale.name` are left alone (already migrated).
+function migrateAllDialOverrides(fromScale, toScale) {
+  if (!fromScale || !toScale || fromScale.name === toScale.name) return 0;
+  let migrated = 0;
+  try {
+    const keys = Object.keys(localStorage).filter((k) => k.startsWith("cb_dial_"));
+    for (const k of keys) {
+      let entry;
+      try { entry = JSON.parse(localStorage.getItem(k) || "{}"); } catch { continue; }
+      if (!entry || typeof entry.clicks !== "number") continue;
+      if (entry.grinder && entry.grinder === toScale.name) continue;  // already migrated
+      // Key shape: cb_dial_<coffeeId>_<methodId>. Method id is everything
+      // after the LAST underscore.
+      const parts = k.split("_");
+      const methodId = parts[parts.length - 1] || null;
+      const newClicks = convertClicksBetween(entry.clicks, fromScale, toScale, methodId);
+      const next = { ...entry, clicks: newClicks, grinder: toScale.name };
+      try { localStorage.setItem(k, JSON.stringify(next)); migrated++; } catch {}
+    }
+  } catch {}
+  return migrated;
+}
 import { Icon, BrandMark } from "./components/Icons.jsx";
 import { EffectsHost } from "./components/Effects.jsx";
 import { Login } from "./components/Login.jsx";
@@ -324,9 +351,18 @@ export default function App() {
     }
   }, [user]);
 
-  const onSaveProfile = useCallback(async (next) => {
+  // `migrateOverrides`: when true, translate every saved per-coffee dial
+  // override from the previous grinder's scale to the new one before
+  // saving. GearView decides this via a confirm prompt shown only when
+  // the grinder name actually changed.
+  const onSaveProfile = useCallback(async (next, { migrateOverrides = false } = {}) => {
     setProfileBusy(true);
     try {
+      if (migrateOverrides) {
+        const fromScale = resolveGrinder(profile?.gear?.grinder, profile?.gear?.grinderScale);
+        const toScale = resolveGrinder(next?.gear?.grinder, next?.gear?.grinderScale);
+        migrateAllDialOverrides(fromScale, toScale);
+      }
       await saveProfile(user, next);
       setProfileState(next);
       setAiProvider(next.aiProvider);  // takes effect on the very next AI call
@@ -335,7 +371,7 @@ export default function App() {
     } finally {
       setProfileBusy(false);
     }
-  }, [user]);
+  }, [user, profile]);
 
   const requestAi = useCallback(async (ctx) => {
     return suggestDialTweak({ ...ctx, preferences: profile.tastePreferences || "" });
@@ -523,6 +559,7 @@ export default function App() {
           onSubmit={(c) => { setPrefillSearch(""); return onAdd(c); }}
           onAiLookup={onAiLookupForForm}
           prefillSearch={prefillSearch}
+          defaultGrinder={profile?.gear?.grinder || ""}
         />
       )}
       {editing && (
@@ -532,6 +569,7 @@ export default function App() {
           onClose={() => setEditing(null)}
           onSubmit={onEditSave}
           onAiLookup={onAiLookupForForm}
+          defaultGrinder={profile?.gear?.grinder || ""}
         />
       )}
 

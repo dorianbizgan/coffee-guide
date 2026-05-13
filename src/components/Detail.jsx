@@ -32,7 +32,14 @@ function writeDialOverride(coffeeId, methodId, value) {
     if (value == null) {
       localStorage.removeItem(dialKey(coffeeId, methodId));
     } else {
-      localStorage.setItem(dialKey(coffeeId, methodId), JSON.stringify({ ...value, savedAt: new Date().toISOString() }));
+      // We stamp the grinder name onto every override so a future scale
+      // migration knows EXACTLY which scale these clicks belong to. Older
+      // overrides without `grinder` are assumed to be in the current
+      // active grinder's units (best effort).
+      localStorage.setItem(
+        dialKey(coffeeId, methodId),
+        JSON.stringify({ ...value, savedAt: new Date().toISOString() }),
+      );
     }
   } catch {}
 }
@@ -127,7 +134,10 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
     return m ? parseFloat(m[1]) : 22;
   };
   const refBaseClicks = typeof baseRecipe.clicks === "number" ? baseRecipe.clicks : parseClicks(baseRecipe.grind);
-  const baseClicks = convertClicks(refBaseClicks, grinderScale);
+  // Pass methodId so the anchor map can pick the right bracket — V60's
+  // 22 on Comandante should land on the user's V60 anchor exactly, not
+  // wherever 53 % of full range happens to fall on their grinder.
+  const baseClicks = convertClicks(refBaseClicks, grinderScale, methodId);
   const baseTemp = baseRecipe.temp;
 
   // Hydrate the dial from any saved override (per coffee + method). The
@@ -151,16 +161,18 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
   // Auto-persist dial overrides. Debounced so dragging the slider doesn't
   // hit localStorage every pixel. Clears the override when both values
   // return to the recipe baseline (no point storing the default).
+  // We stamp `grinder` (the scale's name) so a future global-grinder
+  // change knows which units these clicks live in.
   useEffect(() => {
     const id = setTimeout(() => {
       if (temp === baseTemp && clicks === baseClicks) {
         writeDialOverride(coffee.id, methodId, null);
       } else {
-        writeDialOverride(coffee.id, methodId, { temp, clicks });
+        writeDialOverride(coffee.id, methodId, { temp, clicks, grinder: grinderScale.name });
       }
     }, 350);
     return () => clearTimeout(id);
-  }, [temp, clicks, baseTemp, baseClicks, coffee.id, methodId]);
+  }, [temp, clicks, baseTemp, baseClicks, coffee.id, methodId, grinderScale.name]);
 
   // Grind descriptor anchored to the user's grinder range (0-10% = fine,
   // 70-100% = coarse, regardless of click numbering).

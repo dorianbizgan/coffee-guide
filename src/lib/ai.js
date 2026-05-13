@@ -50,31 +50,42 @@ export async function aiStatus() {
 }
 
 // Look up the click/setting range for a coffee grinder the app doesn't
-// know about. Returns { name, min, max, step, fmt } or null. Called once
-// per unknown grinder; the App caches the result on the user's profile so
-// repeat visits don't re-burn tokens.
+// know about. Returns { name, min, max, step, fmt, anchors } or null.
+// Called once per unknown grinder; the App caches the result on the
+// user's profile so repeat visits don't re-burn tokens.
+// `anchors` give typical settings for each brew method — these are what
+// the dial uses to translate between grinders without falling back to
+// "0.5 of full range = 0.5 of full range" linear math.
 export async function lookupGrinderScale(grinderName) {
   if (!grinderName || !grinderName.trim()) return null;
-  const userPrompt = `What is the burr-adjustment scale of the coffee grinder "${grinderName}"?
+  const userPrompt = `What is the burr-adjustment scale of the coffee grinder "${grinderName}", and what are the typical settings for common brew methods?
 Return ONLY valid JSON with this exact shape — no prose, no markdown fences:
 {
   "name": "<canonical product name>",
   "min": <number, value at finest>,
   "max": <number, value at coarsest>,
   "step": <number, smallest increment: 1 for click grinders, 0.1 for stepless dials, etc.>,
-  "fmt": "<integer | decimal-1 | decimal-2>"
+  "fmt": "<integer | decimal-1 | decimal-2>",
+  "anchors": {
+    "espresso":  <typical espresso setting>,
+    "moka":      <typical moka pot setting>,
+    "aeropress": <typical Aeropress setting>,
+    "v60":       <typical V60 pourover setting>,
+    "chemex":    <typical Chemex setting>,
+    "french":    <typical French press setting>,
+    "cold":      <typical cold brew setting>
+  }
 }
 Examples:
-- Comandante C40 → {"name":"Comandante C40","min":6,"max":36,"step":1,"fmt":"integer"}
-- Acaia Orbit with Lab Sweet V3 burrs → {"name":"Acaia Orbit (Lab Sweet V3)","min":0,"max":10,"step":0.1,"fmt":"decimal-1"}
-- 1Zpresso K-Max → {"name":"1Zpresso K-Max","min":0,"max":90,"step":1,"fmt":"integer"}
-If the grinder is genuinely unknown or doesn't exist, return {"unknown": true}.`;
+- Comandante C40 → {"name":"Comandante C40","min":6,"max":36,"step":1,"fmt":"integer","anchors":{"espresso":8,"moka":14,"aeropress":18,"v60":22,"chemex":25,"french":30,"cold":36}}
+- Acaia Orbit (Lab Sweet V3) → {"name":"Acaia Orbit (Lab Sweet V3)","min":0,"max":10,"step":0.1,"fmt":"decimal-1","anchors":{"espresso":2.5,"moka":4,"aeropress":5.5,"v60":6.5,"chemex":7.5,"french":8.5,"cold":10}}
+All anchor values MUST be within [min, max]. If the grinder is genuinely unknown, return {"unknown": true}.`;
   try {
     const json = await aiPost({
       system: "You are a coffee grinder catalog. Return only valid JSON.",
       messages: [{ role: "user", content: userPrompt }],
       jsonMode: true,
-      max_tokens: 200,
+      max_tokens: 400,
     });
     const cleaned = (json.text || "").replace(/```json|```/g, "").trim();
     const match = cleaned.match(/\{[\s\S]*\}/);
@@ -88,12 +99,25 @@ If the grinder is genuinely unknown or doesn't exist, return {"unknown": true}.`
       parsed.max <= parsed.min
     ) return null;
     const fmt = ["integer", "decimal-1", "decimal-2"].includes(parsed.fmt) ? parsed.fmt : "integer";
+    // Sanity-check anchors: every value must be within the declared scale
+    // range. Drop any that aren't so a single bad value can't poison the
+    // conversion table.
+    let anchors = null;
+    if (parsed.anchors && typeof parsed.anchors === "object") {
+      anchors = {};
+      for (const k of ["espresso", "moka", "aeropress", "v60", "chemex", "french", "cold"]) {
+        const v = parsed.anchors[k];
+        if (typeof v === "number" && v >= parsed.min && v <= parsed.max) anchors[k] = v;
+      }
+      if (Object.keys(anchors).length < 2) anchors = null;
+    }
     return {
       name: parsed.name || grinderName,
       min: parsed.min,
       max: parsed.max,
       step: parsed.step,
       fmt,
+      anchors,
       source: "ai",
     };
   } catch {
