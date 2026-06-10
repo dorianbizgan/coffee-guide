@@ -37,7 +37,7 @@ const TWEAK_DEFAULTS = {
 // we keep it in sync so content scrolling underneath doesn't bleed-through
 // the translucent area around the Island.
 const THEME_PAPER_HEX = {
-  dusk:    "#19281f",   // oklch(0.22 0.04 155) approx
+  dusk:    "#221a13",   // warm espresso brown — oklch(0.20 0.022 52) approx
   sunrise: "#fbf2dd",   // oklch(0.97 0.022 60) approx
   default: "#f6efd9",   // base paper
   pixel:   "#1a1a1a",
@@ -353,6 +353,67 @@ export default function App() {
           </div>
         </nav>
       </header>
+
+      {/* Mobile bottom navigation — the top nav-links cluster is hidden on
+          small screens, so this thumb-friendly tab bar is the primary way to
+          move around, add a brew, and reach the account menu on phones. */}
+      <nav className="tabbar" aria-label="Primary">
+        <button
+          className={`tabbar-item ${view.name === "dashboard" ? "active" : ""}`}
+          onClick={() => { setUserMenu(false); setView({ name: "dashboard" }); }}
+          aria-current={view.name === "dashboard" ? "page" : undefined}
+        >
+          <Icon name="cup" size={22} /><span>Shelf</span>
+        </button>
+        <button
+          className={`tabbar-item ${view.name === "log" ? "active" : ""}`}
+          onClick={() => { setUserMenu(false); setView({ name: "log" }); }}
+          aria-current={view.name === "log" ? "page" : undefined}
+        >
+          <Icon name="list" size={22} /><span>Log</span>
+        </button>
+        <button
+          className="tabbar-add"
+          onClick={() => { setUserMenu(false); setEditing(null); setAdding(true); }}
+          aria-label="Log a coffee"
+        >
+          <Icon name="plus" size={24} />
+        </button>
+        <button
+          className={`tabbar-item ${view.name === "gear" ? "active" : ""}`}
+          onClick={() => { setUserMenu(false); setView({ name: "gear" }); }}
+          aria-current={view.name === "gear" ? "page" : undefined}
+        >
+          <Icon name="settings" size={22} /><span>Gear</span>
+        </button>
+        <button
+          className={`tabbar-item ${userMenu ? "active" : ""}`}
+          onClick={() => setUserMenu((o) => !o)}
+          aria-label="Account"
+          aria-expanded={userMenu}
+        >
+          <span className="tabbar-avatar">{(user.name || "?").slice(0, 1).toUpperCase()}</span>
+          <span>You</span>
+        </button>
+      </nav>
+
+      {/* Mobile account sheet — mirrors the desktop user menu, anchored above
+          the tab bar. Shares the userMenu state with the top-nav chip; only one
+          surface is visible at a time because the other is hidden per breakpoint. */}
+      {userMenu && (
+        <div className="account-sheet-wrap">
+          <div className="account-sheet-bg" onClick={() => setUserMenu(false)} />
+          <div className="account-sheet" role="menu">
+            <div className="user-menu-h">
+              <div className="user-menu-name">{user.name}</div>
+              <div className="user-menu-email">{user.email || "Local device only"}</div>
+              {user.mode === "guest" && <span className="user-badge" style={{ marginTop: 8, display: "inline-block" }}>Guest</span>}
+            </div>
+            <button className="method-menu-item" role="menuitem" onClick={() => { setUserMenu(false); setView({ name: "gear" }); }}>Preferences</button>
+            <button className="method-menu-item" role="menuitem" onClick={signOut}>{user.mode === "guest" ? "Exit guest mode" : "Sign out"}</button>
+          </div>
+        </div>
+      )}
 
       {user.mode === "guest" && (
         <div className="guest-banner">
