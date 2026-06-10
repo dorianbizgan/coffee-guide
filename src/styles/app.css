@@ -3,12 +3,14 @@
 :root {
   --forest-900: oklch(0.22 0.025 155);
   --forest-700: oklch(0.32 0.04 155);
+  --forest-600: oklch(0.38 0.045 155);
   --forest-500: oklch(0.45 0.05 155);
   --forest-300: oklch(0.72 0.04 150);
   --forest-100: oklch(0.88 0.025 145);
   --sage: oklch(0.84 0.03 140);
 
   --amber-700: oklch(0.55 0.13 60);
+  --amber-600: oklch(0.62 0.14 62);
   --amber-500: oklch(0.72 0.14 65);
   --amber-300: oklch(0.86 0.08 70);
   --amber-100: oklch(0.94 0.04 75);
@@ -36,26 +38,35 @@
   --font-mono: "Geist", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* theme: dusk (rich dark forest + ochre amber) */
+/* theme: dusk (warm dark espresso + caramel/amber) — the brand default.
+   A roasted-bean brown base with honey accents reads warmer and more
+   professional than a cool forest green, while keeping the same light-on-dark
+   token relationships (the 100 steps stay dark surfaces, 700 steps stay the
+   bright accent used for buttons + display numerals). */
 [data-theme="dusk"] {
-  --paper: oklch(0.22 0.04 155);
-  --paper-2: oklch(0.27 0.045 155);
-  --paper-3: oklch(0.32 0.05 155);
-  --ink: oklch(0.96 0.02 90);
-  --ink-soft: oklch(0.82 0.025 85);
-  --ink-mute: oklch(0.62 0.03 80);
-  --line: oklch(0.34 0.04 155);
-  --line-strong: oklch(0.44 0.045 155);
-  --forest-900: oklch(0.18 0.04 155);
-  --forest-700: oklch(0.78 0.13 95);
-  --forest-500: oklch(0.7 0.12 90);
-  --forest-300: oklch(0.55 0.08 90);
-  --forest-100: oklch(0.32 0.05 155);
-  --amber-700: oklch(0.82 0.16 85);
-  --amber-500: oklch(0.78 0.17 80);
-  --amber-300: oklch(0.62 0.14 75);
-  --amber-100: oklch(0.34 0.07 90);
-  --sage: oklch(0.34 0.05 150);
+  --paper: oklch(0.205 0.022 52);
+  --paper-2: oklch(0.25 0.024 50);
+  --paper-3: oklch(0.3 0.027 50);
+  --ink: oklch(0.95 0.018 78);
+  --ink-soft: oklch(0.81 0.022 72);
+  --ink-mute: oklch(0.64 0.026 66);
+  --line: oklch(0.33 0.02 52);
+  --line-strong: oklch(0.43 0.028 52);
+  --forest-900: oklch(0.17 0.02 50);
+  --forest-700: oklch(0.76 0.115 72);
+  --forest-600: oklch(0.6 0.1 68);
+  --forest-500: oklch(0.67 0.105 70);
+  --forest-300: oklch(0.5 0.07 66);
+  --forest-100: oklch(0.285 0.03 56);
+  --amber-700: oklch(0.83 0.13 74);
+  --amber-600: oklch(0.78 0.14 70);
+  --amber-500: oklch(0.79 0.145 68);
+  --amber-300: oklch(0.6 0.12 64);
+  --amber-100: oklch(0.31 0.05 58);
+  --sage: oklch(0.32 0.03 55);
+  --shadow-card: 0 1px 0 oklch(0.4 0.03 60 / 0.35),
+                 0 18px 36px -24px oklch(0 0 0 / 0.7);
+  --shadow-pop: 0 30px 70px -32px oklch(0 0 0 / 0.75);
 }
 
 /* theme: sunrise (rose gold paper, copper accents) */
@@ -69,11 +80,13 @@
   --line:        oklch(0.85 0.04 25);
   --line-strong: oklch(0.72 0.07 25);
   --amber-700: oklch(0.55 0.15 35);
+  --amber-600: oklch(0.63 0.14 32);
   --amber-500: oklch(0.72 0.13 30);
   --amber-300: oklch(0.85 0.08 30);
   --amber-100: oklch(0.93 0.04 30);
   --forest-900: oklch(0.32 0.08 30);
   --forest-700: oklch(0.45 0.1 28);
+  --forest-600: oklch(0.52 0.095 29);
   --forest-500: oklch(0.6 0.09 30);
   --forest-300: oklch(0.78 0.07 30);
   --forest-100: oklch(0.9 0.04 28);
@@ -428,6 +441,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   font-family: var(--font-body);
   background: var(--paper);
@@ -437,6 +451,10 @@ body {
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  min-height: 100dvh;
+  /* Decorative blobs / shaders can extend past the right edge; never let that
+     turn into a horizontal scrollbar on narrow phones. */
+  overflow-x: hidden;
 }
 
 /* paper texture */
@@ -453,8 +471,8 @@ body::before {
 }
 [data-theme="dusk"] body::before {
   background-image:
-    radial-gradient(circle at 20% 10%, oklch(0.7 0.13 90 / 0.18), transparent 55%),
-    radial-gradient(circle at 80% 80%, oklch(0.18 0.04 155 / 0.5), transparent 55%);
+    radial-gradient(circle at 18% 8%, oklch(0.72 0.13 70 / 0.16), transparent 55%),
+    radial-gradient(circle at 82% 88%, oklch(0.45 0.08 45 / 0.28), transparent 58%);
   mix-blend-mode: screen;
 }
 
@@ -933,12 +951,16 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
   align-items: center;
   justify-content: space-between;
   padding: 22px 40px;
+  padding-top: max(22px, env(safe-area-inset-top));
+  padding-left: max(40px, env(safe-area-inset-left));
+  padding-right: max(40px, env(safe-area-inset-right));
   border-bottom: 1px solid var(--line);
   position: sticky;
   top: 0;
   z-index: 50;
   background: color-mix(in oklch, var(--paper), transparent 8%);
-  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  backdrop-filter: blur(12px) saturate(140%);
 }
 .brand {
   display: flex;
@@ -1097,7 +1119,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
 /* === Coffee card grid === */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 24px;
   padding-bottom: 80px;
 }
@@ -1818,6 +1840,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
 /* === Login === */
 .login-page {
   min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
   overflow: hidden;
 }
@@ -2561,6 +2584,121 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
   color: var(--ink-mute);
 }
 
+/* ═══ Mobile bottom tab bar ═══════════════════════════════════════════════
+   Hidden on desktop; becomes the primary navigation ≤720px. Rests above the
+   home indicator via safe-area padding. */
+.tabbar { display: none; }
+.account-sheet-wrap { display: none; }
+
+@media (max-width: 720px) {
+  .tabbar {
+    display: flex;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 60;
+    align-items: stretch;
+    justify-content: space-around;
+    gap: 2px;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+    background: color-mix(in oklch, var(--paper), transparent 12%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: blur(18px) saturate(150%);
+    border-top: 1px solid var(--line);
+  }
+  .tabbar-item {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 52px;
+    padding: 6px 4px;
+    border: none;
+    background: transparent;
+    color: var(--ink-mute);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: color 0.15s ease, background 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tabbar-item span { line-height: 1; }
+  .tabbar-item.active { color: var(--amber-500); }
+  .tabbar-item.active svg { color: var(--amber-500); }
+  .tabbar-item:active { background: color-mix(in oklch, var(--ink), transparent 90%); }
+  .tabbar-avatar {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--forest-700);
+    color: var(--forest-900);
+    display: grid;
+    place-items: center;
+    font-family: var(--font-display);
+    font-size: 13px;
+  }
+  .tabbar-item.active .tabbar-avatar {
+    box-shadow: 0 0 0 2px var(--amber-500), 0 0 0 4px color-mix(in oklch, var(--paper), transparent 20%);
+  }
+  .tabbar-add {
+    flex: 0 0 auto;
+    align-self: center;
+    width: 54px; height: 54px;
+    margin: -14px 4px 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--amber-500);
+    color: var(--forest-900);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    box-shadow: 0 8px 22px -8px var(--amber-500), 0 2px 0 oklch(1 0 0 / 0.2) inset;
+    transition: transform 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tabbar-add:active { transform: scale(0.92); }
+
+  /* Account sheet — slides up just above the tab bar */
+  .account-sheet-wrap { display: block; }
+  .account-sheet-bg {
+    position: fixed; inset: 0;
+    z-index: 65;
+    background: color-mix(in oklch, var(--ink), transparent 60%);
+    animation: fadeIn 0.2s;
+  }
+  .account-sheet {
+    position: fixed;
+    left: 12px; right: 12px;
+    bottom: calc(80px + env(safe-area-inset-bottom));
+    z-index: 66;
+    background: var(--paper);
+    border: 1px solid var(--line-strong);
+    border-radius: 16px;
+    padding: 10px;
+    box-shadow: var(--shadow-pop);
+    animation: slideUp 0.2s ease;
+  }
+  .account-sheet .method-menu-item { font-size: 15px; padding: 13px 12px; }
+
+  /* Keep the appearance-tweaks launcher clear of the tab bar. The `html`
+     prefix raises specificity above the panel's own runtime-injected style,
+     which is appended after this sheet and would otherwise win on source order. */
+  html .twk-launch {
+    bottom: calc(80px + env(safe-area-inset-bottom));
+    right: max(16px, env(safe-area-inset-right));
+  }
+  html .twk-panel {
+    bottom: calc(80px + env(safe-area-inset-bottom));
+    right: max(16px, env(safe-area-inset-right));
+    max-height: calc(100dvh - 140px);
+  }
+}
+
 /* responsive */
 @media (max-width: 1100px) {
   .hero { grid-template-columns: 1fr; gap: 28px; }
@@ -2569,10 +2707,62 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
 }
 @media (max-width: 720px) {
   .shell { padding: 0 20px; }
-  .nav { padding: 16px 20px; }
+  .nav {
+    padding: 14px 20px;
+    padding-top: max(14px, env(safe-area-inset-top));
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
+  }
   .nav-links { display: none; }
   .recipe-grid { grid-template-columns: repeat(2, 1fr); }
   .form-row { grid-template-columns: 1fr; }
-  .modal { padding: 28px 24px; }
-  .card-cheat { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .modal { padding: 28px 22px; }
+  .card-cheat { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+  /* Leave room for the fixed tab bar under every scrollable view */
+  .grid { padding-bottom: 112px; }
+  .detail { padding-bottom: 112px; }
+  .guest-banner-inner { padding: 10px 20px; }
+
+  /* Type scales down a notch so big display heads never overflow narrow phones */
+  .hero { padding: 32px 0 24px; margin-bottom: 24px; }
+  .hero h1 { font-size: clamp(40px, 12vw, 60px); }
+  .hero-sub { font-size: 16px; margin-top: 18px; }
+  .hero-stats { gap: 16px; }
+  .hero-stat .num { font-size: clamp(34px, 11vw, 46px); }
+  .detail-name { font-size: clamp(40px, 11vw, 60px); }
+  .login-h1 { font-size: clamp(40px, 12vw, 64px); }
+  .modal h2 { font-size: 34px; }
+  .card-name { font-size: 30px; max-width: 100%; }
+
+  /* 16px form controls stop iOS Safari from auto-zooming on focus */
+  .field input, .field select, .field textarea,
+  .bean-search-input input, .brewnote-text,
+  .dash-search input, .login-card input {
+    font-size: 16px;
+  }
+
+  /* roomier tap targets */
+  .chip { padding: 9px 14px; font-size: 11px; }
+  .method-tab { padding: 11px 16px; }
+}
+
+@media (max-width: 380px) {
+  .shell { padding: 0 16px; }
+  .hero-stats { grid-template-columns: 1fr 1fr; }
+  .hero-stat:last-child { grid-column: span 2; }
+  .card-cheat { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .recipe-grid { gap: 10px; }
+  .recipe-cell { padding: 14px; }
+  .recipe-cell .v { font-size: 34px; }
+}
+
+/* Honor the OS "reduce motion" setting regardless of the in-app motion toggle */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
