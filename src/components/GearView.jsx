@@ -8,6 +8,10 @@ const GEAR_FIELDS = [
   { k: "espresso", l: "Espresso machine", placeholder: "e.g. Decent DE1, Linea Mini" },
   { k: "water", l: "Water profile", placeholder: "e.g. Third Wave Water" },
   { k: "filters", l: "Filters", placeholder: "e.g. Hario tabbed white" },
+  // These two drive the "Brew size" auto-scaling on every recipe: espresso
+  // recipes rescale to the basket dose; other methods rescale to the cup.
+  { k: "basket", l: "Espresso basket size (g)", placeholder: "e.g. 18" },
+  { k: "cupSize", l: "Preferred brew volume (ml)", placeholder: "e.g. 300" },
 ];
 
 export function GearView({ profile, onSaveProfile, busy }) {
