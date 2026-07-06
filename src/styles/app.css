@@ -1049,6 +1049,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
   border-bottom: 1px solid var(--line);
   margin-bottom: 36px;
 }
+.hero > * { min-width: 0; }
 .hero h1 {
   font-size: clamp(56px, 7vw, 96px);
   line-height: 0.95;
@@ -1398,6 +1399,10 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
   grid-template-columns: 1.5fr 1fr;
   gap: 56px;
 }
+/* Grid items default to min-width:auto, which lets one wide child (a long
+   coffee name, the meta row, a chip strip) stretch the whole track past the
+   viewport on phones. Zero it so children shrink and wrap instead. */
+.detail > * { min-width: 0; }
 .back-btn {
   display: inline-flex;
   align-items: center;
@@ -1439,19 +1444,21 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
   letter-spacing: -0.025em;
   margin-top: 14px;
   text-wrap: balance;
+  overflow-wrap: break-word;
 }
 .detail-meta {
-  display: flex;
-  gap: 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 16px 18px;
   margin-top: 22px;
-  flex-wrap: wrap;
 }
 .meta-item {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 90px;
+  min-width: 0;
 }
+.meta-item .v { overflow-wrap: anywhere; }
 .meta-item .l {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -2443,7 +2450,7 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
 }
 .bn-label .bn-hint { text-transform: none; letter-spacing: 0; font-style: italic; opacity: 0.8; }
 .tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip.flavor.on { background: var(--amber-500); color: var(--paper); border-color: var(--amber-500); }
+.chip.on { background: var(--amber-500); color: var(--forest-900); border-color: var(--amber-500); }
 .brewnote-text {
   width: 100%; box-sizing: border-box;
   background: var(--paper);
@@ -2745,6 +2752,15 @@ h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 400; letter-spac
   /* roomier tap targets */
   .chip { padding: 9px 14px; font-size: 11px; }
   .method-tab { padding: 11px 16px; }
+
+  /* Section headers ("Brew method" + its action button) wrap instead of
+     squeezing side-by-side on narrow phones */
+  .section-h { flex-wrap: wrap; gap: 8px 12px; }
+
+  /* The floating tweaks launcher shouldn't sit on top of a modal's footer
+     CTA or the account sheet on small screens */
+  html:has(.modal-bg) .twk-launch,
+  html:has(.account-sheet) .twk-launch { display: none; }
 }
 
 @media (max-width: 380px) {

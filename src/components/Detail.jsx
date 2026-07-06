@@ -130,12 +130,56 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
     const m = String(s || "").match(/(\d+)\s*clicks?/i);
     return m ? parseInt(m[1], 10) : 22;
   };
-  const baseClicks = parseClicks(baseRecipe.grind);
+  // Prefer the recipe's own click count (espresso's grind text is just "Fine",
+  // which used to fall through to the generic 22-click default).
+  const baseClicks = Number.isFinite(baseRecipe.clicks) ? baseRecipe.clicks : parseClicks(baseRecipe.grind);
   const baseTemp = baseRecipe.temp;
 
   const [temp, setTemp] = useState(baseTemp);
   const [clicks, setClicks] = useState(baseClicks);
-  useEffect(() => { setTemp(baseTemp); setClicks(baseClicks); /* eslint-disable-next-line */ }, [methodId]);
+
+  // ── Brew-size scaling ────────────────────────────────────────────────────
+  // Recipes rescale to the user's kit from the global Gear settings: espresso
+  // matches the basket dose, everything else matches the preferred cup volume.
+  // Dose & water scale together so the ratio (the recipe's soul) never moves.
+  const parseNum = (s) => {
+    const m = String(s ?? "").match(/(\d+(?:\.\d+)?)/);
+    return m ? parseFloat(m[1]) : null;
+  };
+  const clampScale = (x) => Math.max(0.5, Math.min(3, x));
+  const basketG = parseNum(gear?.basket);
+  const cupMl = parseNum(gear?.cupSize);
+  const kitScale = methodId === "espresso"
+    ? (basketG ? clampScale(basketG / method.base.dose) : 1)
+    : (cupMl ? clampScale(cupMl / method.yieldMl) : 1);
+  const [scale, setScale] = useState(kitScale);
+
+  useEffect(() => { setTemp(baseTemp); setClicks(baseClicks); setScale(kitScale); /* eslint-disable-next-line */ }, [methodId, kitScale]);
+
+  // Size presets: espresso offers common basket doses (+ yours), other methods
+  // offer half/1×/1.5×/2× of the method's natural yield (+ your cup).
+  let sizeChips;
+  if (methodId === "espresso") {
+    const doses = [14, 18, 20];
+    if (basketG && !doses.includes(basketG)) doses.push(basketG);
+    doses.sort((a, b) => a - b);
+    sizeChips = doses.map((d) => ({
+      scale: clampScale(d / method.base.dose),
+      label: `${d} g`,
+      kit: basketG === d,
+    }));
+  } else {
+    const mls = [0.5, 1, 1.5, 2].map((s) => Math.round((method.yieldMl * s) / 10) * 10);
+    if (cupMl && !mls.some((m) => Math.abs(m - cupMl) < 15)) mls.push(cupMl);
+    mls.sort((a, b) => a - b);
+    sizeChips = mls.map((m) => ({
+      scale: clampScale(m / method.yieldMl),
+      label: `${m} ml`,
+      kit: cupMl != null && Math.abs(m - cupMl) < 15,
+    }));
+  }
+  const scaledDose = Number((baseRecipe.dose * scale).toFixed(scale === 1 ? 0 : 1));
+  const scaledWater = Math.round(baseRecipe.water * scale);
 
   const grindDescriptor = (n) => {
     if (n <= 12) return "fine — espresso territory";
@@ -145,7 +189,7 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
     return "coarse — French press, cold brew";
   };
 
-  const recipe = { ...baseRecipe, temp, grind: `${clicks} clicks · ${grindDescriptor(clicks).split(" — ")[0]}` };
+  const recipe = { ...baseRecipe, dose: scaledDose, water: scaledWater, temp, grind: `${clicks} clicks · ${grindDescriptor(clicks).split(" — ")[0]}` };
 
   const noteKey = `cb_note_${coffee.id}_${methodId}`;
   const [note, setNote] = useState("");
@@ -285,9 +329,42 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
               <div className="dial-title">Dial it in</div>
               <div className="dial-sub">Tweak temp &amp; grind for your kit. Resets when you switch methods.</div>
             </div>
-            {(temp !== baseTemp || clicks !== baseClicks) && (
-              <button className="btn btn-ghost btn-sm" onClick={() => { setTemp(baseTemp); setClicks(baseClicks); }}>Reset to recipe</button>
+            {(temp !== baseTemp || clicks !== baseClicks || scale !== kitScale) && (
+              <button className="btn btn-ghost btn-sm" onClick={() => { setTemp(baseTemp); setClicks(baseClicks); setScale(kitScale); }}>Reset to recipe</button>
             )}
+          </div>
+
+          <div className="dial-row">
+            <div className="dial-label">
+              <span className="l">Brew size · <em>{methodId === "espresso" ? "dose" : "water"}</em></span>
+              <span className="readout">
+                {methodId === "espresso" ? recipe.dose : recipe.water}
+                <small>{methodId === "espresso" ? `g in · ${recipe.water}g out` : "g water"}</small>
+              </span>
+            </div>
+            <div className="tag-row">
+              {sizeChips.map((c) => (
+                <button
+                  key={c.label}
+                  className={`chip ${Math.abs(c.scale - scale) < 0.01 ? "on" : ""}`}
+                  onClick={() => setScale(c.scale)}
+                  title={c.kit ? "From your Gear settings" : undefined}
+                >
+                  {c.kit ? "★ " : ""}{c.label}
+                </button>
+              ))}
+            </div>
+            <div className="dial-scale" style={{ textTransform: "none", letterSpacing: 0 }}>
+              <span className="grind-desc">
+                {methodId === "espresso"
+                  ? (basketG
+                      ? `★ matched to your ${basketG}g basket — change it under Gear`
+                      : "Set your basket size in Gear to auto-match your machine")
+                  : (cupMl
+                      ? `★ matched to your ${cupMl}ml brew — change it under Gear`
+                      : "Set your preferred brew volume in Gear to auto-match")}
+              </span>
+            </div>
           </div>
 
           <div className="dial-row">
@@ -349,7 +426,7 @@ export function Detail({ coffee, onBack, onChangeMethod, onSaveBrewLog, onEdit, 
             placeholder="A few words — body, sweetness, what you'd change next time…"
           />
           <div className="brewnote-actions">
-            <span className="brewnote-stamp">{temp}°C · {clicks} clicks</span>
+            <span className="brewnote-stamp">{temp}°C · {clicks} clicks · {recipe.dose}g</span>
             <div className="bn-btn-row">
               <button
                 className="btn btn-ghost btn-sm"
